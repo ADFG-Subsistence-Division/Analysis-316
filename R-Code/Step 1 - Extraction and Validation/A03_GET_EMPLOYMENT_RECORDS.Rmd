@@ -1,0 +1,208 @@
+---
+title: "A03_GET_EMPLOYMENT_RECORDS - (294) Yukon Comprehensives 2023"
+author: "L. Navarro"
+date: "2024-05-22"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/style.css
+    include: 
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+
+# Get employment records
+
+This script reads in hand-coded employment data it enforces job number coding so that each person has a job numbered 1 to n where n is the total number of jobs for that person.
+
+## Changelog
+- Programmer: D.S.Koster  
+- Date: 05/21/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output.  
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates 
+
+## Input data
+  
+- /CSV/01 - Database Extract/REC23_raw.csv  
+
+## Output data
+  
+- /CSV/04 - Employment Processing/REC23_handCheckData.csv  
+- /CSV/04 - Employment Processing/REC23_clean_coded.csv  
+- /CSV/04 - Employment Processing/REC23_adjusted_raw.csv  
+
+## Background  
+
+For consistency, employment records are coded by IM staff. This does not always occur prior to data entry due to time constraints. This file provides an intermediate step where hand coding can occur. Note that as of 2024, the original CPDB and subsequent CSIS employment codes will no longer be used instead of SOC/SIC. SOC/SIC will be reported in the CSIS moving forward. As a result, it is acceptable to use CSISCatCodes = 1 throughout processing.
+
+When using this file, read through the outputs and ensure that the coded employment file is present at the end for final processing.
+
+### Checklist  
+
+- Update 'Author' to your name   
+- Update the project information in 'title' to the current project  
+- Update the development log with any changes you've made to the template file, including your name  
+- Verify codes by hand - ensure that SOC and SIC codes entered are consistent across job types
+- Verify that (-) coding is correct and appropriate
+- Verify that all households have at least a record indicating 'not employed' or 'refused' or similar.
+
+## Additional Information  
+
+This file only needs to be run if employment questions were asked.
+
+### Required libraries  
+
+- tidyVerse  
+- odbc  
+- rio  
+- knitr  
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+library(knitr)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+source('../Functions/f_RMD_HTML_FORMATTING_FUNCTIONS.r')
+
+# For this particular script, we need to include the some standardized variable management code.
+source('../Functions/f_manageVariables.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+```
+
+## Load and copy REC23
+
+This chunk loads and copies REC23_raw.csv into CSV/04 - Employment Processing/REC23_handCheckData.csv
+
+```{r create employment hand coding file}
+
+rec23Data <- read.csv(str_interp('../../CSV/01 - Database Extract/REC23_raw.csv'), 
+                      na = '', 
+                      header = TRUE, 
+                      strip.white = TRUE)
+
+  count <- nrow(rec23Data)
+  # Print summary.
+  cat(formatSummaryBlock(paste("Opened file: '../../CSV/01 - Database Extract/REC23_raw.csv', ", count, " rows were iported.")))
+  cat("<br>")  
+
+# Check SOC/SIC; if these are not coded, we need to hand-code them; but it's okay to see them
+#  missing if filterq < 1.
+nRecords <- nrow(filter(rec23Data, filterq >= 0))
+validSIC <- sum(!is.na(rec23Data$SIC))
+validSOC <- sum(!is.na(rec23Data$SOC))
+
+if(validSIC != nRecords | validSOC != nRecords) {
+  
+  cat(warningMessage(paste('NOTE: (',nRecords,') valid employment records found, (',validSIC,') valid SOC and (',validSOC,') valid SIC codes -- coding is inomplete. A template file: /CSV/04 - Employment Processing/REC23_handCheckData.csv has been created to hand-code data. Once emloyment has been coded, save the results as: REC23_clean_coded.csv', sep='')))
+    
+  rio::export(rec23Data, str_interp('../../CSV/04 - Employment Processing/REC23_handCheckData.csv'))
+} else {
+  
+  cat(greenMessage('ALL SOC and SIC records have been coded, creating REC23_clean_coded.csv file'))
+  
+  fName = '../../CSV/04 - Employment Processing/REC23_clean_coded.csv'
+
+  cat(formatSummaryBlock(
+  paste('Writing file: ', fName, 
+        ' ', nrow(rec23Data), ' records to be written', sep='')))
+  
+  rio::export(rec23Data, fName)
+
+}
+
+```
+
+## Import hand-coded Employment
+
+```{r cleanup employment}
+
+handCodedFile = '../../CSV/04 - Employment Processing/REC23_clean_coded.csv'
+  
+if(file.exists(handCodedFile))
+{
+  rec23Data <- read.csv(handCodedFile, 
+                        na = '', 
+                        header = TRUE, 
+                        strip.white = TRUE)
+  
+  count <- nrow(rec23Data)
+  # Print summary.
+  cat(formatSummaryBlock(paste("Opened file: ", handCodedFile, ", ", count, " rows were iported.")))
+  cat("<br>")  
+  
+    # Make compatible with harvest code and allow for reversal of decision to discontinue CSIS-specific job codings.
+    rec23Data$CSISCatCodes = -6 # No longer applicable
+    rec23Data$resource = 910100000 # Cash
+    rec23Data$role = 6 #Role code.
+    
+      # Quick recode for consistency
+    rec23Data$schedule[rec23Data$schedule==-9 | 
+                       rec23Data$schedule==-6 | 
+                       rec23Data$schedule==-7] = -8
+    rec23Data$schedule[is.na(rec23Data$schedule)] = -9
+    
+    # Recode SOC/SIC retired to temp code for now.
+    rec23Data$SIC[rec23Data$SIC == -1] = -999
+    rec23Data$SOC[rec23Data$SOC == -1] = -999
+    rec23Data[rec23Data == -1] = 1
+    rec23Data[rec23Data == -999] = 0
+          
+    # Sort for review
+    rec23Data <- dplyr::arrange(rec23Data, projID, studyear, communty, strata, HHID, person, jobnum)
+    
+# This code assumes that we might have instances where jobs aren't number 
+#   1..N per person.
+# Set up the aggregate that adds variables, but simplifies the dataset 
+#   to just the values created and in the group_by. 
+    rec23Data <- as_tibble(rec23Data) %>% 
+      group_by(projID, studyear, communty, strata, HHID, person) %>%
+      mutate(mJob = min(jobnum))
+    
+    # Assign 'case number'
+    rec23Data$jCase <- 1:nrow(rec23Data)
+    
+    # NOte: group by already defined above, do not need to define again.
+    rec23Data <- mutate(rec23Data, firstJobIndex = min(jCase))
+    rec23Data$newJOrder = (rec23Data$jCase - rec23Data$firstJobIndex) + 1
+    
+    rec23Data$jobnum = rec23Data$newJOrder
+    
+    rec23Data <- delete_variables(rec23Data, c("jCase","newJOrder","firstJobIndex","mJob"))
+
+    cat(greenMessage('Created file: /CSV/04 - Employment Processing/REC23_adjusted_raw.csv'))    
+        
+    rio::export(rec23Data, str_interp('../../CSV/04 - Employment Processing/REC23_adjusted_raw.csv'))
+    
+} else {
+  
+  cat(errorMessage('NOTE: Employment prep not completed; please create a /CSV/04 - Employment Processing/REC23_clean_coded.csv file. If you are getting this message, it means this still needs to be coded by hand.'))
+  
+}
+
+```
+
+
+<p class="h1footer"> End of get employment records script. </p>

@@ -1,0 +1,425 @@
+projID,studyear,communty,recordTypeCD,colName,colDesc,colDataType,codeSetID
+316,2024,11,00,recControlID,Unique record controller ID,int,
+316,2024,11,00,HHControlID,FK to HH Controller record,int,
+316,2024,11,00,recordTypeCD,Record Type Code,varchar(6),
+316,2024,11,00,subRecordCD,Logical subdivision of recordTypeCD,smallint,
+316,2024,11,00,subRecordDesc,Description of subRecordCD,varchar(50),
+316,2024,11,00,recContComment,Record controller level comment (can be used at the top of a page for instance),ntext,
+316,2024,11,376,recordTypeCD,Record Type Code,varchar(6),
+316,2024,11,376,subRecordCD,Logical subdivision of recordTypeCD,smallint,
+316,2024,11,376,subRecordDesc,Description of subRecordCD,varchar(50),
+316,2024,11,376,filterq,Generic filter question YN hh participated in record type XXXX activities,int,3
+316,2024,11,300,HHControlID,FK to HH Controller record,int,
+316,2024,11,300,recordTypeCD,Record Type Code,varchar(6),
+316,2024,11,300,subRecordCD,Logical subdivision of recordTypeCD,smallint,
+316,2024,11,300,subRecordDesc,Description of subRecordCD,varchar(50),
+316,2024,11,376,recControlID,Unique record controller ID,int,
+316,2024,11,376,HHControlID,FK to HH Controller record,int,
+316,2024,11,24,recordTypeCD,Record Type Code,varchar(6),
+316,2024,11,24,subRecordCD,Logical subdivision of recordTypeCD,smallint,
+316,2024,11,24,subRecordDesc,Description of subRecordCD,varchar(50),
+316,2024,11,24,otherIncomeYN,Did household receive non-employment income other than pfd or native corportation dividends YN?,int,3
+316,2024,11,24,pfdOrNatCorpYN,Did household receive a permanent fund or native corportation dividend this study period YN?,int,3
+316,2024,11,300,recControlID,Unique record controller ID,int,
+316,2024,11,23,recordTypeCD,Record Type Code,varchar(6),
+316,2024,11,23,subRecordCD,Logical subdivision of recordTypeCD,smallint,
+316,2024,11,23,subRecordDesc,Description of subRecordCD,varchar(50),
+316,2024,11,23,filterq,Generic filter question YN hh participated in record type XXXX activities,int,3
+316,2024,11,24,recControlID,Unique record controller ID,int,
+316,2024,11,24,HHControlID,FK to HH Controller record,int,
+316,2024,11,201,recordTypeCD,Record Type Code,varchar(6),
+316,2024,11,201,subRecordCD,Logical subdivision of recordTypeCD,smallint,
+316,2024,11,201,subRecordDesc,Description of subRecordCD,varchar(50),
+316,2024,11,201,filterq,Generic filter question YN hh participated in record type XXXX activities,int,3
+316,2024,11,23,recControlID,Unique record controller ID,int,
+316,2024,11,23,HHControlID,FK to HH Controller record,int,
+316,2024,11,17,subRecordCD,Logical subdivision of recordTypeCD,smallint,
+316,2024,11,17,subRecordDesc,Description of subRecordCD,varchar(50),
+316,2024,11,17,filterq,Generic filter question YN hh participated in record type XXXX activities,int,3
+316,2024,11,17,usuallyq,Generic filter question YN hh usually participates in record type XXXX activities,int,3
+316,2024,11,201,recControlID,Unique record controller ID,int,
+316,2024,11,201,HHControlID,FK to HH Controller record,int,
+316,2024,11,15,subRecordDesc,Description of subRecordCD,varchar(50),
+316,2024,11,15,filterq,Generic filter question YN hh participated in record type XXXX activities,int,3
+316,2024,11,15,usuallyq,Generic filter question YN hh usually participates in record type XXXX activities,int,3
+316,2024,11,17,recControlID,Unique record controller ID,int,
+316,2024,11,17,HHControlID,FK to HH Controller record,int,
+316,2024,11,17,recordTypeCD,Record Type Code,varchar(6),
+316,2024,11,14,filterq,Generic filter question YN hh participated in record type XXXX activities,int,3
+316,2024,11,14,usuallyq,Generic filter question YN hh usually participates in record type XXXX activities,int,3
+316,2024,11,15,recControlID,Unique record controller ID,int,
+316,2024,11,15,HHControlID,FK to HH Controller record,int,
+316,2024,11,15,recordTypeCD,Record Type Code,varchar(6),
+316,2024,11,15,subRecordCD,Logical subdivision of recordTypeCD,smallint,
+316,2024,11,12,usuallyq,Generic filter question YN hh usually participates in record type XXXX activities,int,3
+316,2024,11,14,recControlID,Unique record controller ID,int,
+316,2024,11,14,HHControlID,FK to HH Controller record,int,
+316,2024,11,14,recordTypeCD,Record Type Code,varchar(6),
+316,2024,11,14,subRecordCD,Logical subdivision of recordTypeCD,smallint,
+316,2024,11,14,subRecordDesc,Description of subRecordCD,varchar(50),
+316,2024,11,12,recControlID,Unique record controller ID,int,
+316,2024,11,12,HHControlID,FK to HH Controller record,int,
+316,2024,11,12,recordTypeCD,Record Type Code,varchar(6),
+316,2024,11,12,subRecordCD,Logical subdivision of recordTypeCD,smallint,
+316,2024,11,12,subRecordDesc,Description of subRecordCD,varchar(50),
+316,2024,11,12,filterq,Generic filter question YN hh participated in record type XXXX activities,int,3
+316,2024,11,66,recordTypeCD,Record Type Code,varchar(6),
+316,2024,11,66,subRecordCD,Logical subdivision of recordTypeCD,smallint,
+316,2024,11,66,subRecordDesc,Description of subRecordCD,varchar(50),
+316,2024,11,66,filterq,Generic filter question YN hh participated in record type XXXX activities,int,3
+316,2024,11,66,usuallyq,Generic filter question YN hh usually participates in record type XXXX activities,int,3
+316,2024,11,66,comments,Comments regarding commercial fisheries.,varchar(1000),
+316,2024,11,10,subRecordCD,Logical subdivision of recordTypeCD,smallint,
+316,2024,11,10,subRecordDesc,Description of subRecordCD,varchar(50),
+316,2024,11,10,filterq,Generic filter question YN hh participated in record type XXXX activities,int,3
+316,2024,11,10,usuallyq,Generic filter question YN hh usually participates in record type XXXX activities,int,3
+316,2024,11,66,recControlID,Unique record controller ID,int,
+316,2024,11,66,HHControlID,FK to HH Controller record,int,
+316,2024,11,08,subRecordDesc,Description of subRecordCD,varchar(50),
+316,2024,11,08,filterq,Generic filter question YN hh participated in record type XXXX activities,int,3
+316,2024,11,08,usuallyq,Generic filter question YN hh usually participates in record type XXXX activities,int,3
+316,2024,11,10,recControlID,Unique record controller ID,int,
+316,2024,11,10,HHControlID,FK to HH Controller record,int,
+316,2024,11,10,recordTypeCD,Record Type Code,varchar(6),
+316,2024,11,06,filterq,Generic filter question YN hh participated in record type XXXX activities,int,3
+316,2024,11,06,usuallyq,Generic filter question YN hh usually participates in record type XXXX activities,int,3
+316,2024,11,08,recControlID,Unique record controller ID,int,
+316,2024,11,08,HHControlID,FK to HH Controller record,int,
+316,2024,11,08,recordTypeCD,Record Type Code,varchar(6),
+316,2024,11,08,subRecordCD,Logical subdivision of recordTypeCD,smallint,
+316,2024,11,04,usuallyq,Generic filter question YN hh usually participates in record type XXXX activities,int,3
+316,2024,11,06,recControlID,Unique record controller ID,int,
+316,2024,11,06,HHControlID,FK to HH Controller record,int,
+316,2024,11,06,recordTypeCD,Record Type Code,varchar(6),
+316,2024,11,06,subRecordCD,Logical subdivision of recordTypeCD,smallint,
+316,2024,11,06,subRecordDesc,Description of subRecordCD,varchar(50),
+316,2024,11,04,recControlID,Unique record controller ID,int,
+316,2024,11,04,HHControlID,FK to HH Controller record,int,
+316,2024,11,04,recordTypeCD,Record Type Code,varchar(6),
+316,2024,11,04,subRecordCD,Logical subdivision of recordTypeCD,smallint,
+316,2024,11,04,subRecordDesc,Description of subRecordCD,varchar(50),
+316,2024,11,04,filterq,Generic filter question YN hh participated in record type XXXX activities,int,3
+316,2024,11,03,HHControlID,FK to HH Controller record,int,
+316,2024,11,03,recordTypeCD,Record Type Code,varchar(6),
+316,2024,11,03,subRecordCD,Logical subdivision of recordTypeCD,smallint,
+316,2024,11,03,subRecordDesc,Description of subRecordCD,varchar(50),
+316,2024,11,03,filterq,Generic filter question YN hh participated in record type XXXX activities,int,3
+316,2024,11,03,usuallyq,Generic filter question YN hh usually participates in record type XXXX activities,int,3
+316,2024,11,01,recControlID,Unique record controller ID,int,
+316,2024,11,01,HHControlID,FK to HH Controller record,int,
+316,2024,11,01,recordTypeCD,Record Type Code,varchar(6),
+316,2024,11,01,subRecordCD,Logical subdivision of recordTypeCD,smallint,
+316,2024,11,01,subRecordDesc,Description of subRecordCD,varchar(50),
+316,2024,11,03,recControlID,Unique record controller ID,int,
+316,2024,11,00,hhInfoID,"Primary Key, added automatically",int,
+316,2024,11,00,recControlID,"Foreign Key, link to parent added automatically",int,
+316,2024,11,00,intvwr,Initials of interviewer,varchar(5),
+316,2024,11,00,intvwr2,Initials of second interviewer,varchar(5),
+316,2024,11,00,intDate,Date of interview,smalldatetime,
+316,2024,11,00,strtime,Start time of interview in 24 hour clock. Record as whole number.,smallint,
+316,2024,11,00,endtime,End time of interview in 24 hour clock. Record as whole number.,smallint,
+316,2024,11,00,coder,Initials of survey coder,varchar(5),
+316,2024,11,00,refusedFL,Refused to respond to questions,int,3
+316,2024,11,00,hhSize,How many people live in this household?,int,
+316,2024,11,00,huntFishYN,Did anyone in the household hunt or fish during the study period? YN,int,3
+316,2024,11,01,personID,"Primary Key, added automatically",int,
+316,2024,11,01,recControlID,"Foreign Key, link to parent added automatically",int,
+316,2024,11,01,person,"Numeric person ID for each person 1=self/HH Head, 2=second HH Head",smallint,
+316,2024,11,01,answerQuestions,Is this person answering questions during the survey? YN,smallint,3
+316,2024,11,01,sex,Is this person Male or Female?,smallint,7
+316,2024,11,01,relation,How is this person related to HH Head 1?,int,8
+316,2024,11,01,procOtherFish,Did this person process nonsalmon fish YN?,smallint,3
+316,2024,11,01,harvOtherFish,Did this person harvest nonsalmon fish YN?,smallint,3
+316,2024,11,01,buildFishTrapsYN,Did this person build fish traps?,int,3
+316,2024,11,01,buildDogSleds,Did this person build dog sleds?,int,3
+316,2024,11,01,sewSkinsCloth,Did this person sew skins or cloth?,int,3
+316,2024,11,01,cookWildFoods,Did this person cook wild Foods?,int,3
+316,2024,11,01,handicraftsYN,Did this person make handicrafts with natural materials?,int,3
+316,2024,11,01,shelterYN,"Did this person build a shelter, cabin lean-to etc...?",int,3
+316,2024,11,01,procPlants,Did this person process plants/berries wood YN?,smallint,3
+316,2024,11,01,harvPlants,Did this person gather plants/berries wood YN?,smallint,3
+316,2024,11,01,procSalm,Did this person process salmon YN?,int,3
+316,2024,11,01,harvSalm,Did this person harvest salmon YN?,int,3
+316,2024,11,01,procMI,Did this person process Marine Invertebrates?,int,3
+316,2024,11,01,harvMI,Did this person harvest Marine Invertebrates?,int,3
+316,2024,11,01,procFur,Did this person process small land mammals/furbearers YN?,smallint,3
+316,2024,11,01,harvFur,Did this person hunt/harv small land mammals/furbearers YN?,smallint,3
+316,2024,11,01,procBirds,Did this person process birds YN?,smallint,3
+316,2024,11,01,harvBirds,Did this person hunt/harvest birds YN?,smallint,3
+316,2024,11,01,procMM,Did this person process marine mammals YN?,smallint,3
+316,2024,11,01,harvMM,Did this person hunt/harvest marine mammals YN?,smallint,3
+316,2024,11,01,ethnic,Is this person Alaska Native YN,smallint,16
+316,2024,11,01,birthyear,In what year was this person Born?,int,
+316,2024,11,01,residpar,Residence community of parents when this person was born,smallint,1
+316,2024,11,01,yrcomcat,How many years has this person lived in the community?,smallint,
+316,2024,11,01,procLLM,Did this person process large land mammals YN?,smallint,3
+316,2024,11,01,harvLLM,Did this person harvest/hunt large land mammals YN?,smallint,3
+316,2024,11,03,commFishActivityID,"Primary Key, added automatically",int,
+316,2024,11,03,recControlID,"Foreign Key, link to parent added automatically",int,
+316,2024,11,03,resource,Resource code fished for?,"numeric(18,0)",2
+316,2024,11,03,commFishYN,Did this household commercial fish for this resource?,smallint,3
+316,2024,11,03,keepResourceYN,Did HH keep any resources fished for?,smallint,3
+316,2024,11,03,incidentalYN,Was this reported harvest incidental?,smallint,3
+316,2024,11,03,units,Harvest amount units,smallint,5
+316,2024,11,03,resComment,Short comment on resource.,varchar(250),
+316,2024,11,03,commFishDetailID,"Primary Key, added automatically",int,
+316,2024,11,03,commFishActivityID,"Foreign Key, link to parent added automatically",int,
+316,2024,11,03,removeOwnUse,Amount retained from commercial harvest for own use.,real,
+316,2024,11,03,amtGavetoCrew,Amount retained from commercial harvest for crew.,real,
+316,2024,11,03,amtGaveOthers,Amount retained from commercial harvest for others,real,
+316,2024,11,04,datActivityID,"Primary Key, added automatically",int,
+316,2024,11,04,recControlID,"Foreign Key, link to parent added automatically",int,
+316,2024,11,04,resource,Resource code,"numeric(18,0)",2
+316,2024,11,04,used,Did household use resource YN?,smallint,23
+316,2024,11,04,attempt,Did household try to harvest resource YN?,smallint,3
+316,2024,11,04,harvestq,Did household harvest resource YN?,smallint,3
+316,2024,11,17,displayGroup,Used to distinguish a second page for this record that is not a subrecord,int,
+316,2024,11,17,resourceComment,Comment on resource,varchar(1000),
+316,2024,11,17,used,Did household use resource YN?,smallint,23
+316,2024,11,17,attempt,Did household try to harvest resource YN?,smallint,3
+316,2024,11,17,harvestq,Did household harvest resource YN?,smallint,3
+316,2024,11,17,giveaway,Did household give away resource YN?,smallint,3
+316,2024,11,17,received,Did household receive resource YN?,smallint,23
+316,2024,11,17,units,What units was the amount of this resource collected in?,int,5
+316,2024,11,15,units,What units was the amount of this resource collected in?,int,5
+316,2024,11,15,displayGroup,Used to distinguish a second page for this record that is not a subrecord,int,
+316,2024,11,15,resourceComment,Comment on resource,varchar(1000),
+316,2024,11,17,datActivityID,"Primary Key, added automatically",int,
+316,2024,11,17,recControlID,"Foreign Key, link to parent added automatically",int,
+316,2024,11,17,resource,Resource code,"numeric(18,0)",2
+316,2024,11,15,resource,Resource code,"numeric(18,0)",2
+316,2024,11,15,used,Did household use resource YN?,smallint,23
+316,2024,11,15,attempt,Did household try to harvest resource YN?,smallint,3
+316,2024,11,15,harvestq,Did household harvest resource YN?,smallint,3
+316,2024,11,15,giveaway,Did household give away resource YN?,smallint,3
+316,2024,11,15,received,Did household receive resource YN?,smallint,23
+316,2024,11,14,giveaway,Did household give away resource YN?,smallint,3
+316,2024,11,14,received,Did household receive resource YN?,smallint,23
+316,2024,11,14,units,What units was the amount of this resource collected in?,int,5
+316,2024,11,14,displayGroup,Used to distinguish a second page for this record that is not a subrecord,int,
+316,2024,11,15,datActivityID,"Primary Key, added automatically",int,
+316,2024,11,15,recControlID,"Foreign Key, link to parent added automatically",int,
+316,2024,11,14,datActivityID,"Primary Key, added automatically",int,
+316,2024,11,14,recControlID,"Foreign Key, link to parent added automatically",int,
+316,2024,11,14,resource,Resource code,"numeric(18,0)",2
+316,2024,11,14,used,Did household use resource YN?,smallint,23
+316,2024,11,14,attempt,Did household try to harvest resource YN?,smallint,3
+316,2024,11,14,harvestq,Did household harvest resource YN?,smallint,3
+316,2024,11,12,used,Did household use resource YN?,smallint,23
+316,2024,11,12,attempt,Did household try to harvest resource YN?,smallint,3
+316,2024,11,12,harvestq,Did household harvest resource YN?,smallint,3
+316,2024,11,12,giveaway,Did household give away resource YN?,smallint,3
+316,2024,11,12,received,Did household receive resource YN?,smallint,23
+316,2024,11,12,units,What units was the amount of this resource collected in?,int,5
+316,2024,11,10,harvestq,Did household harvest resource YN?,smallint,3
+316,2024,11,10,giveaway,Did household give away resource YN?,smallint,3
+316,2024,11,10,received,Did household receive resource YN?,smallint,23
+316,2024,11,12,datActivityID,"Primary Key, added automatically",int,
+316,2024,11,12,recControlID,"Foreign Key, link to parent added automatically",int,
+316,2024,11,12,resource,Resource code,"numeric(18,0)",2
+316,2024,11,08,resourceComment,Comment on resource,varchar(1000),
+316,2024,11,10,datActivityID,"Primary Key, added automatically",int,
+316,2024,11,10,recControlID,"Foreign Key, link to parent added automatically",int,
+316,2024,11,10,resource,Resource code,"numeric(18,0)",2
+316,2024,11,10,used,Did household use resource YN?,smallint,23
+316,2024,11,10,attempt,Did household try to harvest resource YN?,smallint,3
+316,2024,11,08,used,Did household use resource YN?,smallint,23
+316,2024,11,08,attempt,Did household try to harvest resource YN?,smallint,3
+316,2024,11,08,harvestq,Did household harvest resource YN?,smallint,3
+316,2024,11,08,giveaway,Did household give away resource YN?,smallint,3
+316,2024,11,08,received,Did household receive resource YN?,smallint,23
+316,2024,11,08,units,What units was the amount of this resource collected in?,int,5
+316,2024,11,06,units,What units was the amount of this resource collected in?,int,5
+316,2024,11,06,amtDogFood,Amount of reported harvest used exclusively for dogs,real,
+316,2024,11,06,displayGroup,Used to distinguish a second page for this record that is not a subrecord,int,
+316,2024,11,08,datActivityID,"Primary Key, added automatically",int,
+316,2024,11,08,recControlID,"Foreign Key, link to parent added automatically",int,
+316,2024,11,08,resource,Resource code,"numeric(18,0)",2
+316,2024,11,06,resource,Resource code,"numeric(18,0)",2
+316,2024,11,06,used,Did household use resource YN?,smallint,23
+316,2024,11,06,attempt,Did household try to harvest resource YN?,smallint,3
+316,2024,11,06,harvestq,Did household harvest resource YN?,smallint,3
+316,2024,11,06,giveaway,Did household give away resource YN?,smallint,3
+316,2024,11,06,received,Did household receive resource YN?,smallint,23
+316,2024,11,04,giveaway,Did household give away resource YN?,smallint,3
+316,2024,11,04,received,Did household receive resource YN?,smallint,23
+316,2024,11,04,units,What units was the amount of this resource collected in?,int,5
+316,2024,11,04,amtDogFood,Amount of reported harvest used exclusively for dogs,real,
+316,2024,11,06,datActivityID,"Primary Key, added automatically",int,
+316,2024,11,06,recControlID,"Foreign Key, link to parent added automatically",int,
+316,2024,11,04,fishDetailHarvestID,"Primary Key, added automatically",int,
+316,2024,11,04,datActivityID,"Foreign Key, link to parent added automatically",int,
+316,2024,11,04,amtSeine,Amount harvested with Subsistence Seine (gear code=7),real,
+316,2024,11,04,amtDipNet,Amount harvested with fish trap (gear code=8),real,
+316,2024,11,04,amtRodReel,Amount harvested with Rod and Reel (gear code=15),real,
+316,2024,11,04,amtOtherGear,Amount harvested with other or unspecified Gear (gear code=17),real,
+316,2024,11,06,amtOtherGear,Amount harvested with other or unspecified Gear (gear code=17),real,
+316,2024,11,06,othGearCD1,Code specifying type of other gear,smallint,54
+316,2024,11,06,amtUnspecifiedSubsistenceNet,Amount harvested with Unspecified Net (gear code=XX),real,
+316,2024,11,06,amtHookUnderIce,Amount harvested ice Fishing with line and pole (gear code=10),real,
+316,2024,11,06,amtUnspecifiedGillNet,Amount harvested with Drift gill net (gear code=XX),real,
+316,2024,11,06,amtNetUnderIce,Amount harvested with net under ice (gear code=12),real,
+316,2024,11,04,othGearCD1,Code specifying type of other gear,smallint,54
+316,2024,11,04,amtFishWheel,Amount harvested with Fish Wheel (gear code=9),real,
+316,2024,11,04,amtUnspecifiedGillNet,Amount harvested with Drift gill net (gear code=XX),real,
+316,2024,11,06,fishDetailHarvestID,"Primary Key, added automatically",int,
+316,2024,11,06,datActivityID,"Foreign Key, link to parent added automatically",int,
+316,2024,11,06,amtRodReel,Amount harvested with Rod and Reel (gear code=15),real,
+316,2024,11,08,harvDetailID,"Primary Key, added automatically",int,
+316,2024,11,08,datActivityID,"Foreign Key, link to parent added automatically",int,
+316,2024,11,08,amtHarvest,Total amount of resource harvested,real,
+316,2024,11,17,harvDetailID,"Primary Key, added automatically",int,
+316,2024,11,17,datActivityID,"Foreign Key, link to parent added automatically",int,
+316,2024,11,17,amtHarvest,Total amount of resource harvested,real,
+316,2024,11,10,mammalsDetailID,"Primary Key, added automatically",int,
+316,2024,11,10,datActivityID,"Foreign Key, link to parent added automatically",int,
+316,2024,11,10,harvJan,Harvest amount for January,real,
+316,2024,11,10,harvFeb,Harvest amount for February,real,
+316,2024,11,10,harvMar,Harvest amount for march,real,
+316,2024,11,10,harvApr,Harvest amount for April,real,
+316,2024,11,14,harvUnkn,Harvest amount for Unknown Month,real,
+316,2024,11,14,amtFoodFur,Amount use for both food and fur (amount eaten),real,
+316,2024,11,14,harvJul,Harvest amount for July,real,
+316,2024,11,14,harvAug,Harvest amount for August,real,
+316,2024,11,14,harvSep,Harvest amount for September,real,
+316,2024,11,14,harvOct,Harvest amount for October,real,
+316,2024,11,14,harvNov,Harvest amount for November,real,
+316,2024,11,14,harvDec,Harvest amount for December,real,
+316,2024,11,14,harvJan,Harvest amount for January,real,
+316,2024,11,14,harvFeb,Harvest amount for February,real,
+316,2024,11,14,harvMar,Harvest amount for march,real,
+316,2024,11,14,harvApr,Harvest amount for April,real,
+316,2024,11,14,harvMay,Harvest amount for May,real,
+316,2024,11,14,harvJun,Harvest amount for June,real,
+316,2024,11,12,harvNov,Harvest amount for November,real,
+316,2024,11,12,harvDec,Harvest amount for December,real,
+316,2024,11,12,harvUnkn,Harvest amount for Unknown Month,real,
+316,2024,11,12,sex,Sex of animal harvested,smallint,7
+316,2024,11,14,mammalsDetailID,"Primary Key, added automatically",int,
+316,2024,11,14,datActivityID,"Foreign Key, link to parent added automatically",int,
+316,2024,11,12,harvMay,Harvest amount for May,real,
+316,2024,11,12,harvJun,Harvest amount for June,real,
+316,2024,11,12,harvJul,Harvest amount for July,real,
+316,2024,11,12,harvAug,Harvest amount for August,real,
+316,2024,11,12,harvSep,Harvest amount for September,real,
+316,2024,11,12,harvOct,Harvest amount for October,real,
+316,2024,11,12,mammalsDetailID,"Primary Key, added automatically",int,
+316,2024,11,12,datActivityID,"Foreign Key, link to parent added automatically",int,
+316,2024,11,12,harvJan,Harvest amount for January,real,
+316,2024,11,12,harvFeb,Harvest amount for February,real,
+316,2024,11,12,harvMar,Harvest amount for march,real,
+316,2024,11,12,harvApr,Harvest amount for April,real,
+316,2024,11,10,harvNov,Harvest amount for November,real,
+316,2024,11,10,harvDec,Harvest amount for December,real,
+316,2024,11,10,harvUnkn,Harvest amount for Unknown Month,real,
+316,2024,11,10,amtFoodFur,Amount harvested for food and fur (amount eaten),real,
+316,2024,11,10,sex,Sex of animal harvested,smallint,7
+316,2024,11,10,units,What units was the amount of this resource collected it?,int,5
+316,2024,11,10,harvMay,Harvest amount for May,real,
+316,2024,11,10,harvJun,Harvest amount for June,real,
+316,2024,11,10,harvJul,Harvest amount for July,real,
+316,2024,11,10,harvAug,Harvest amount for August,real,
+316,2024,11,10,harvSep,Harvest amount for September,real,
+316,2024,11,10,harvOct,Harvest amount for October,real,
+316,2024,11,15,birdsDetailID,"Primary Key, added automatically",int,
+316,2024,11,15,datActivityID,"Foreign Key, link to parent added automatically",int,
+316,2024,11,15,harvSum,Harvest amount in summer,real,
+316,2024,11,15,harvSpr,Harvest amount in Spring,real,
+316,2024,11,15,harvFal,Harvest amount in Fall,real,
+316,2024,11,15,harvWin,Harvest amount in Winter,real,
+316,2024,11,15,harvUnkn,Harvest amount in Unknown month,real,
+316,2024,11,15,amtHarvest,Total amount harvested (use for eggs sub-records),real,
+316,2024,11,66,assessmentsID,"Primary Key, added automatically",int,
+316,2024,11,66,recControlID,"Foreign Key, link to parent added automatically",int,
+316,2024,11,66,resource,Resource category for assessments,"numeric(18,0)",2
+316,2024,11,66,histUse,Was this households use different compared to recent years?,smallint,6
+316,2024,11,66,whyDiffDesc,Why was this households use different compared to recent years?,varchar(1000),
+316,2024,11,66,whyDiffCD1,Why was this households use different compared to recent years Code 1?,smallint,55
+316,2024,11,66,firewoodChangesYN,Has household harvest area for wood changed in the past five years? YN,smallint,3
+316,2024,11,66,firewoodChangesDesc,Text description of changes to HH firewood harvest area if HH responded yes to firewoodChangesYN.,varchar(1000),
+316,2024,11,66,ride,Did household ride along with someone else while using motorized equipment? YN,smallint,3
+316,2024,11,66,environChangesDesc,Text description of observed conditions if HH responed Yes to environChangesYN.,varchar(250),
+316,2024,11,66,environChangesCD1,Code for environmental condition affecting HH ability to get to resource harvest area (code 1).,int,68
+316,2024,11,66,environChangesCD2,Code for environmental condition affecting HH ability to get to resource harvest area (code 2).,int,68
+316,2024,11,66,units,What units was the amount of this resouce collected in?,int,5
+316,2024,11,66,amt,Amount (number) of resource collected.,int,
+316,2024,11,66,pctUse,Category percentage used (generic - redefine as needed),int,98
+316,2024,11,66,resYN,Does HH use resource? (Generic question),int,3
+316,2024,11,66,own,Does HH own resource (market resource),int,3
+316,2024,11,66,borrow,Does HH borrow resource (market resource),int,3
+316,2024,11,66,lease,Does HH lease resource (market resource),int,3
+316,2024,11,66,charter,Does HH charter resource (market resource),int,3
+316,2024,11,66,environChangesYN,Has HH ability to get to resource harvest areas changed due to environmental conditions? YN,int,3
+316,2024,11,66,whyDiffCD2,Why was this households use different compared to recent years Code 2?,smallint,55
+316,2024,11,66,getEnough,Did this HH get enough of the resource category?,smallint,3
+316,2024,11,66,resNeededDesc,What kind of resources did the HH need (text description),varchar(1000),
+316,2024,11,66,displayGroup,Used to distinguish records that should be entered on different DE pages.,int,
+316,2024,11,66,impact,What was the impact of not getting enough?,smallint,109
+316,2024,11,66,locationDesc,Description of location (NPS Parklands) where resource was collected.,varchar(1000),
+316,2024,11,66,resourceNeededID,"Primary Key, added automatically",int,
+316,2024,11,66,assessmentsID,"Foreign Key, link to parent added automatically",int,
+316,2024,11,66,resourceNeeded,Resource needed by household,"numeric(18,0)",2
+316,2024,11,23,employID,"Primary Key, added automatically",int,
+316,2024,11,23,recControlID,"Foreign Key, link to parent added automatically",int,
+316,2024,11,23,person,Person identifier from Page 1 of the survey.,smallint,
+316,2024,11,23,jobnum,Job number,smallint,108
+316,2024,11,23,jtitle,Job title,varchar(250),
+316,2024,11,23,SIC,Standard Industry Code of job,smallint,
+316,2024,11,23,sepWork,Person worked this job in September.,smallint,
+316,2024,11,23,octWork,Person worked this job in October.,smallint,
+316,2024,11,23,novWork,Person worked this job in November.,smallint,
+316,2024,11,23,decWork,Person worked this job in December.,smallint,
+316,2024,11,23,marWork,Person worked this job in march.,smallint,
+316,2024,11,23,aprWork,Person worked this job in April.,smallint,
+316,2024,11,23,mayWork,Person worked this job in May.,smallint,
+316,2024,11,23,junWork,Person worked this job in June.,smallint,
+316,2024,11,23,julWork,Person worked this job in July.,smallint,
+316,2024,11,23,augWork,Person worked this job in August.,smallint,
+316,2024,11,23,SOC,Standard Occupation Code of job,smallint,
+316,2024,11,23,employr,Employer of this job.,varchar(250),
+316,2024,11,23,schedule,Schedule for this job,smallint,20
+316,2024,11,23,earnings,Gross earnings for this job?,real,
+316,2024,11,23,janWork,Person worked this job in January.,smallint,
+316,2024,11,23,febWork,Person worked this job in February.,smallint,
+316,2024,11,201,foodSecurityID,"Primary Key, added automatically",int,
+316,2024,11,201,recControlID,"Foreign Key, link to parent added automatically",int,
+316,2024,11,201,displayGroup,Filter to indicate page the questions belong on.,int,
+316,2024,11,201,stmtNum,Statement / Question number on food security pages,smallint,
+316,2024,11,201,stmtDesc,Statement / Question Text,varchar(250),
+316,2024,11,201,stmt1to3Value,"Scores statements 1-3 as 1,2,3 in a single variable",smallint,
+316,2024,11,201,occDec,This condition was true (occurred in) December,smallint,
+316,2024,11,201,eatLess,Did adults in this HH eat less than they should because of a lack of food?,smallint,3
+316,2024,11,201,hungryNotEat,Were adults in this HH ever hungry but not eat because of a lack of food?,smallint,3
+316,2024,11,201,loseWeight,Did adults in your HH lose weight because of a lack of food?,smallint,3
+316,2024,11,201,notEatWholeDay,Did adults in the HH ever not eat for a whole day because there was not enough food?,smallint,28
+316,2024,11,201,getFood,What types of food was your household unable to get?,smallint,19
+316,2024,11,201,occJun,This condition was true (occurred in) June,smallint,
+316,2024,11,201,occJul,This condition was true (occurred in) July,smallint,
+316,2024,11,201,occAug,This condition was true (occurred in) August,smallint,
+316,2024,11,201,occSep,This condition was true (occurred in) September,smallint,
+316,2024,11,201,occOct,This condition was true (occurred in) October,smallint,
+316,2024,11,201,occNov,This condition was true (occurred in) November,smallint,
+316,2024,11,201,trueForHH,Was this statement/condition true for your household?,smallint,28
+316,2024,11,201,occJan,This condition was true (occurred in) January,smallint,
+316,2024,11,201,occFeb,This condition was true (occurred in) February,smallint,
+316,2024,11,201,occMar,This condition was true (occurred in) March,smallint,
+316,2024,11,201,occApr,This condition was true (occurred in) April,smallint,
+316,2024,11,201,occMay,This condition was true (occurred in) May,smallint,
+316,2024,11,24,otherIncomeID,"Primary Key, added automatically",int,
+316,2024,11,24,recControlID,"Foreign Key, link to parent added automatically",int,
+316,2024,11,24,displayGroup,Used to control where individual records appear,int,
+316,2024,11,24,incReceived,Was income from this source received? YN,smallint,3
+316,2024,11,24,incsrce,Other income source code.,smallint,21
+316,2024,11,24,amount,Annual amount received from this income source,real,
+316,2024,11,300,commentID,"Primary Key, added automatically",int,
+316,2024,11,300,recControlID,"Foreign Key, link to parent added automatically",int,
+316,2024,11,300,comments,Comments from respondant,ntext,
+316,2024,11,300,summary,Researcher summary comments,ntext,
+316,2024,11,376,resourceSafetyID,"Primary Key, added automatically",int,
+316,2024,11,376,recControlID,"Foreign Key, link to parent added automatically",int,
+316,2024,11,376,resource,Resource in question,"numeric(18,0)",2
+316,2024,11,376,displayGroup,Which page does this display on?,int,
+316,2024,11,376,resSafeCD1,Numeric code #1 for why resource is not safe to eat.,smallint,
+316,2024,11,376,resSafeCD2,Numeric code #2 for why resource is not safe to eat.,smallint,
+316,2024,11,376,resSafeCD3,Numeric code #3 for why resource is not safe to eat.,smallint,
+316,2024,11,376,resSafeDesc,Description of why resource is not safe to eat.,varchar(1000),

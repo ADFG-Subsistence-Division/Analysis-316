@@ -1,0 +1,37 @@
+projID,studyear,communty,pageNum,recordTypeCD,recordType,recordTypeDetailDesc
+316,2024,11,1,00,Household information,"Contains the overall survey for a household, including start and stop times, interviewers and so on."
+316,2024,11,29,376,Resource health and safety,"Questions about resource health, observed changes, or whether or not resources are safe to eat."
+316,2024,11,7,66,Assessments,"Includes the standard assessment questions about resource availibility, HH use, needs and impacts."
+316,2024,11,35,24,Other sources of income,Contains records for all sources of income other than employment.
+316,2024,11,34,23,Household Employment,Information on household employment for each person in the household who is 16 or older.
+316,2024,11,36,300,Survey summary comments,Contains survey summary and final respondant comments
+316,2024,11,5,03,Retained Commercial Harvests,"Includes all types of comercial fishing, individual pages should be separated by display groups, and sub-records."
+316,2024,11,4,01,Person information,Contains person level demographic and participation records for each person in the household
+316,2024,11,3,01,Person information,Contains person level demographic and participation records for each person in the household
+316,2024,11,2,00,Household information,"Contains the overall survey for a household, including start and stop times, interviewers and so on."
+316,2024,11,6,04,Salmon harvests (non commercial),"Salmon harvests, not including commercial homepack."
+316,2024,11,8,06,Non-salmon Fish harvests (non commercial),"Harvests of fish other than salmon, not including commercial home-pack."
+316,2024,11,9,06,Non-salmon Fish harvests (non commercial),"Harvests of fish other than salmon, not including commercial home-pack."
+316,2024,11,10,66,Assessments,"Includes the standard assessment questions about resource availibility, HH use, needs and impacts."
+316,2024,11,11,10,Large Land Mammals,Harvest and use information for large Land mammals
+316,2024,11,12,66,Assessments,"Includes the standard assessment questions about resource availibility, HH use, needs and impacts."
+316,2024,11,13,14,Small Land mammals,Harvest and use information for small land mammals and furbearers
+316,2024,11,14,14,Small Land mammals,Harvest and use information for small land mammals and furbearers
+316,2024,11,15,66,Assessments,"Includes the standard assessment questions about resource availibility, HH use, needs and impacts."
+316,2024,11,16,15,Birds and Eggs,Harvest and use information for birds and eggs
+316,2024,11,17,15,Birds and Eggs,Harvest and use information for birds and eggs
+316,2024,11,18,15,Birds and Eggs,Harvest and use information for birds and eggs
+316,2024,11,19,15,Birds and Eggs,Harvest and use information for birds and eggs
+316,2024,11,20,15,Birds and Eggs,Harvest and use information for birds and eggs
+316,2024,11,21,66,Assessments,"Includes the standard assessment questions about resource availibility, HH use, needs and impacts."
+316,2024,11,22,12,Marine Mammals,Harvest and use information for marine mammals
+316,2024,11,23,66,Assessments,"Includes the standard assessment questions about resource availibility, HH use, needs and impacts."
+316,2024,11,24,08,Marine invertebrate harvests (non commercial),"Harvests of marine invertebrates, not including commercial home-pack."
+316,2024,11,25,66,Assessments,"Includes the standard assessment questions about resource availibility, HH use, needs and impacts."
+316,2024,11,26,17,Vegetation,"Harvest and use information for plants, berries and wood"
+316,2024,11,27,17,Vegetation,"Harvest and use information for plants, berries and wood"
+316,2024,11,28,66,Assessments,"Includes the standard assessment questions about resource availibility, HH use, needs and impacts."
+316,2024,11,30,66,Assessments,"Includes the standard assessment questions about resource availibility, HH use, needs and impacts."
+316,2024,11,31,66,Assessments,"Includes the standard assessment questions about resource availibility, HH use, needs and impacts."
+316,2024,11,32,201,Food Security,Includes food security questions developed for use starting in calendar year 2015.
+316,2024,11,33,201,Food Security,Includes food security questions developed for use starting in calendar year 2015.

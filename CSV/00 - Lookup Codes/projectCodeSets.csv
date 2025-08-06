@@ -1,0 +1,272 @@
+codeSetID,codeSetName,projID,studyear,code,codeDescription,extendedCodeSetID
+3,YesNo,0,0,-9,Missing,0
+3,YesNo,0,0,-8,Unknown,0
+3,YesNo,0,0,-7,Refused,0
+3,YesNo,0,0,-6,Didn't Ask,0
+3,YesNo,0,0,0,No,0
+3,YesNo,0,0,1,Yes,0
+5,Units,0,0,1,Individual,0
+5,Units,0,0,2,Pounds,0
+5,Units,0,0,3,5 Gallon Buckets,0
+5,Units,0,0,4,Gallons,0
+5,Units,0,0,5,Quarts,0
+5,Units,0,0,6,Cords (wood 4'4'8' stack),0
+5,Units,0,0,7,Dozen,0
+5,Units,0,0,8,6 Gallon Buckets,0
+5,Units,0,0,9,Plastic Bag (shopping bag),0
+5,Units,0,0,10,---,0
+5,Units,0,0,11,Pints,0
+5,Units,0,0,12,Cup,0
+5,Units,0,0,13,Hours,0
+5,Units,0,0,14,Miles,0
+5,Units,0,0,15,Dollars,0
+6,Less/Same/More,0,0,0,Never harvest/ don't use,0
+6,Less/Same/More,0,0,1,Less,0
+6,Less/Same/More,0,0,2,Same,0
+6,Less/Same/More,0,0,3,More,0
+7,Sex,0,0,1,Male,0
+7,Sex,0,0,2,Female,0
+6,Less/Same/More,0,0,-9,Missing,0
+6,Less/Same/More,0,0,-8,Unknown,0
+6,Less/Same/More,0,0,-7,Refused,0
+6,Less/Same/More,0,0,-6,Didn't Ask,0
+7,Sex,0,0,-9,-9 (Missing),0
+7,Sex,0,0,-8,Unknown,0
+7,Sex,0,0,-7,Refused,0
+7,Sex,0,0,-6,Didn't Ask,0
+8,Relationship,0,0,-9,Missing,0
+8,Relationship,0,0,-8,Unknown,0
+8,Relationship,0,0,-7,Refused,0
+8,Relationship,0,0,-6,Didn't Ask,0
+8,Relationship,0,0,1,Self,0
+8,Relationship,0,0,2,Spouse (conjugal partner),0
+8,Relationship,0,0,3,Father,0
+8,Relationship,0,0,4,Mother,0
+8,Relationship,0,0,5,Mother-in-Law,0
+8,Relationship,0,0,6,Father-in-Law,0
+8,Relationship,0,0,7,Son,0
+8,Relationship,0,0,8,Daughter,0
+8,Relationship,0,0,9,Grandson,0
+8,Relationship,0,0,10,Granddaughter,0
+8,Relationship,0,0,11,Great Grandson,0
+8,Relationship,0,0,12,Great Granddaughter,0
+8,Relationship,0,0,13,Brother,0
+8,Relationship,0,0,14,Sister,0
+8,Relationship,0,0,15,Official Foster Son,0
+8,Relationship,0,0,16,Official Foster Daughter,0
+8,Relationship,0,0,17,Informal Foster Son,0
+8,Relationship,0,0,18,Informal Foster Daughter,0
+8,Relationship,0,0,27,Stepfather,0
+8,Relationship,0,0,28,Stepmother,0
+8,Relationship,0,0,23,Spouse's Son,0
+8,Relationship,0,0,24,Spouse's Daughter,0
+8,Relationship,0,0,43,Stepdaughter,0
+8,Relationship,0,0,44,Stepson,0
+8,Relationship,0,0,53,Significant Other's Son,0
+8,Relationship,0,0,54,Significant Other's Daughter,0
+8,Relationship,0,0,29,Adopted Son,0
+8,Relationship,0,0,30,Adopted Daughter,0
+8,Relationship,0,0,41,Son-in-Law,0
+8,Relationship,0,0,42,Daughter-in-Law,0
+8,Relationship,0,0,62,Son of partner of household member,0
+8,Relationship,0,0,63,Daughter of partner of household member,0
+8,Relationship,0,0,72,Adopted Grandson,0
+8,Relationship,0,0,57,Adopted Granddaughter,0
+8,Relationship,0,0,64,Grandfather,0
+8,Relationship,0,0,65,Grandmother,0
+8,Relationship,0,0,50,Brother-in-Law,0
+8,Relationship,0,0,51,Sister-in-law,0
+8,Relationship,0,0,55,Significant Other's Brother,0
+8,Relationship,0,0,56,Significant Other's Sister,0
+8,Relationship,0,0,45,Nephew,0
+8,Relationship,0,0,49,Niece,0
+8,Relationship,0,0,39,Uncle,0
+8,Relationship,0,0,40,Aunt,0
+8,Relationship,0,0,38,Cousin,0
+8,Relationship,0,0,73,Cousin's Son,0
+8,Relationship,0,0,58,Cousin's Daughter,0
+8,Relationship,0,0,68,Great Grandfather,0
+8,Relationship,0,0,69,Great Grandmother,0
+8,Relationship,0,0,66,Great Uncle,0
+8,Relationship,0,0,67,Great Aunt,0
+8,Relationship,0,0,70,Great Nephew,0
+8,Relationship,0,0,71,Great Neice,0
+8,Relationship,0,0,59,Great Nephew's Daughter,0
+8,Relationship,0,0,60,Great Nephew's Spouse,0
+8,Relationship,0,0,31,Household Member Spouse/Partner,0
+8,Relationship,0,0,33,Friend (roommate),0
+8,Relationship,0,0,61,Ex-Spouse (ex-conjugal partner),0
+8,Relationship,0,0,48,Extended Family,0
+8,Relationship,0,0,99,Other Relationship,0
+16,ethnic,0,0,-9,Missing,0
+16,ethnic,0,0,-8,Unknown,0
+16,ethnic,0,0,-7,Refused,0
+16,ethnic,0,0,-6,Didn't Ask,0
+16,ethnic,0,0,0,Not native,0
+16,ethnic,0,0,1,Yes,0
+19,Food security food types,0,0,-9,Missing,0
+19,Food security food types,0,0,-8,Unknown,0
+19,Food security food types,0,0,-7,Refused,0
+19,Food security food types,0,0,-6,Didn't Ask,0
+19,Food security food types,0,0,1,Wild food,0
+19,Food security food types,0,0,2,Store bought food,0
+19,Food security food types,0,0,3,Both,0
+20,Job Schedules,0,0,-9,Missing,0
+20,Job Schedules,0,0,-8,Unknown,0
+20,Job Schedules,0,0,-7,Refused,0
+20,Job Schedules,0,0,-6,Didn't Ask,0
+20,Job Schedules,0,0,0,Does not work,0
+20,Job Schedules,0,0,1,Full Time,0
+20,Job Schedules,0,0,2,Part time,0
+20,Job Schedules,0,0,3,Shift - full time,0
+20,Job Schedules,0,0,4,"On-call, varies",0
+20,Job Schedules,0,0,5,Shift - part time,0
+21,Other income sources,0,0,-9,Missing,0
+21,Other income sources,0,0,-8,Unknown,0
+21,Other income sources,0,0,-7,Refused,0
+21,Other income sources,0,0,-6,Didn't Ask,0
+21,Other income sources,0,0,2,TANF (Temp. Cash Asst. for needy families),0
+21,Other income sources,0,0,3,"Adult Public Assistance (OAA, APD)",0
+21,Other income sources,0,0,5,Pension/retirement,0
+21,Other income sources,0,0,6,Longevity Bonus,0
+21,Other income sources,0,0,7,Social Security,0
+21,Other income sources,0,0,8,Workers' compensation,0
+21,Other income sources,0,0,9,Energy assistance,0
+21,Other income sources,0,0,10,Supplemental Security Income (SSI),0
+21,Other income sources,0,0,11,Food Stamps,0
+21,Other income sources,0,0,12,Unemployment,0
+21,Other income sources,0,0,13,Native Corp. Dividend,0
+21,Other income sources,0,0,14,Dividend/interest,0
+21,Other income sources,0,0,15,Child support,0
+21,Other income sources,0,0,16,Rental income,0
+21,Other income sources,0,0,17,Veteran disability,0
+21,Other income sources,0,0,18,Equipment leasing,0
+21,Other income sources,0,0,19,Rental assistance,0
+21,Other income sources,0,0,20,Fishing permit revenues,0
+21,Other income sources,0,0,21,Per diem/public meeting,0
+21,Other income sources,0,0,31,Disability,0
+21,Other income sources,0,0,32,Alaska Permanent Fund dividend,0
+21,Other income sources,0,0,33,Other,0
+21,Other income sources,0,0,34,Weatherization,0
+21,Other income sources,0,0,35,Veterans assistance,0
+21,Other income sources,0,0,36,Investments/stocks/bonds,0
+21,Other income sources,0,0,37,Bureau of Indian Affairs grant,0
+21,Other income sources,0,0,38,Housing allowance,0
+21,Other income sources,0,0,39,"Women, Infants, and Children (WIC)",0
+21,Other income sources,0,0,41,Foster care,0
+21,Other income sources,0,0,42,Inheritance,0
+21,Other income sources,0,0,43,Winnings,0
+21,Other income sources,0,0,44,Sales (property/garage sales etc…),0
+21,Other income sources,0,0,45,Arctic Slope Regional Inc (ASRC) Elder Trust,0
+21,Other income sources,0,0,46,Supplimental union benefits,0
+21,Other income sources,0,0,47,Gifts,0
+21,Other income sources,0,0,48,Medicare/Medicaid,0
+21,Other income sources,0,0,50,Meeting Honoraria,0
+23,UseCodes,0,0,-9,Missing,0
+23,UseCodes,0,0,-8,Unknown,0
+23,UseCodes,0,0,-7,Refused,0
+23,UseCodes,0,0,-6,Didn't Ask,0
+23,UseCodes,0,0,0,No,0
+23,UseCodes,0,0,1,Yes,0
+23,UseCodes,0,0,2,Previous year's harvest,0
+23,UseCodes,0,0,3,Road kill/Salvage,0
+28,Yes No Food Security,0,0,-9,Missing,0
+28,Yes No Food Security,0,0,-7,Refused,0
+28,Yes No Food Security,0,0,0,No,0
+28,Yes No Food Security,0,0,1,Yes,0
+28,Yes No Food Security,0,0,2,"Some months, months unknown",0
+21,Other income sources,0,0,49,Fuel Vouchers,0
+54,Fishing Gear Codes,0,0,-9,Missing,0
+54,Fishing Gear Codes,0,0,-8,Unknown,0
+54,Fishing Gear Codes,0,0,-7,Refused,0
+54,Fishing Gear Codes,0,0,-6,Didn't Ask,0
+54,Fishing Gear Codes,0,0,1,Commercial set net,0
+54,Fishing Gear Codes,0,0,2,Commercial seine,0
+54,Fishing Gear Codes,0,0,3,Commercial longline,0
+54,Fishing Gear Codes,0,0,4,Commercial other,0
+54,Fishing Gear Codes,0,0,5,Set gillnet,0
+54,Fishing Gear Codes,0,0,6,Drift gillnet,0
+54,Fishing Gear Codes,0,0,7,Seine,0
+54,Fishing Gear Codes,0,0,8,Dipnet,0
+54,Fishing Gear Codes,0,0,9,Fish wheel,0
+54,Fishing Gear Codes,0,0,10,Ice fishing (Hook and line under ice),0
+54,Fishing Gear Codes,0,0,11,Handline (ice),0
+54,Fishing Gear Codes,0,0,12,Cast net,0
+54,Fishing Gear Codes,0,0,13,Fish trap (fyke net),0
+54,Fishing Gear Codes,0,0,14,Spear/gaffe/eel stick,0
+54,Fishing Gear Codes,0,0,15,Rod and reel (Hook and line open water),0
+54,Fishing Gear Codes,0,0,16,Handline (open water),0
+54,Fishing Gear Codes,0,0,17,Other/Non-commercial,0
+54,Fishing Gear Codes,0,0,18,Longline/skate/setline,0
+54,Fishing Gear Codes,0,0,19,Troll gear,0
+55,Less/Same/More Reasons,0,0,1,L:Personal,0
+55,Less/Same/More Reasons,0,0,2,Got/used other resources,0
+55,Less/Same/More Reasons,0,0,3,Resource Availability,0
+55,Less/Same/More Reasons,0,0,4,L:Resource too far/ M: Went further to harvest,0
+55,Less/Same/More Reasons,0,0,5,Equipment,0
+55,Less/Same/More Reasons,0,0,6,L:Did not receive/ M: Received more,0
+55,Less/Same/More Reasons,0,0,7,L:Not enough effort/ M:Increased effort,0
+55,Less/Same/More Reasons,0,0,8,L:Unsuccessful/ M:More successful,0
+55,Less/Same/More Reasons,0,0,9,Weather/ Environment,0
+55,Less/Same/More Reasons,0,0,10,Other,0
+55,Less/Same/More Reasons,0,0,11,L:Working/no time/ M:Had more time,0
+55,Less/Same/More Reasons,0,0,12,Regulations,0
+55,Less/Same/More Reasons,0,0,13,L:Resource too small/diseased; M: Resource larger/healither,0
+55,Less/Same/More Reasons,0,0,14,L:Gas too expensive/ M: Store bought too expensive,0
+55,Less/Same/More Reasons,0,0,15,L:Needed less/ M: Needed more,0
+55,Less/Same/More Reasons,0,0,16,L:Competition,0
+55,Less/Same/More Reasons,0,0,17,M:Substitute for unavailable resource,0
+55,Less/Same/More Reasons,0,0,-9,Missing,0
+55,Less/Same/More Reasons,0,0,-8,Unknown,0
+55,Less/Same/More Reasons,0,0,-7,Refused,0
+55,Less/Same/More Reasons,0,0,-6,Didn't ask,0
+68,Empty (Placeholder codeset),0,0,-9,Missing,0
+68,Empty (Placeholder codeset),0,0,-8,Unknown,0
+68,Empty (Placeholder codeset),0,0,-7,Refused,0
+68,Empty (Placeholder codeset),0,0,-6,Not Asked,0
+55,Less/Same/More Reasons,0,0,18,L:No help/ M: More help,0
+54,Fishing Gear Codes,0,0,20,Net under ice,0
+54,Fishing Gear Codes,0,0,21,Unspecified gillnet,0
+21,Other income sources,0,0,51,Economic impact payment (stimulus check),0
+98,Heating from firewood (revised 2021),0,0,-9,Missing,0
+98,Heating from firewood (revised 2021),0,0,-8,Unknown,0
+98,Heating from firewood (revised 2021),0,0,-7,Refused,0
+98,Heating from firewood (revised 2021),0,0,-6,Didn't ask,0
+98,Heating from firewood (revised 2021),0,0,0,None,0
+98,Heating from firewood (revised 2021),0,0,1,Some - less than half,0
+98,Heating from firewood (revised 2021),0,0,2,About half,0
+98,Heating from firewood (revised 2021),0,0,3,More than half,0
+98,Heating from firewood (revised 2021),0,0,4,All,0
+55,Less/Same/More Reasons,0,0,19,L:COVID-related,0
+55,Less/Same/More Reasons,0,0,20,L:Access Restrictions,0
+28,Yes No Food Security,0,0,-8,Unknown,0
+108,Job Number,0,0,-9,Missing,0
+108,Job Number,0,0,-8,Unknown,0
+108,Job Number,0,0,-7,Refused,0
+108,Job Number,0,0,1,1ST JOB,0
+108,Job Number,0,0,2,2ND JOB,0
+108,Job Number,0,0,3,3RD JOB,0
+108,Job Number,0,0,4,4TH JOB,0
+108,Job Number,0,0,5,5TH JOB,0
+108,Job Number,0,0,6,6TH JOB,0
+108,Job Number,0,0,7,7TH JOB,0
+108,Job Number,0,0,8,8TH JOB,0
+108,Job Number,0,0,9,9TH JOB,0
+108,Job Number,0,0,10,10TH JOB,0
+108,Job Number,0,0,11,11TH JOB,0
+108,Job Number,0,0,12,12TH JOB,0
+108,Job Number,0,0,13,13TH JOB,0
+108,Job Number,0,0,14,14TH JOB,0
+108,Job Number,0,0,15,15TH JOB,0
+108,Job Number,0,0,16,16TH JOB,0
+108,Job Number,0,0,17,17TH JOB,0
+108,Job Number,0,0,18,18TH JOB,0
+109,Impact (5-option scale),0,0,-9,Missing,0
+109,Impact (5-option scale),0,0,-8,Unknown,0
+109,Impact (5-option scale),0,0,-7,Refused,0
+109,Impact (5-option scale),0,0,-6,Didn't ask,0
+109,Impact (5-option scale),0,0,0,Not noticable,0
+109,Impact (5-option scale),0,0,1,Minor,0
+109,Impact (5-option scale),0,0,2,Moderate,0
+109,Impact (5-option scale),0,0,3,Major,0
+109,Impact (5-option scale),0,0,4,Severe,0

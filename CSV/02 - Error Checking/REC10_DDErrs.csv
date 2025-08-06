@@ -1,0 +1,13 @@
+projID,studyear,communty,commname,strata,strataName,HHID,recordType,amtFoodFur,attempt,filterq,giveaway,harvApr,harvAug,harvDec,harvestq,harvFeb,harvJan,harvJul,harvJun,harvMar,harvMay,harvNov,harvOct,harvSep,harvUnkn,received,recordTypeCD,resource,resName,sex,subRecordCD,units,used,usuallyq,version
+316,2024,11,Ambler,0,Community,14,Large Land Mammals,-6,1,1,1,0,0,0,1,0,0,0,0,0,0,0,0,1,0,1,10,211800000,Moose,1,0,1,1,1,1
+316,2024,11,Ambler,0,Community,14,Large Land Mammals,-6,1,1,1,0,1,0,1,0,0,0,0,0,0,0,0,0,0,1,10,211800000,Moose,1,0,1,1,1,2
+316,2024,11,Ambler,0,Community,29,Large Land Mammals,-6,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,10,211000000,Caribou,-8,0,1,0,1,2
+316,2024,11,Ambler,0,Community,29,Large Land Mammals,-6,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,10,211000000,Caribou,-8,0,1,1,1,1
+316,2024,11,Ambler,0,Community,29,Large Land Mammals,-6,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,10,211000000,Caribou,1,0,1,0,1,2
+316,2024,11,Ambler,0,Community,29,Large Land Mammals,-6,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,10,211000000,Caribou,1,0,1,1,1,1
+316,2024,11,Ambler,0,Community,29,Large Land Mammals,-6,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,10,211000000,Caribou,2,0,1,0,1,2
+316,2024,11,Ambler,0,Community,29,Large Land Mammals,-6,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,10,211000000,Caribou,2,0,1,1,1,1
+316,2024,11,Ambler,0,Community,31,Large Land Mammals,-6,1,1,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,10,211800000,Moose,1,0,1,1,1,2
+316,2024,11,Ambler,0,Community,31,Large Land Mammals,-6,1,1,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,10,211800000,Moose,2,0,1,1,1,1
+316,2024,11,Ambler,0,Community,31,Large Land Mammals,-6,1,1,0,0,0,0,1,0,0,0,0,0,0,0,0,1,0,1,10,211800000,Moose,1,0,1,1,1,1
+316,2024,11,Ambler,0,Community,31,Large Land Mammals,-6,1,1,0,0,0,0,1,0,0,0,0,0,0,0,0,1,0,1,10,211800000,Moose,2,0,1,1,1,2

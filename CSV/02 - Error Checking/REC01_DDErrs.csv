@@ -1,0 +1,5 @@
+projID,studyear,communty,commname,strata,strataName,HHID,recordType,answerQuestions,birthyear,buildDogSleds,buildFishTrapsYN,cookWildFoods,ethnic,handicraftsYN,harvBirds,harvFur,harvLLM,harvMI,harvMM,harvOtherFish,harvPlants,harvSalm,person,procBirds,procFur,procLLM,procMI,procMM,procOtherFish,procPlants,procSalm,recordTypeCD,relation,residpar,sewSkinsCloth,sex,shelterYN,subRecordCD,yrcomcat,version
+316,2024,11,Ambler,0,Community,61,Person information,0,2023,0,0,0,1,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,01,9,11,0,1,0,0,2,1
+316,2024,11,Ambler,0,Community,61,Person information,0,2024,0,0,0,1,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,01,9,11,0,1,0,0,2,2
+316,2024,11,Ambler,0,Community,64,Person information,1,1978,0,0,1,1,0,1,1,1,,0,1,1,1,2,1,1,1,,0,1,1,1,01,2,11,0,1,1,0,47,1
+316,2024,11,Ambler,0,Community,64,Person information,1,2023,0,0,1,1,0,1,1,1,,0,1,1,1,2,1,1,1,,0,1,1,1,01,2,11,0,1,1,0,47,2

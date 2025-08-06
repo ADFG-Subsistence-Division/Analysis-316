@@ -1,0 +1,25 @@
+projID,studyear,communty,commname,strata,strataName,HHID,recordType,amtDipNet,amtDogFood,amtFishWheel,amtOtherGear,amtRodReel,amtSeine,amtUnspecifiedGillNet,attempt,filterq,giveaway,harvestq,othGearCD1,received,recordTypeCD,resource,resName,subRecordCD,units,used,usuallyq,version
+316,2024,11,Ambler,0,Community,43,Salmon harvests (non commercial),0,0,,0,0,0,0,0,0,0,0,,0,04,111000000,Chum salmon,0,1,0,0,2
+316,2024,11,Ambler,0,Community,43,Salmon harvests (non commercial),0,0,,0,0,0,0,0,0,0,0,,0,04,112000000,Coho salmon,0,1,0,0,2
+316,2024,11,Ambler,0,Community,43,Salmon harvests (non commercial),0,0,,0,0,0,0,0,0,0,0,,0,04,113000000,Chinook salmon,0,1,0,0,2
+316,2024,11,Ambler,0,Community,43,Salmon harvests (non commercial),0,0,,0,0,0,0,0,0,0,0,,0,04,114000000,Pink salmon,0,1,0,0,2
+316,2024,11,Ambler,0,Community,43,Salmon harvests (non commercial),0,0,,0,0,0,0,0,0,0,0,,0,04,115000000,Sockeye salmon,0,1,0,0,2
+316,2024,11,Ambler,0,Community,43,Salmon harvests (non commercial),0,0,,0,0,0,0,0,0,0,0,,0,04,119000000,Unspecified salmon,0,1,0,0,2
+316,2024,11,Ambler,0,Community,43,Salmon harvests (non commercial),0,0,,0,0,0,0,0,1,0,0,,0,04,112000000,Coho salmon,0,1,0,1,1
+316,2024,11,Ambler,0,Community,43,Salmon harvests (non commercial),0,0,,0,0,0,0,0,1,0,0,,0,04,113000000,Chinook salmon,0,1,0,1,1
+316,2024,11,Ambler,0,Community,43,Salmon harvests (non commercial),0,0,,0,0,0,0,0,1,0,0,,0,04,114000000,Pink salmon,0,1,0,1,1
+316,2024,11,Ambler,0,Community,43,Salmon harvests (non commercial),0,0,,0,0,0,0,0,1,0,0,,0,04,115000000,Sockeye salmon,0,1,0,1,1
+316,2024,11,Ambler,0,Community,43,Salmon harvests (non commercial),0,0,,0,0,0,0,0,1,0,0,,0,04,119000000,Unspecified salmon,0,1,0,1,1
+316,2024,11,Ambler,0,Community,43,Salmon harvests (non commercial),0,0,,0,0,0,0,0,1,0,0,,1,04,111000000,Chum salmon,0,1,1,1,1
+316,2024,11,Ambler,0,Community,72,Salmon harvests (non commercial),0,0,,0,0,0,0,0,1,0,0,,0,04,112000000,Coho salmon,0,1,0,0,2
+316,2024,11,Ambler,0,Community,72,Salmon harvests (non commercial),0,0,,0,0,0,0,0,1,0,0,,0,04,112000000,Coho salmon,0,1,0,1,1
+316,2024,11,Ambler,0,Community,72,Salmon harvests (non commercial),0,0,,0,0,0,0,0,1,0,0,,0,04,113000000,Chinook salmon,0,1,0,0,2
+316,2024,11,Ambler,0,Community,72,Salmon harvests (non commercial),0,0,,0,0,0,0,0,1,0,0,,0,04,113000000,Chinook salmon,0,1,0,1,1
+316,2024,11,Ambler,0,Community,72,Salmon harvests (non commercial),0,0,,0,0,0,0,0,1,0,0,,0,04,114000000,Pink salmon,0,1,0,0,2
+316,2024,11,Ambler,0,Community,72,Salmon harvests (non commercial),0,0,,0,0,0,0,0,1,0,0,,0,04,114000000,Pink salmon,0,1,0,1,1
+316,2024,11,Ambler,0,Community,72,Salmon harvests (non commercial),0,0,,0,0,0,0,0,1,0,0,,0,04,115000000,Sockeye salmon,0,1,0,0,2
+316,2024,11,Ambler,0,Community,72,Salmon harvests (non commercial),0,0,,0,0,0,0,0,1,0,0,,0,04,115000000,Sockeye salmon,0,1,0,1,1
+316,2024,11,Ambler,0,Community,72,Salmon harvests (non commercial),0,0,,0,0,0,0,0,1,0,0,,0,04,119000000,Unspecified salmon,0,1,0,0,2
+316,2024,11,Ambler,0,Community,72,Salmon harvests (non commercial),0,0,,0,0,0,0,0,1,0,0,,0,04,119000000,Unspecified salmon,0,1,0,1,1
+316,2024,11,Ambler,0,Community,72,Salmon harvests (non commercial),0,0,,0,0,0,0,0,1,0,0,,1,04,111000000,Chum salmon,0,1,1,0,2
+316,2024,11,Ambler,0,Community,72,Salmon harvests (non commercial),0,0,,0,0,0,0,0,1,0,0,,1,04,111000000,Chum salmon,0,1,1,1,1

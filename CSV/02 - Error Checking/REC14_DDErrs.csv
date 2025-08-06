@@ -1,0 +1,39 @@
+projID,studyear,communty,commname,strata,strataName,HHID,recordType,displayGroup,displayGroupDesc,pageName,amtFoodFur,attempt,filterq,giveaway,harvApr,harvAug,harvDec,harvestq,harvFeb,harvJan,harvJul,harvJun,harvMar,harvMay,harvNov,harvOct,harvSep,harvUnkn,received,recordTypeCD,resource,resName,subRecordCD,units,used,usuallyq,version
+316,2024,11,Ambler,0,Community,25,Small Land mammals,1401,SLM harvest - page 1,frm_Page_13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,14,220200000,Beaver,0,1,0,0,1
+316,2024,11,Ambler,0,Community,25,Small Land mammals,1401,SLM harvest - page 1,frm_Page_13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,14,220200000,Beaver,0,1,0,1,2
+316,2024,11,Ambler,0,Community,25,Small Land mammals,1401,SLM harvest - page 1,frm_Page_13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,14,221002000,Alaska hare,0,1,0,0,1
+316,2024,11,Ambler,0,Community,25,Small Land mammals,1401,SLM harvest - page 1,frm_Page_13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,14,221002000,Alaska hare,0,1,0,1,2
+316,2024,11,Ambler,0,Community,25,Small Land mammals,1401,SLM harvest - page 1,frm_Page_13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,14,221004000,Snowshoe hare,0,1,0,0,1
+316,2024,11,Ambler,0,Community,25,Small Land mammals,1401,SLM harvest - page 1,frm_Page_13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,14,221004000,Snowshoe hare,0,1,0,1,2
+316,2024,11,Ambler,0,Community,25,Small Land mammals,1401,SLM harvest - page 1,frm_Page_13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,14,221200000,River otter,0,1,0,0,1
+316,2024,11,Ambler,0,Community,25,Small Land mammals,1401,SLM harvest - page 1,frm_Page_13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,14,221200000,River otter,0,1,0,1,2
+316,2024,11,Ambler,0,Community,25,Small Land mammals,1401,SLM harvest - page 1,frm_Page_13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,14,221800000,Marmots,0,1,0,0,1
+316,2024,11,Ambler,0,Community,25,Small Land mammals,1401,SLM harvest - page 1,frm_Page_13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,14,221800000,Marmots,0,1,0,1,2
+316,2024,11,Ambler,0,Community,25,Small Land mammals,1401,SLM harvest - page 1,frm_Page_13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,14,222000000,Martens,0,1,0,0,1
+316,2024,11,Ambler,0,Community,25,Small Land mammals,1401,SLM harvest - page 1,frm_Page_13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,14,222000000,Martens,0,1,0,1,2
+316,2024,11,Ambler,0,Community,25,Small Land mammals,1401,SLM harvest - page 1,frm_Page_13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,14,222200000,Mink,0,1,0,0,1
+316,2024,11,Ambler,0,Community,25,Small Land mammals,1401,SLM harvest - page 1,frm_Page_13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,14,222200000,Mink,0,1,0,1,2
+316,2024,11,Ambler,0,Community,25,Small Land mammals,1401,SLM harvest - page 1,frm_Page_13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,14,222400000,Muskrat,0,1,0,0,1
+316,2024,11,Ambler,0,Community,25,Small Land mammals,1401,SLM harvest - page 1,frm_Page_13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,14,222400000,Muskrat,0,1,0,1,2
+316,2024,11,Ambler,0,Community,25,Small Land mammals,1401,SLM harvest - page 1,frm_Page_13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,14,222600000,Porcupine,0,1,0,0,1
+316,2024,11,Ambler,0,Community,25,Small Land mammals,1401,SLM harvest - page 1,frm_Page_13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,14,222600000,Porcupine,0,1,0,1,2
+316,2024,11,Ambler,0,Community,25,Small Land mammals,1401,SLM harvest - page 1,frm_Page_13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,14,222802000,Arctic ground squirrel,0,1,0,0,1
+316,2024,11,Ambler,0,Community,25,Small Land mammals,1401,SLM harvest - page 1,frm_Page_13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,14,222802000,Arctic ground squirrel,0,1,0,1,2
+316,2024,11,Ambler,0,Community,25,Small Land mammals,1402,SLM  harvest - page 2,frm_Page_14,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,14,220802000,Arctic fox,0,1,0,0,1
+316,2024,11,Ambler,0,Community,25,Small Land mammals,1402,SLM  harvest - page 2,frm_Page_14,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,14,220802000,Arctic fox,0,1,0,1,2
+316,2024,11,Ambler,0,Community,25,Small Land mammals,1402,SLM  harvest - page 2,frm_Page_14,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,14,220804000,Red fox,0,1,0,0,1
+316,2024,11,Ambler,0,Community,25,Small Land mammals,1402,SLM  harvest - page 2,frm_Page_14,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,14,220804000,Red fox,0,1,0,1,2
+316,2024,11,Ambler,0,Community,25,Small Land mammals,1402,SLM  harvest - page 2,frm_Page_14,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,14,221600000,Lynx,0,1,0,0,1
+316,2024,11,Ambler,0,Community,25,Small Land mammals,1402,SLM  harvest - page 2,frm_Page_14,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,14,221600000,Lynx,0,1,0,1,2
+316,2024,11,Ambler,0,Community,25,Small Land mammals,1402,SLM  harvest - page 2,frm_Page_14,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,14,223200000,Gray wolf,0,1,0,0,1
+316,2024,11,Ambler,0,Community,25,Small Land mammals,1402,SLM  harvest - page 2,frm_Page_14,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,14,223200000,Gray wolf,0,1,0,1,2
+316,2024,11,Ambler,0,Community,25,Small Land mammals,1402,SLM  harvest - page 2,frm_Page_14,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,14,223400000,Wolverine,0,1,0,0,1
+316,2024,11,Ambler,0,Community,25,Small Land mammals,1402,SLM  harvest - page 2,frm_Page_14,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,14,223400000,Wolverine,0,1,0,1,2
+316,2024,11,Ambler,0,Community,27,Small Land mammals,1401,SLM harvest - page 1,frm_Page_13,0,1,1,1,0,0,0,1,0,0,0,0,0,1,0,0,0,0,1,14,220200000,Beaver,0,1,1,1,1
+316,2024,11,Ambler,0,Community,27,Small Land mammals,1401,SLM harvest - page 1,frm_Page_13,1,1,1,1,0,0,0,1,0,0,0,0,0,1,0,0,0,0,1,14,220200000,Beaver,0,1,1,1,2
+316,2024,11,Ambler,0,Community,42,Small Land mammals,1401,SLM harvest - page 1,frm_Page_13,0,1,1,1,0,0,3,1,0,0,0,0,0,0,0,0,0,4,0,14,222000000,Martens,0,1,1,1,2
+316,2024,11,Ambler,0,Community,42,Small Land mammals,1401,SLM harvest - page 1,frm_Page_13,0,1,1,1,0,0,4,1,0,0,0,0,0,0,3,0,0,0,0,14,222000000,Martens,0,1,1,1,1
+316,2024,11,Ambler,0,Community,51,Small Land mammals,1401,SLM harvest - page 1,frm_Page_13,0,1,1,0,0,0,14,1,0,0,0,0,0,0,0,0,0,0,0,14,222000000,Martens,0,1,1,1,2
+316,2024,11,Ambler,0,Community,51,Small Land mammals,1401,SLM harvest - page 1,frm_Page_13,0,1,1,1,0,0,14,1,0,0,0,0,0,0,0,0,0,0,0,14,222000000,Martens,0,1,1,1,1
+316,2024,11,Ambler,0,Community,51,Small Land mammals,1401,SLM harvest - page 1,frm_Page_13,1,1,1,1,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,14,222600000,Porcupine,0,1,1,1,1
+316,2024,11,Ambler,0,Community,51,Small Land mammals,1401,SLM harvest - page 1,frm_Page_13,1,1,1,1,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,14,222600000,Porcupine,0,1,1,1,2

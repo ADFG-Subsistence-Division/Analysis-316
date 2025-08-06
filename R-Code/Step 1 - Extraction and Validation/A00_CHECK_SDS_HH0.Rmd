@@ -1,0 +1,304 @@
+---
+title: "A00_CHECK_SDS_HH0 (316) NPS Ambler Comprehensive"
+author: "L. Navarro"
+date: "2025-04-15"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/style.css
+    include: 
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+
+---
+
+# Check SDS Summary
+
+Get data files from SQL Server for the SDS HH0 and verify that HH0 doesn't contain erroneous records.
+
+## Changelog 
+  
+- Programmer: D. Koster  
+- Date: 05/21/2024
+- Change Description: Update to templates to improve consistency  
+- Template Update [Y|N]: Y  
+- One-Off: No - all future scripts should implement these changes.  
+
+## Input data
+
+- dfgjnusql-db71p/Sub_SDS.dbo.xref_community_master  
+- dfgjnusql-db71p/Sub_SDS.dbo.META_RECTYPE_SPEC  
+- dfgjnusql-db71p/Sub_SDS.dbo.vw_definedRecordTypes  
+- dfgjnusql-db71p/Sub_SDS.dbo.vw_definedColumns  
+- dfgjnusql-db71p/Sub_SDS.dbo.vw_fullCodesetList  
+- dfgjnusql-db71p/Sub_SDS.dbo.SP_GET_DATA_BY_RECTYPE_FULL
+
+*NOTE:* No files from file-system are read in.
+
+## Output data
+
+*NOTE:* No data files are written to the file-system.
+
+## Background
+
+To simplify data processing, each community will have a blank, default household record added. This is called Household 0, HHID 0 or HH 0. Standard coding procedure for identifying information, such as communities, resources, and household IDs, the value of 0 is used to represent 'All' or 'Any'. We use this for HH 0 to indicate that all households should begin with a certain set of default information. When a new household is entered in the data entry system, it starts as a copy of HH 0.
+
+Additional records can be added during data entry for specific households; however, by providing default records, analysis can begin with a reasonably standardized dataset. Again, this simplifies data entry, data processing, and data analysis.
+
+If HH 0 contains erroneous information or records, such as a non-zero harvest amount, this data will be propagated to all households and may require manual correction for all records created from HH 0.
+
+## Checklist
+
+- All communities that have data entry screens are present  
+- Communities have the correct codes & names  
+- All record types used on the survey form are present for each community   
+- Default values are correct - these should be 0 for harvest information, NO for yes or no questions, blank or NA for: reason codes, person information, employment information, and comments  
+- Resource codes match the survey instrument & are correct for the record type (Commercial retention requires a 1 at the end)
+- No categorical resource codes are present on harvest records  
+
+## Additional Information
+
+This file is not built to be compatible with SPSS data processing procedures.
+
+To loop through each record type code and community, we set up iterators and step through a list of valid record type codes and communities. [1] below illustrates the process. Note that we use c() to create a vector and we use the $ to reference ONLY the column data in the query called recordTypeCD.
+
+[1] recTypeCDList <- c(dbGetQuery(conn, strSQL)$recordTypeCD)
+
+
+## Required libraries
+
+- tidyVerse  
+- odbc  
+- knitr  
+
+```{r setup, include=FALSE, echo=FALSE}
+
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+# Data Processing
+
+## Initialize environment
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+library(knitr)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+source('../Functions/f_RMD_HTML_FORMATTING_FUNCTIONS.r')
+
+# For this particular project, we need to include the ODBC Connections.
+source('../Functions/f_subsistenceDatabaseConnections.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+
+```
+
+```{r initiate server connection}
+
+# ##############################################################################
+# 1.0 - Instantiate server connection.
+# ##############################################################################
+
+# 1.1 Load the ODBC Library & Open a connection.
+loadODBCLibrary()
+conn = connectToSDS()
+
+```
+
+## Load data
+
+This script only extracts data from the database.
+
+```{r initial data prep}
+
+# ##############################################################################
+# 2.0 - Set up data lists & required meta-data.
+# ##############################################################################
+
+# Create lists we will need to work through this (these are lists of lists)
+dataSets = list()
+
+# Get lookup list for community codes
+strSQL = sql(str_interp('SELECT communty, commname FROM [xref_community_master]'))
+commLookupList <- tibble(odbc::dbGetQuery(conn, strSQL))
+
+count <- nrow(commLookupList)
+cat(formatSummaryBlock(paste("SQL Extract:", strSQL ,", ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+
+# Get lookup list for record type codes
+strSQL = sql(str_interp('SELECT recordTypeCD, recordType FROM [META_RECTYPE_SPEC]'))
+recTypeList <- tibble(odbc::dbGetQuery(conn, strSQL))
+
+count <- nrow(recTypeList)
+cat(formatSummaryBlock(paste("SQL Extract:", strSQL ,", ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+#Get the list of communities and record type codes so we don't have to 
+#   repeatedly requery the database.
+strSQL = sql(str_interp('SELECT DISTINCT [communty], [recordTypeCD] FROM [vw_definedRecordTypes] 
+          WHERE [projID] = ${projID} AND [studyear] = ${studyear} AND definedRecordTypeCD is not null'))  
+
+# Create a tibble for defined record types.
+defRecTypeCDSet <- tibble(odbc::dbGetQuery(conn, strSQL))
+
+count <- nrow(defRecTypeCDSet)
+cat(formatSummaryBlock(paste("SQL Extract:", strSQL ,", ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+# Communities and # of associated record types.
+definedCommList <- group_by(defRecTypeCDSet, communty) %>%
+                   summarize(recordTypesDefined = n())
+
+# Get column definitions.
+strSQL = sql(str_interp('SELECT projID, 
+                                studyear, 
+                                communty, 
+                                recordTypeCD, 
+                                colName, 
+                                colDesc, 
+                                colDataType, 
+                                codeSetID 
+                                FROM dbo.vw_definedColumns  
+                                WHERE (projID = ${projID} 
+                                  AND studyear = ${studyear} 
+                                  AND defColID is not null
+                                  AND systemCD = 0)'))
+
+definedColumnList <- tibble(odbc::dbGetQuery(conn, strSQL))
+
+count <- nrow(definedColumnList)
+cat(formatSummaryBlock(paste("SQL Extract:", strSQL ,", ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+# 4.5 Get master codeset list
+strSQL = sql('SELECT DISTINCT codeSetID, 
+                                codeSetName
+                                FROM dbo.vw_fullCodesetList')
+codeSetList <- odbc::dbGetQuery(conn, strSQL)
+
+count <- nrow(codeSetList)
+cat(formatSummaryBlock(paste("SQL Extract:", strSQL ,", ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+definedColumnList <- left_join(definedColumnList,
+                               codeSetList,
+                               by=c("codeSetID"))
+
+count <- nrow(definedColumnList)
+cat(formatSummaryBlock(paste("SQL Extract:", strSQL ,", ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+```
+
+## SDS HHID0 Reports
+
+Below are a series of reports that describe the contents of the template household. Please review carefully. Make sure if changes are required to data entry forms that records will not erroneously be hidden.
+
+```{r HH0 reports}
+
+# ##############################################################################
+# 3.0 - Prepare general reports
+# ##############################################################################
+
+# Loop through each community
+for(community in definedCommList$communty)
+{
+  cat(paste("##", community, "-", commLookupList$commname[commLookupList$communty == community], "  "))
+  cat("<br>")
+  
+  recTypesData <- data.frame("recordTypeCD" = defRecTypeCDSet$recordTypeCD[defRecTypeCDSet == community])
+  recTypesData <- left_join(recTypesData, recTypeList, by=c("recordTypeCD"))
+
+  print(knitr::kable(recTypesData, 
+                     col.names = c("Record Type Code", 
+                                   "Record Type Description"),
+                     caption=formatTableHeader("Defined record type codes")))
+
+  for(defRecType in recTypesData$recordTypeCD)
+  {
+      # create an empty Data frame to work from.
+      tDataSet = data.frame()
+      
+      # Query the database and filter to just HHID 0.
+      strSQL = sql(str_interp("exec [dbo].[SP_GET_DATA_BY_RECTYPE_FULL] ${projID}, ${studyear}, N'${defRecType}', ${community}"))
+      tDataSet <- dplyr::bind_rows(tDataSet, odbc::dbGetQuery(conn, strSQL))
+      tDataSet <- filter(tDataSet, HHID==0)
+  
+      # Header for defined column.
+      cap = paste("Defined Columns ", 
+            defRecType, 
+            "-", 
+            recTypeList$recordType[recTypeList$recordTypeCD == defRecType])
+      # Simultaneously filter/select column names and codesets for display
+      #   with knitr table.
+      print(knitr::kable(
+        filter(definedColumnList,
+               recordTypeCD == defRecType &
+               communty == community) %>%
+        select(colName, 
+               colDesc, 
+               colDataType,
+               codeSetName),
+        caption=formatTableHeader(cap)
+      ))
+      
+      # Table header for HHID 0 contents table.
+      cap = paste("HH 0 - Record Type: ", 
+            defRecType, 
+            "-", 
+            recTypeList$recordType[recTypeList$recordTypeCD == defRecType])
+   
+      # Display full contents of HHID 0 using knitr tables.
+      print(knitr::kable(tDataSet,
+                   caption = formatTableHeader(cap)))
+  }
+  
+}
+
+```
+
+## Disconnect
+
+```{r disconnect, echo=FALSE}
+
+# ##############################################################################
+# 5.0 - Close data connections
+# ##############################################################################
+
+dbDisconnect(conn)
+
+cat(formatSummaryBlock("Database disconnect"))
+
+```
+
+## Write CSV
+
+```{r write files, echo=FALSE}
+
+cat(formatSummaryBlock("No files to write"))
+
+```
+
+<p class="h1footer"> End script: A00_CHECK_SDS_HH0. </p>
+
+

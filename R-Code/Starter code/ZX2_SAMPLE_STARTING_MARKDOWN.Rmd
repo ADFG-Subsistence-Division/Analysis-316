@@ -1,0 +1,178 @@
+---
+title: "ZX2SAMPLE_STARTING_MARKDOWN - (000) Project Name"
+author: "RESEARCH ANALYST"
+date: "2024-XX-XX"
+output:
+  html_document:
+    theme: null
+    css: ../style.css
+    include: 
+      before_body: ../header.html
+      after_body: ../footer.html
+---
+
+# Sample code
+[Provide a brief description] Simple template to begin new analayis.
+
+## Changelog
+- Programmer:  
+- Date:  
+- Change Description:  
+- Template Update [Y|N]:  
+- One-Off:  
+
+## Input data
+
+- dfgjnusql-db71p/Sub_SDS.dbo.[table/sp]
+- ../../CSV/05 - Main/[filename]
+
+*NOTE:* No files from file-system are read-in.
+*NOTE:* No database extracts are executed.
+ 
+## Output data
+
+- ../../CSV/01 - CSIS/csisDB.db [dat_harvest]
+- ../../CSV/05 - Main/[filename]
+
+## Background
+[Omit if unecessary]
+
+## Checklist
+- Update header information
+- Check values
+- etc...
+
+## Additional information
+Provide additional information if necessary
+
+## Required libraries 
+[Adjust as needed]
+- tidyVerse  
+- knitr
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+# Data processing
+
+## Initialize environment
+
+Loading libraries, standard functions and set environment parameters.
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+
+# Load libraries
+library(knitr)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../../Z00_PROJECT_PARAMETERS.r')
+source('../../Z01_RMD_HTML_FORMATTING_FUNCTIONS.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+```
+
+## Load data
+
+```{r load data}
+
+# ##############################################################################
+# Load data from intermediate files.
+# ##############################################################################
+
+# This for each file opened.
+myData <- read.csv('../../CSV/01 - Database Extract/myFile.csv',
+                   na = '', 
+                   header = TRUE, 
+                   strip.white = TRUE)
+
+count <- nrow(myData)
+cat(formatSummaryBlock(paste("Opening file: XXXXXX, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+
+```
+
+
+## Clean and organize
+
+Write notes about items that must be organized or cleaned and why. Also note any automation that was used.
+
+```{r clean and organize}
+
+
+
+```
+
+## Estimates
+
+Provide description of how estimates are derived or any deviations from standard expansions.
+
+```{r estimates}
+
+
+```
+
+## Reports
+
+```{r write tables and figures}
+# This is an example of a table, you can remove the col.names option here
+#  and use only the data frame column headers, depending..
+knitr::kable(myData,
+             caption=formatTableHeader("First ten community codes"),
+             col.names=c("List",
+                         "Column",
+                         "Names",
+                         "Here"),
+             align="l")
+
+```
+
+## Final clean-up
+
+```{r final organization}
+
+```
+
+## Write SQLite
+
+```{r sql lite export}
+
+# This block can be deleted if SQLite is not being used.
+
+```
+
+## Write CSV
+
+```{r write csv files}
+
+# ##############################################################################
+# Write out CSV files.
+# ##############################################################################
+
+# Sample code for writing out a file.
+  fName = str_interp('../../CSV/01 - Database Extract/${dataSetName}.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(myData), ' records to be written', sep='')))
+
+# Standard is to use CSV files for portability.
+  rio::export(myData, fName)
+
+```
+
+<p class="h1footer"> End of Check SDS HH0 script. </p>

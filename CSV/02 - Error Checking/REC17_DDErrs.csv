@@ -1,0 +1,5 @@
+projID,studyear,communty,commname,strata,strataName,HHID,recordType,displayGroup,displayGroupDesc,pageName,amtHarvest,attempt,filterq,giveaway,harvestq,received,recordTypeCD,resource,resName,subRecordCD,units,used,usuallyq,version
+316,2024,11,Ambler,0,Community,13,Vegetation,1702,Vegetation harvest - page 2,frm_Page_27,0,0,1,0,0,0,17,604000000,Wood,0,6,0,1,2
+316,2024,11,Ambler,0,Community,13,Vegetation,1702,Vegetation harvest - page 2,frm_Page_27,10,1,1,1,1,1,17,604000000,Wood,0,6,1,1,1
+316,2024,11,Ambler,0,Community,56,Vegetation,1702,Vegetation harvest - page 2,frm_Page_27,0.00999999977648258,1,1,0,1,0,17,604000000,Wood,0,6,1,1,2
+316,2024,11,Ambler,0,Community,56,Vegetation,1702,Vegetation harvest - page 2,frm_Page_27,0.100000001490116,1,1,0,1,0,17,604000000,Wood,0,6,1,1,1

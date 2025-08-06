@@ -1,0 +1,17 @@
+projID,studyear,communty,commname,strata,strataName,HHID,recordType,amtGaveOthers,amtGavetoCrew,commFishYN,filterq,incidentalYN,keepResourceYN,recordTypeCD,removeOwnUse,resource,resName,subRecordCD,units,usuallyq,version
+316,2024,11,Ambler,0,Community,43,Retained Commercial Harvests,0,0,0,0,0,0,03,0,111000001,Chum salmon [CF retention],0,1,0,1
+316,2024,11,Ambler,0,Community,43,Retained Commercial Harvests,0,0,0,0,0,0,03,0,112000001,Coho salmon [CF retention],0,1,0,1
+316,2024,11,Ambler,0,Community,43,Retained Commercial Harvests,0,0,0,0,0,0,03,0,113000001,Chinook salmon [CF retention],0,1,0,1
+316,2024,11,Ambler,0,Community,43,Retained Commercial Harvests,0,0,0,0,0,0,03,0,114000001,Pink salmon [CF retention],0,1,0,1
+316,2024,11,Ambler,0,Community,43,Retained Commercial Harvests,0,0,0,0,0,0,03,0,115000001,Sockeye salmon [CF retention],0,1,0,1
+316,2024,11,Ambler,0,Community,43,Retained Commercial Harvests,0,0,0,0,0,0,03,0,125006001,Dolly Varden [CF retention],0,1,0,1
+316,2024,11,Ambler,0,Community,43,Retained Commercial Harvests,0,0,0,0,0,0,03,0,125600001,Sheefish [CF retention],0,1,0,1
+316,2024,11,Ambler,0,Community,43,Retained Commercial Harvests,0,0,0,0,0,0,03,0,126404001,Broad whitefish [CF retention],0,1,0,1
+316,2024,11,Ambler,0,Community,43,Retained Commercial Harvests,0,0,0,1,0,0,03,0,112000001,Coho salmon [CF retention],0,1,1,2
+316,2024,11,Ambler,0,Community,43,Retained Commercial Harvests,0,0,0,1,0,0,03,0,113000001,Chinook salmon [CF retention],0,1,1,2
+316,2024,11,Ambler,0,Community,43,Retained Commercial Harvests,0,0,0,1,0,0,03,0,114000001,Pink salmon [CF retention],0,1,1,2
+316,2024,11,Ambler,0,Community,43,Retained Commercial Harvests,0,0,0,1,0,0,03,0,115000001,Sockeye salmon [CF retention],0,1,1,2
+316,2024,11,Ambler,0,Community,43,Retained Commercial Harvests,0,0,0,1,0,0,03,0,125006001,Dolly Varden [CF retention],0,1,1,2
+316,2024,11,Ambler,0,Community,43,Retained Commercial Harvests,0,0,0,1,0,0,03,0,125600001,Sheefish [CF retention],0,1,1,2
+316,2024,11,Ambler,0,Community,43,Retained Commercial Harvests,0,0,0,1,0,0,03,0,126404001,Broad whitefish [CF retention],0,1,1,2
+316,2024,11,Ambler,0,Community,43,Retained Commercial Harvests,0,0,1,1,0,1,03,0,111000001,Chum salmon [CF retention],0,1,1,2
