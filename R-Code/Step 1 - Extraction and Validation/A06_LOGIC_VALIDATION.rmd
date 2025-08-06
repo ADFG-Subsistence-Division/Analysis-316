@@ -1,15 +1,19 @@
 ---
-title: "A06 Logic Checking - (294) Yukon Comprehensives 2023"
-author: "L. Navarro"
-date: "2025-05-22"
+title: "A06 Logic Checking - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-05"
 output:
   html_document:
     theme: null
-    css: ../HTML/style.css
+    css: ../HTML/adfg-style.css
     include: 
       before_body: ../HTML/header.html
       after_body: ../HTML/footer.html
 ---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">A06_LOGIC_VALIDATION - (316) NPS Ambler Comprehensive 2024</div>
+</div>
 
 # Logic checking
 
@@ -203,7 +207,7 @@ tempData <- group_by(rec00Data, projID, studyear, communty, strata) %>%
   gather(communty, value, -rowname) %>%
   spread(rowname, value)
 
-knitr::kable(tempData)
+knitr::kable(tempData, col.names = c("Column Name","Value"))
 
 ```
 
@@ -245,7 +249,8 @@ tempData <- group_by(rec01Data, projID, studyear, communty) %>%
                           names_from=communty, 
                           values_from=Values)
 
-knitr::kable(tempData)
+knitr::kable(tempData,
+             col.names = c("Column Name", "Value"))
 
 ```
 
@@ -554,6 +559,7 @@ tempData <- group_by(rec23Data, projID, studyear, communty) %>%
     select(-sOrder)
 
   tblOut <- kbl(tempData,
+                col.names = c("Column Names","Values"),
                 caption=formatTableHeader(str_interp("Descriptives for REC23 - Income."))) %>%
     kable_styling(full_width = F)
         
