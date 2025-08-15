@@ -274,3 +274,99 @@ img {
     box-shadow: 0 0 4px rgba(28,55,64,0.08);
     margin: 1em 0;
 }
+
+.colNameBlock {
+    margin-left: 30px;
+    font-style: italic;
+    border-top: 1px solid black;
+    border-bottom: 1px solid black;
+}
+
+.summaryBlock {
+  border: 1px outset black;
+  font-size: 11pt;
+  background-color: lightgray;
+  margin-top: 5px;
+  margin-bottom: 5px;
+  margin-right: 5px;
+  margin-left: 5px;
+  padding-left: 10px;
+  
+}
+
+.warningBlock {
+  border: 1px solid black;
+  font-size: 12pt;
+  background-color: #FFFF00;
+  margin-top: 5px;
+  margin-bottom: 5px;
+  margin-right: 5px;
+  margin-left: 5px;
+  padding-left: 10px;
+}
+
+.errorBlock {
+  border: 1px solid black;
+  font-size: 12pt;
+  background-color: #C00000;
+  color: white;
+  margin-top: 5px;
+  margin-bottom: 5px;
+  margin-right: 5px;
+  margin-left: 5px;
+  padding-left: 10px;
+}
+.greenBlock {
+  border: 1px solid black;
+  font-size: 12pt;
+  background-color: #548235;
+  color:white;
+  margin-top: 5px;
+  margin-bottom: 5px;
+  margin-right: 5px;
+  padding-left: 10px;
+}
+
+.todoBlock {
+  font-size: 12pt;
+  text-align: center;
+  font-weight: bold;
+  border: 1px solid black;
+}
+
+.statsTestBlock {
+  display: block;
+  border: 1px solid darkred;
+  margin: 5px;
+  padding: 10px;
+}
+
+.statsTestTitle {
+  font-size: 13pt;
+  text-align: center;
+  text-decoration-line: underline;
+}
+
+.statsTestBody {
+  font-size: 11pt;
+  text-align: left;
+}
+
+.figcaption {
+  font-family: Serif;
+  font-size: 10pt;
+  background-color: #EEF8ED;
+  border: 1px solid darkgray;
+  padding: 10px;
+  margin: 5px;
+}
+
+.details,
+.show,
+.hide:target {
+  display: none;
+}
+.hide:target + .show,
+.hide:target ~ .details {
+  display: block;
+}
