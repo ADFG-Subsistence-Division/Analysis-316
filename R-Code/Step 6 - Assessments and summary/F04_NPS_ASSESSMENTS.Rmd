@@ -1,0 +1,1130 @@
+---
+title: "F04_NPS_ASSESSMENTS - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-15"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">F04_NPS_ASSESSMENTS - (316) NPS Ambler Comprehensive</div>
+</div>
+
+# NPS Assessments description
+
+Purpose: This analysis will process the additional assessment questions included on comprehensive household surveys
+done in partnership with the National Park Service (NPS). The additional questions ask households about the following:
+    -Use of transportation while harvesting or attempting to harvest wild resources.
+    -Use of motorized equipment while harvesting or attempting to harvest wild resources.
+    -Concerns regarding resource health.  
+    -Use of discarded animal parts or natural materials in the making of handicrafts gathered on park lands.
+    -Environmental conditions affecting access to subsistence search and harvest areas. 
+    -Participation in the following activities associated with subsistence use:   
+        -building fish traps  
+        -building sleds  
+        -sewing with skins  
+        -cooking wild foods  
+        -building a shelter, cabin, or lean-to 
+         
+The participation questions are not included in this file. They are addressed in C05_INDIVIDUAL_PARTICIPATION.
+
+## Input files
+  
+- /CSV/01 - Database Extract/REC66_raw.csv  
+- /CSV/03 - Main/sample.csv  
+- /CSV/00 - Lookup Codes/fullResList_raw.csv  
+- /CSV/00 - Lookup Codes/fullCodesetList_raw.csv
+
+## Output files
+  
+- /CSV/05 - Final Analysis Output/transportation_raw.csv  
+- /CSV/05 - Final Analysis Output/motorizedEquip_raw.csv
+- /CSV/05 - Final Analysis Output/naturalMaterials_raw.csv
+- /CSV/05 - Final Analysis Output/resourceHealth(T)_raw.csv
+- /CSV/05 - Final Analysis Output/resourceHealthReasons_raw.csv
+- /CSV/05 - Final Analysis Output/firewoodUse(T)_raw.csv
+- /CSV/05 - Final Analysis Output/firewoodChanges(T)_raw.csv
+- /CSV/05 - Final Analysis Output/firewoodReasons_raw.csv
+- /CSV/05 - Final Analysis Output/environChanges(T)_raw.csv
+- /CSV/05 - Final Analysis Output/environComments_raw.csv
+
+## Background
+
+Develop a background, if necessary.
+
+### How to use this document
+
+Knit this file and evaluate the HTML output. The output .csv files will serve as input to the additional assessments summary analysis. 
+
+This file is designed to work with a 2023 or later analysis project, and will not work as a stand-alone file.
+
+You will evaluate the data present for each record type code to ensure that extracted data seems consistent with expectations. Additional data quality checks will occur in a later step.
+
+### Checklist
+  
+- Update 'Author' to your name  
+- Update the project information in 'title' to the current project  
+- Update the development log with any changes you've made to the template file, including your name  
+
+## Additional information
+
+### Development log
+  
+Programmer: M. Cunningham  
+Date: 08/2023  
+File: F04_NPS_ASSESSMENTS.rmd  
+
+### Changelog
+
+#### Change 1  
+- Programmer: D. Koster  
+- Date:  11/30/2023
+- Change Description:  Name change
+- Template Update [Y|N]:  Yes
+- One-Off:  Permanent change.
+
+#### Change 2
+- Programmer: Jesse Coleman
+- Date: 03/18/2025
+- Change Description: Removed source() calls; all functions are included in the library adfgSubs.
+- Template Update [Y|N]: Y
+- One-Off: No-include in all future comprehensive templates 
+
+### Implementation notes 
+
+Write implementation notes here 
+
+### Required libraries (adjust as needed)
+
+- tidyVerse  
+- odbc  
+- rio  
+- haven (for SPSS Sav)  
+- knitr 
+- kableExtra
+- RColorBrewer
+- adfgSubs
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+## Initiate Environment
+
+```{r initiate environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+library(knitr)
+library(kableExtra)
+library(RColorBrewer)
+library(adfgSubs)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../../Z00_PROJECT_PARAMETERS.r')
+# source('../../Z01_RMD_HTML_FORMATTING_FUNCTIONS.r')
+
+# For this particular project, we need to include the standardizeColumns function.
+# source(paste(rCodeTemplatePath,'f_standardizeColumns.r',sep=""))
+
+```
+
+## Load data
+
+```{r load data}
+REC66Data <- read.csv('../../CSV/01 - Database Extract/REC66_raw.csv',
+                   na = '', 
+                   header = TRUE, 
+                   strip.white = TRUE)
+
+count <- nrow(REC66Data)
+cat(formatSummaryBlock(paste("Opening file: REC66_raw.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+# ##############################################################################
+# Load data from intermediate files.
+# ##############################################################################
+
+sampleData <- read.csv(str_interp('../../CSV/03 - Main/sample.csv'),
+                       na = "", 
+                       header = TRUE, 
+                       strip.white = TRUE)
+
+count <- nrow(sampleData)
+cat(formatSummaryBlock(paste("Opening file: sample_raw.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+
+resNameData <- read.csv(str_interp('../../CSV/00 - Lookup Codes/fullResList_raw.csv'),
+                        na = "", 
+                        header = TRUE, 
+                        strip.white = TRUE)
+
+count <- nrow(resNameData)
+cat(formatSummaryBlock(paste("Opening file: fullResList_raw.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+codeSetData <- read.csv(str_interp('../../CSV/00 - Lookup Codes/fullCodesetList.csv'),
+                        na = "", 
+                        header = TRUE, 
+                        strip.white = TRUE)
+
+count <- nrow(resNameData)
+cat(formatSummaryBlock(paste("Opening file: fullCodesetList.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+```
+## Merge Data/Create community list for tables and figures.
+
+```{r merge data}
+# Merge assessment data with sample.
+NPSData <- left_join(REC66Data, sampleData, by=c("projID", "studyear", "communty", "strata")) %>%
+  left_join(resNameData, by=c("resource"))
+
+```
+## Prepare data
+
+In the chunk below, prepare the codeset lists and the dataframe so that we can transform and summarize. The standard codes and names of columns have been brought in. If these do not match, you will need to correct. Please check A02_GET_SDS_DATA.html for verification on which codesets were applied for this project.
+
+```{r prep codeset lists}
+
+# Create community list for tables.
+commnameList <- ungroup(NPSData) %>% select(commname) %>% distinct(commname)
+
+firewoodUseCodesList <- filter(codeSetData, codeSetID == 98) %>%
+  select(code, codeDescription)
+
+```
+
+## Transportation
+
+This portion of the additional assessments section addresses household use of transportation methods in subsistence related activities.
+
+```{r transportaton}
+# Filter to the NPS transportation equipment questions.
+
+# Change displayGroup below to the displayGroup used in the data entry screen in order to extract the portion of REC66 containing the transportation data.
+transData <- filter(NPSData, displayGroup == 6620 | displayGroup == 6621)
+
+# Set missing responses to NA in order to sum.
+transData$resYN[transData$resYN < 0] = NA
+transData$charter[transData$charter < 0 ] = NA
+transData$lease[transData$lease < 0] = NA
+transData$borrow[transData$borrow < 0] = NA
+transData$own[transData$own < 0] = NA
+transData$ride[transData$ride < 0] = NA
+
+# Aggregate to HH level.Need to aggregate here in order to do logic checks - resYN and own, borrow, etc.
+# are in different display groups.
+transData <-group_by(transData, projID, studyear,communty, commname, commhh, samphh, HHID, resource, resName)             %>% summarize (resYN = sum(resYN,na.rm = TRUE),
+            own = sum(own,na.rm = TRUE),
+            borrow = sum(borrow,na.rm = TRUE),
+            lease = sum(lease, na.rm = TRUE),
+            charter = sum(charter,na.rm = TRUE),
+            ride = sum(ride,na.rm = TRUE))
+
+#Uncomment to look for issues. 
+#tempTransData <- select(transData, communty, HHID, resource, resYN, own, borrow, lease, charter, ride)%>%
+#                 filter(resYN == 1 & resource == 980210100)
+
+
+# Create a missing category for households that used equipment but failed to provide an
+# answer to the follow up question (if the equipment was owned, borrowed, etc.).
+transData$missing = 0
+transData$missing[transData$resYN == 1 & transData$charter==0 &transData$lease==0 & transData$borrow==0 
+                  & transData$own==0 & transData$ride==0]= 1
+
+# Logic validation for equipment use.
+transData$resYN[transData$charter == 1 | transData$lease ==1 | transData$borrow ==1 | 
+                  transData$own == 1 |transData$ride ==1]= 1
+
+# Aggregate to community level.
+transData <-group_by(transData, projID, studyear, communty, commname, commhh, samphh, resource, resName) %>%
+  summarize(resYN = sum(resYN,na.rm = TRUE),
+            own = sum(own,na.rm = TRUE),
+            borrow = sum(borrow,na.rm = TRUE),
+            lease = sum(lease, na.rm = TRUE),
+            charter = sum(charter,na.rm = TRUE),
+            ride = sum(ride,na.rm = TRUE),
+            missing = sum(missing, na.rm = TRUE))
+
+```
+## Transportation Table Review
+Please review tables for any obvious errors or issues. When re-running this data with updates, you can visually compare this output to the previous version in Excel before pasting the output file into the Excel template.
+
+```{r transportaton display summary}
+
+tempTransData <- transData
+
+transList = c("own", "borrow", "lease", "charter", "ride")
+
+# Calculate percentages and ensure NA gets turned to 0.
+tempTransData$resYN_pct = tempTransData$resYN/tempTransData$samphh
+tempTransData$own_pct = tempTransData$own/tempTransData$resYN
+tempTransData$borrow_pct = tempTransData$borrow/tempTransData$resYN
+tempTransData$lease_pct = tempTransData$lease/tempTransData$resYN
+tempTransData$charter_pct = tempTransData$charter/tempTransData$resYN
+tempTransData$ride_pct = tempTransData$ride/tempTransData$resYN
+tempTransData$missing_pct = tempTransData$missing/tempTransData$resYN
+
+transPercentList = c("own_pct", "borrow_pct", "lease_pct", "charter_pct", "ride_pct")
+
+tempTransData <- recode_variables(tempTransData, c('resYN_pct', 'own_pct', 'borrow_pct', 'lease_pct',
+                                                   'charter_pct', 'ride_pct', 'missing_pct'),NA,0)
+
+for(comm in commnameList$commname)
+{
+transTblData <- filter (tempTransData, commname == comm) %>% ungroup() %>%
+               select(resName, samphh, resYN, resYN_pct, own, own_pct, borrow, borrow_pct, lease,
+                      lease_pct, charter, charter_pct, ride, ride_pct, missing, missing_pct) 
+
+# Create formatted percentages for table.
+transTblData$resYN_pct = paste(as.character(round(transTblData$resYN_pct * 100,1)), '%',sep='')
+transTblData$own_pct = paste(as.character(round(transTblData$own_pct * 100,1)), '%',sep='')
+transTblData$borrow_pct = paste(as.character(round(transTblData$borrow_pct * 100,1)), '%',sep='')
+transTblData$lease_pct = paste(as.character(round(transTblData$lease_pct * 100,1)), '%',sep='')
+transTblData$charter_pct = paste(as.character(round(transTblData$charter_pct * 100,1)), '%',sep='')
+transTblData$ride_pct = paste(as.character(round(transTblData$ride_pct * 100,1)), '%',sep='')
+transTblData$missing_pct = paste(as.character(round(transTblData$missing_pct * 100,1)), '%',sep='')
+
+transTblOut <- kbl(transTblData,
+             caption=formatTableHeader(str_interp("Modes of transportation summary data: ${comm}, ${studyear}")),
+             col.names = c("Equipment", 
+                           "Sample",
+                           "Number", 
+                           "Percentage", 
+                           "Number", 
+                           "Percentage", 
+                           "Number", 
+                           "Percentage", 
+                           "Number", 
+                           "Percentage", 
+                           "Number",
+                           "Percentage",
+                           "Number",
+                           "Percentage",
+                           "Number",
+                           "Percentage"),                         
+               align="l")%>%
+    kable_styling(full_width = F) %>%
+    add_header_above(c("  " = 2, 
+                       "Households reporting use" = 2, 
+                       "Own" = 2, 
+                       "Borrow" = 2,
+                       "Lease  " = 2,
+                       "Charter" = 2,
+                       "Ride along" = 2,
+                       "No response" = 2))
+
+print(transTblOut)
+}
+
+```
+
+## Transportation Figure Review
+Please review figures for any obvious errors or issues. When re-running this data with updates, you can visually compare this output to the previous version in Excel before pasting the output file into the Excel template.
+
+```{r transportation figure summary}
+
+# Just use a stacked plot for clarity.
+tmpTransFigData <- select(tempTransData, commname, resName, all_of(transList))
+
+# Pivot to make the methods of transportation columns into factors.
+tmpPlotData <- pivot_longer(tmpTransFigData, cols=c(transList), names_to="method", values_to="number") %>% ungroup()
+
+for(comm in commnameList$commname)
+{
+tmpFigData <- filter(tmpPlotData, commname == comm)  %>% 
+    select(resName, method, number)
+
+# Start with initial plot information.
+colrs <- getColors("Spectral", 5)
+
+#ggplot labels
+plotOut <- ggplot(tmpFigData, aes(x= reorder(resName, desc(number)), y=number)) +
+ggtitle(str_interp("Use of transportation to access resources, ${comm}, ${studyear}")) +
+  geom_col(aes(fill = method), width=0.7) +
+  scale_fill_manual(values = colrs)
+
+# ggplot labels
+tmpFigLabels <- group_by(tmpFigData, resName) %>%
+    summarize(labelValue = sum(number, na.rm=TRUE)) %>%
+    arrange(desc(labelValue)) %>%
+    ungroup ()
+
+# Add labels, use 1% of highest harvest amount as the margin.
+margin = ceiling(max(tmpFigLabels$labelValue) *.01)
+  for(ii in 1:nrow(tmpFigLabels))
+  {
+    tmpAmt = round(tmpFigLabels$labelValue[ii], 1)
+
+# Default align to the RIGHT.
+    lrAlign = 0
+# If we think that the label will spill over the edge of the plot,
+#  align to the inside edge.
+    if(tmpAmt/max(tmpFigLabels$labelValue) > 0.75)
+    {
+      lrAlign = 1
+      margin = margin * -1
+    }
+
+    plotOut = plotOut +
+          annotate("text", x=ii, y=tmpAmt+margin,
+                    label=tmpAmt, hjust=lrAlign, angle=0)
+  }
+
+plotOut = plotOut +
+  ylab("Number of sampled households") +
+  xlab("Mode of transportation") +
+  theme(legend.position="bottom") +
+  theme(text=element_text(family="serif")) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+  panel.background = element_blank(), axis.line = element_line(colour = "black"))
+
+print(plotOut)
+}
+
+```
+
+## Motorized Equipment
+
+This portion of the additional assessments section addresses household use of motorized equipment in subsistence activities.
+
+```{r motorized equipment}
+# Filter to the NPS transportation equipment questions.
+
+motorData <- filter(NPSData, displayGroup == 6622)
+
+motorData$resYN[motorData$resYN < 0] = NA
+
+# Aggregate to HH level.
+
+motorData <-group_by(motorData, projID, studyear,communty, commname, commhh, samphh, HHID, resource, 
+                     resName, comments) %>%
+  summarize (resYN = sum(resYN,na.rm = TRUE))
+
+# Aggregate to community level.
+
+motorData <-group_by(motorData, projID, studyear, communty, commname, commhh, samphh, resource, 
+                     resName) %>%
+  summarize(resYN = sum(resYN,na.rm = TRUE))
+```
+## Motorized Equipment Table Reviw
+
+Please review tables for any obvious errors or issues. When re-running this data with updates, you can visually compare this output to the previous version in Excel before pasting the output file into the Excel template.
+
+```{r motorized equipment table review}
+tmpMotorData <- motorData
+
+# Calculate percentages and ensure NA gets turned to 0.
+tmpMotorData$resYN_pct = tmpMotorData$resYN/tmpMotorData$samphh
+
+# Create formatted percentages for table.
+tmpMotorData$resYN_pct = paste(as.character(round(tmpMotorData$resYN_pct * 100,1)), '%',sep='')
+
+for(comm in commnameList$commname)
+{
+motorTblData <- filter (tmpMotorData, commname == comm) %>% ungroup() %>%
+               select(resName, samphh, resYN, resYN_pct) 
+
+motorTblOut <- kbl(motorTblData,
+             caption=formatTableHeader(str_interp("Portable motorized equipment summary data: ${comm}, ${studyear}")),
+             col.names = c("Equipment", 
+                           "Sample",
+                           "Number", 
+                           "Percentage"),                         
+               align="l")%>%
+    kable_styling(full_width = F) %>%
+    add_header_above(c("  " = 2, 
+                       "Households reporting use" = 2))
+
+print(motorTblOut)
+}
+
+```
+## Motorized Equipment Figure Review
+
+#### TO DO - Fix labels and y scale!!!
+
+Please review figures for any obvious errors or issues. When re-running this data with updates, you can visually compare this output to the previous version in Excel before pasting the output file into the Excel template.
+
+```{r motorized equipment figure review}
+# Just a simple bar chart to display the motorized equipment percentages.
+tmpMotorFigData <- motorData %>% ungroup ()
+
+# Rename Other portable motors or motorized equipment to fit into figure.
+tmpMotorFigData$resName[tmpMotorFigData$resource == 980600900] = "Other"
+
+# Calculate percentages.
+tmpMotorFigData$resYN_pct = tmpMotorFigData$resYN/tmpMotorData$samphh
+
+for(comm in commnameList$commname)
+{
+tmpFigData <- filter(tmpMotorFigData, commname == comm)  %>% 
+    select(resName, resYN_pct)
+
+# Start with initial plot information.
+colrs <- getColors("Spectral")
+
+labelOrder = c("Generator", "Chainsaw", "Ice auger", "Winch", "Other")
+
+plotOut <- ggplot(tmpFigData, aes(x=factor(resName, labelOrder), y=resYN_pct)) +
+ggtitle(str_interp("Portable motorized equipment used while harvesting resources, ${comm}, ${studyear}")) +
+  geom_col() +
+  scale_fill_manual(values = colrs)
+
+
+# #ggplot labels
+# tmpFigLabels <- group_by(tmpFigData, resName) %>%
+# summarize(labelValue = max(resYN_pct, na.rm=TRUE)) %>%
+# ungroup ()
+# 
+# # Add labels, use 1% of highest harvest amount as the margin.
+# margin = ceiling(max(tmpFigLabels$labelValue) *.01)
+#   for(ii in 1:nrow(tmpFigLabels))
+#   {
+#     tmpAmt = round(tmpFigLabels$labelValue[ii], 1)
+# 
+# # Default align to the RIGHT.
+#     lrAlign = 0
+# # If we think that the label will spill over the edge of the plot,
+# #  align to the inside edge.
+#     if(tmpAmt/max(tmpFigLabels$labelValue) > 0.75)
+#     {
+#       lrAlign = 1
+#       margin = margin * -1
+#     }
+
+  #   plotOut = plotOut +
+  #         annotate("text", x=ii, y=tmpAmt+margin,
+  #                   label=tmpAmt, hjust=lrAlign, angle=0)
+  # }
+
+plotOut = plotOut +
+  ylab("Percentage of sampled households") +
+  xlab("Equipment") +
+  theme(legend.position="bottom") +
+  theme(text=element_text(family="serif")) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+  panel.background = element_blank(), axis.line = element_line(colour = "black"))
+
+print(plotOut)
+}
+
+### Attempt #2
+
+# for(comm in commnameList$commname)
+# {
+#   tmpFigData <- filter(tmpMotorFigData, commname == comm)  %>% 
+#     select(resName, resYN_pct)
+#   
+#   plotOut <- ggplot(tmpFigData, aes(fill=resYN_pct, 
+#                                     x=resName, 
+#                                     y=resYN_pct,
+#                                     label = scales::percent(resYN_pct,
+#                                                             accuracy=.1))) +
+#     ggtitle(str_interp("Portable motorized equipment used while harvesting resources, ${comm}, ${studyear}")) +
+#     geom_bar(position = position_dodge(width = 0.5), stat="identity") +
+#     scale_fill_manual(values = colrs) +
+#     scale_y_continuous(labels = scales::percent, limits = c(0,1)) +
+#     geom_text(position = position_dodge(width = .5),    # move to center of bars
+#           vjust = -0.5,    # nudge above top of bar
+#           size = 3) +
+#     ylab("Percentage of sampled households") +
+#     xlab("Equipment") +
+#     theme(legend.position="bottom", legend.title = element_blank()) +
+#     theme(text=element_text(family="serif")) +
+#     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+#         panel.background = element_blank(), axis.line = element_line(colour = "black"))
+#     
+#   print(plotOut)
+# }
+
+
+```
+
+## Natural Materials
+
+```{r natural materials}
+# Filter to the NPS natural materials questions. You may need to change the subRecordCD code
+# or filter by the displayGroups used in the data entry screen.
+natMatData <- filter(NPSData, subRecordCD == 3)
+
+# Need to remove one record added for salmonberries picked on NPS lands. Question was about natural materials
+# gathered for handicrafts and should not include harvested subsistence resources. Additionally, record was 
+# added with no resource.
+natMatData$resYN[is.na(natMatData$resource)] = 0
+natMatData <- filter(natMatData, (!is.na(resource)))
+
+# Remove missing; don't replace
+natMatData$amt[natMatData$amt < 0 | is.na(natMatData$amt)] = 0
+natMatData$resYN[natMatData$resYN < 0] = 0
+
+# Aggregate, including amounts and units.
+naturalMatData <-group_by(natMatData, projID, studyear,communty, commname, commhh, samphh, 
+                          resource, resName, units) %>%
+  summarize (resYN = sum(resYN,na.rm = TRUE),
+             amountHarv = sum(amt, na.rm=TRUE))
+
+# Expand.
+naturalMatData$resYN = naturalMatData$resYN * (naturalMatData$commhh / naturalMatData$samphh)
+naturalMatData$amountHarv = naturalMatData$amountHarv * (naturalMatData$commhh / naturalMatData$samphh)
+
+
+```
+## Natural Materials Table Review
+
+Please review tables for any obvious errors or issues. When re-running this data with updates, you can visually compare this output to the previous version in Excel before pasting the output file into the Excel template.
+
+```{r natural materials table review}
+tmpNatMatData <- naturalMatData
+
+# Calculate percentages and ensure NA gets turned to 0.
+tmpNatMatData$resYN_pct = tmpNatMatData$resYN/tmpNatMatData$samphh
+
+# Create formatted percentages for table.
+tmpNatMatData$resYN_pct = paste(as.character(round(tmpNatMatData$resYN_pct * 100,1)), '%',sep='')
+
+for(comm in commnameList$commname)
+{
+natMatTblData <- filter (tmpNatMatData, commname == comm) %>% ungroup() %>%
+               select(resName, samphh, resYN, resYN_pct,
+                      amountHarv, units) 
+
+NatMatTblOut <- kbl(natMatTblData,
+             caption=formatTableHeader(str_interp("Natural materials used for making handicrafts: ${comm}, ${studyear}")),
+             col.names = c("Material", 
+                           "Sample",
+                           "Number", 
+                           "Percentage",
+                           "Amount",
+                           "Units"),                         
+               align="l")%>%
+    kable_styling(full_width = F) %>%
+    add_header_above(c("  " = 2, 
+                       "Households reporting use" = 4))
+
+print(NatMatTblOut)
+}
+```
+## Resource Health
+
+```{r resource health}
+#Filter to resource health question. Change the displayGroup code below to the code used in the data entry screen. 
+avoidResData <- filter (NPSData, subRecordCD == 0)
+
+# Summarize to household level here in order to get one filterq response per household.
+# Data entry screen was constructed with filterq at the page level.
+resHealthData <-group_by(avoidResData, projID, studyear, communty, commname, commhh, samphh, HHID, filterq)               %>%summarize(projID = max(projID, na.rm = TRUE),
+                studyear = max(studyear, na.rm = TRUE),
+                communty = max(communty, na.rm = TRUE),
+                commname = max(commname, na.rm = TRUE),
+                samphh = max(samphh, na.rm = TRUE),
+                HHID = max(HHID, na.rm = TRUE))
+
+# Correct filter question for Kokhanok HH43 here - should have been 'Yes'. Correction was made in data entry screen:
+# Can remove code if data pulled again.
+resHealthData$filterq[resHealthData$communty == 198 & resHealthData$HHID == 43] = 0
+
+# Replace NA with missing - every household should have been asked question.
+resHealthData$filterq[resHealthData$filterq == -7 | 
+resHealthData$filterq == -6] = -9
+resHealthData$filterq [is.na(resHealthData$filterq)]= -9
+
+# Initialize variables.
+resHealthData$missing [resHealthData$filterq == -9]= 1
+resHealthData$unknown [resHealthData$filterq == -8]= 1
+resHealthData$no [resHealthData$filterq == 0]= 1 
+resHealthData$yes [resHealthData$filterq == 1]= 1
+
+#Aggregrate to HH level.
+resHealthData <-group_by(resHealthData, projID, studyear,communty, commname, commhh, samphh, HHID) %>%
+                summarize(no = sum(no,na.rm = TRUE),
+                yes = sum(yes,na.rm = TRUE),
+                unknown = sum(unknown,na.rm = TRUE),
+                missing = sum(missing, na.rm = TRUE))
+
+#Aggregate to community level.
+resHealthData <-group_by(resHealthData, projID, studyear,communty, commname, commhh, samphh) %>%
+                summarize (no = sum(no,na.rm = TRUE),
+                           yes = sum(yes,na.rm = TRUE),
+                           unknown = sum(unknown,na.rm = TRUE),
+                           missing = sum(missing, na.rm = TRUE))
+
+# Filter to resources households avoided and reasons why.
+resHealthDescData <- filter(NPSData, displayGroup == 6619)
+
+#Aggregrate to HH level.
+resHealthDescData <-group_by(resHealthDescData, projID, studyear,communty, commname, commhh, samphh, HHID, 
+                             resource, resName, resWhy) %>%
+                    summarize (filterq = sum(filterq,na.rm = TRUE))
+
+# Aggregate to community level.
+resHealthDescData <-group_by(resHealthDescData, projID, studyear,communty, commname, commhh, samphh, 
+                             resource, resName, resWhy) %>%
+                    summarize (filterq = sum(filterq,na.rm = TRUE))
+```
+## Resource Health Table Review
+
+Please review tables for any obvious errors or issues. When re-running this data with updates, you can visually compare this output to the previous version in Excel before pasting the output file into the Excel template.
+
+```{r resource health table review}
+tmpResYNData <- resHealthData
+
+for(comm in commnameList$commname)
+{
+resYNTblData <- filter (tmpResYNData, commname == comm) %>% ungroup() %>%
+               select(samphh, no, yes, unknown, missing) 
+
+resYNTblOut <- kbl(resYNTblData,
+               caption=formatTableHeader(str_interp("Household avoided harvesting due to poor health: ${comm}, ${studyear}")),
+             col.names = c("Sample", 
+                           "No",
+                           "Yes",
+                           "Unknown",
+                           "Missing"),                         
+               align="l")%>%
+    kable_styling(full_width = F)
+
+print(resYNTblOut)
+}
+
+tmpResHealthData <- resHealthDescData
+
+for(comm in commnameList$commname)
+{
+resHealthTblData <- filter (tmpResHealthData, commname == comm) %>% ungroup() %>%
+               select(resName, resWhy) 
+
+resHealthTblOut <- kbl(resHealthTblData,
+             caption=formatTableHeader(str_interp("Resources household avoided harvesting due to poor health: ${comm}, ${studyear}")),
+             col.names = c("Resource", 
+                           "Reason"),                         
+               align="l")%>%
+    kable_styling(full_width = F)
+
+print(resHealthTblOut)
+}
+```
+## Firewood Use
+
+```{r firewood use}
+# Filter to the heating from firewood questions.
+firewoodData <- filter(NPSData, displayGroup == 6618)
+
+# Add firewood resource code.
+firewoodData$resource = 604097000
+
+#Set unknown, refused, didn't ask responses to missing
+firewoodData$pctUse [firewoodData$pctUse == -8 |
+firewoodData$pctUse == -7 | firewoodData$pctUse == -6] = -9
+
+#Set NA responses to zero
+firewoodData$pctUse [is.na(firewoodData$pctUse)] = 0
+
+# Create firewood use list.
+firewoodUseList <- c('none', 'a_Little', 'half', 'a_Lot', 'all', 'missing' )
+
+# Initialize variables.
+firewoodUseData <- standardizeColumns(firewoodData, c(firewoodUseList))
+
+firewoodUseData$none[firewoodUseData$pctUse == 0 |is.na(firewoodUseData$pctUse)]=1
+firewoodUseData$a_Little[firewoodUseData$pctUse == 1]=1
+firewoodUseData$half[firewoodUseData$pctUse == 2]=1
+firewoodUseData$a_Lot[firewoodUseData$pctUse == 3]=1
+firewoodUseData$all[firewoodUseData$pctUse == 4]=1
+firewoodUseData$missing[firewoodUseData$pctUse == -9]=1
+
+# Select desired variables.
+firewoodUseData <-select(firewoodUseData, projID, studyear,communty, commname, commhh, samphh, HHID,
+                          resource, all_of(firewoodUseList))
+
+# Aggregate to community level.
+firewoodUseData <-group_by(firewoodUseData, projID, studyear,communty, commname, commhh, samphh, 
+                  resource) %>%
+                  summarize(across(all_of(firewoodUseList),sum))
+
+# Firewood harvest area changes.
+firewoodChangeData <- select(firewoodData, projID, studyear, communty, commname, commhh, samphh, HHID,
+                             resource, pctUse, firewoodChangesYN, firewoodChangesDesc) %>%
+                      filter(pctUse > 0)
+
+firewoodChangeData$firewoodChangesYN [firewoodChangeData$firewoodChangesYN == -8 | 
+                                      firewoodChangeData$firewoodChangesYN == -7 |
+                                      firewoodChangeData$firewoodChangesYN == -6] = -9
+
+firewoodChangeData$firewoodChangesYN[is.na(firewoodChangeData$firewoodChangesYN)]= 0
+
+# Initialize variables.
+firewoodChangeData$hhsUsing [firewoodChangeData$pctUse > 0]= 1
+firewoodChangeData$yes [firewoodChangeData$firewoodChangesYN == 1]= 1
+firewoodChangeData$no [firewoodChangeData$firewoodChangesYN == 0]= 1 
+firewoodChangeData$missing [firewoodChangeData$firewoodChangesYN == -9]= 1
+
+# Aggregate to household level.
+firewoodChangeData <-group_by(firewoodChangeData, projID, studyear,communty, commname, commhh, samphh, 
+                              HHID, resource, firewoodChangesYN) %>%
+  summarize (hhsUsing = sum(hhsUsing,na.rm = TRUE),
+             no = sum(no,na.rm = TRUE),
+             yes = sum(yes,na.rm = TRUE),
+             missing = sum(missing, na.rm = TRUE))
+
+# Aggregate to community level.
+firewoodChangeData <-group_by(firewoodChangeData, projID, studyear,communty, commname, commhh, samphh, 
+                              resource) %>%
+  summarize (hhsUsing = sum(hhsUsing,na.rm = TRUE),
+             yes = sum(yes,na.rm = TRUE),
+             no = sum(no,na.rm = TRUE),
+             missing = sum(missing, na.rm = TRUE))
+
+# Get reasons for firewood harvest area changes.
+firewoodReasonsData <- select(firewoodData, projID, studyear,communty, commname, commhh, samphh, 
+                              resource, firewoodChangesYN, firewoodChangesDesc) %>%
+                       filter(!is.na(firewoodChangesDesc))
+```
+## Firewood Use Table Review
+
+Please review tables for any obvious errors or issues. When re-running this data with updates, you can visually compare this output to the previous version in Excel before pasting the output file into the Excel template.
+
+```{r firewood use tables}
+# Amounts of Firewood Used for Home Heating Table Review:
+
+tmpUseData <- select(firewoodUseData, samphh, commname, all_of(firewoodUseList))
+
+# Calculate percentages.
+tmpUseData$firewoodUse_pct = firewoodChangeData$hhsUsing/tmpUseData$samphh                   
+tmpUseData$none_pct = tmpUseData$none/tmpUseData$samphh
+tmpUseData$a_Little_pct = tmpUseData$a_Little/tmpUseData$samphh
+tmpUseData$half_pct = tmpUseData$half/tmpUseData$samphh
+tmpUseData$a_Lot_pct = tmpUseData$a_Lot/tmpUseData$samphh
+tmpUseData$all_pct = tmpUseData$all/tmpUseData$samphh
+tmpUseData$missing_pct = tmpUseData$missing/tmpUseData$samphh
+
+# Create formatted percentages for table.
+tmpUseData$firewoodUse_pct = paste(as.character(round(tmpUseData$firewoodUse_pct * 100,1)), '%',sep='')
+tmpUseData$none_pct = paste(as.character(round(tmpUseData$none_pct * 100,1)), '%',sep='')
+tmpUseData$a_Little_pct = paste(as.character(round(tmpUseData$a_Little_pct * 100,1)), '%',sep='')
+tmpUseData$half_pct = paste(as.character(round(tmpUseData$half_pct * 100,1)), '%',sep='')
+tmpUseData$a_Lot_pct = paste(as.character(round(tmpUseData$a_Lot_pct * 100,1)), '%',sep='')
+tmpUseData$all_pct = paste(as.character(round(tmpUseData$all_pct * 100,1)), '%',sep='')
+tmpUseData$missing_pct = paste(as.character(round(tmpUseData$missing_pct * 100,1)), '%',sep='')
+
+for(comm in commnameList$commname)
+{
+useTblData <- filter (tmpUseData, commname == comm) %>% ungroup() %>%
+               select(samphh, firewoodUse_pct, none, none_pct, a_Little, a_Little_pct, half, half_pct,
+                      a_Lot, a_Lot_pct, all, all_pct, missing, missing_pct)
+  
+useTblOut <- kbl(useTblData,
+               caption=formatTableHeader(str_interp("Use of firewood for home heating: ${comm},                                                                  ${studyear}")),
+             col.names = c("Sample", 
+                           "Households using",
+                           "Number",
+                           "Percent",
+                           "Number",
+                           "Percent",
+                           "Number",
+                           "Percent",
+                           "Number",
+                           "Percent",
+                           "Number",
+                           "Percent",
+                           "Number",
+                           "Percent"),                         
+               align="l")%>%
+    kable_styling(full_width = F)%>%
+    add_header_above(c("  " = 2, 
+                       "None" = 2, 
+                       "A little" = 2, 
+                       "About half" = 2,
+                       "A lot " = 2,
+                       "All" = 2,
+                       "Missing" =2))
+
+print(useTblOut)
+}
+
+## Firewood Changes Table Review:
+
+tmpChangeData <- firewoodChangeData
+
+# Calculate percentages.
+tmpChangeData$hhsUsing_pct = tmpChangeData$hhsUsing/tmpChangeData$samphh                   
+tmpChangeData$yes_pct = tmpChangeData$yes/tmpChangeData$hhsUsing
+tmpChangeData$no_pct = tmpChangeData$no/tmpChangeData$hhsUsing
+tmpChangeData$missing_pct = tmpChangeData$missing/tmpChangeData$hhsUsing
+
+tmpChangeData$hhsUsing_pct = paste(as.character(round(tmpChangeData$hhsUsing_pct * 100,1)), '%',sep='')
+tmpChangeData$yes_pct = paste(as.character(round(tmpChangeData$yes_pct * 100,1)), '%',sep='')
+tmpChangeData$no_pct = paste(as.character(round(tmpChangeData$no_pct * 100,1)), '%',sep='')
+tmpChangeData$missing_pct = paste(as.character(round(tmpChangeData$missing_pct * 100,1)), '%',sep='')
+
+
+for(comm in commnameList$commname)
+{
+tmpChangeTblData <- filter (tmpChangeData, commname == comm) %>% ungroup() %>%
+               select(samphh, hhsUsing, hhsUsing_pct, yes, yes_pct, no, no_pct, missing, missing_pct) 
+
+changeTblOut <- kbl(tmpChangeTblData,
+             caption=formatTableHeader(str_interp("Changes to firewood harvest areas: ${comm},                                                                 ${studyear}")),
+             col.names = c("Sample", 
+                           "Number",
+                           "Percent",
+                           "Number",
+                           "Percent",
+                           "Number",
+                           "Percent",
+                           "Number",
+                           "Percent"),                         
+               align="l")%>%
+    kable_styling(full_width = F)%>%
+    add_header_above(c("  " = 1, 
+                       "HHs reporting use" = 2, 
+                       "Yes" = 2, 
+                       "No" = 2,
+                       "Missing" =2))
+
+print(changeTblOut)
+}
+
+### Reasons for changes to firewood harvest areas:
+
+tmpReasonsData <- select(firewoodReasonsData, commname, firewoodChangesYN, firewoodChangesDesc) %>%
+                 filter(firewoodChangesYN == 1)
+
+for(comm in commnameList$commname)
+{
+tmpReasonsTblData <- filter (tmpReasonsData, commname == comm) %>% ungroup() %>%
+               select(firewoodChangesDesc) 
+
+reasonsTblOut <- kbl(tmpReasonsTblData,
+             caption=formatTableHeader(str_interp("Reasons for changes to firewood harvest areas: ${comm},                                                                 ${studyear}")),
+             col.names = c("Reason"),                         
+               align="l")%>%
+    kable_styling(full_width = F)
+
+print(reasonsTblOut)
+}
+```
+## Environmental Impact 
+
+```{r environmental impact}
+# Filter to the environmental impact question.
+environData <- filter(NPSData, displayGroup == 6600)
+
+# Need to aggregate to the HH level here due to multiple records for HHs where multiple resources were added in response to the question "Which resource(s) did you need more of?"
+environData <-group_by(environData, projID, studyear, communty, commname, commhh, samphh, 
+                       HHID, environChangesYN) %>%
+              summarize(HHID = max(HHID, na.rm = TRUE))
+
+
+# Replace NA with missing - every household should have been asked question.
+environData$environChangesYN [environData$environChangesYN == -8 | environData$environChangesYN == -7 |
+                              environData$environChangesYN == -6  ] = -9
+
+environData$environChangesYN [is.na(environData$environChangesYN)]= -9
+
+# Initialize variables.
+environData$yes[environData$environChangesYN == 1]= 1
+environData$no[environData$environChangesYN == 0]= 1
+environData$missing[environData$environChangesYN == -9]= 1
+
+# Summarize environmental impact.
+environData <-group_by(environData, projID, studyear, communty, commname, commhh, samphh, 
+                       HHID, environChangesYN) %>%
+  summarize (yes = sum(yes,na.rm = TRUE),
+             no = sum(no,na.rm = TRUE),
+             missing = sum(missing, na.rm = TRUE))
+
+#Aggregate to community level.
+environData <-group_by(environData, projID, studyear,communty, commname, commhh, samphh) %>%
+  summarize (yes = sum(yes,na.rm = TRUE),
+             no = sum(no,na.rm = TRUE),
+             missing = sum(missing, na.rm = TRUE))
+
+#Get description of environmental changes for households with 'yes' response.
+environDescData <- NPSData
+  
+environDescData <- group_by(environDescData, projID, studyear,communty, commname, commhh, samphh, 
+                            HHID, resource, environChangesYN, environChangesDesc)%>%
+                    filter(environChangesYN == 1)
+
+#Aggregate to household level.
+
+environDescData <- group_by(environDescData, projID, studyear,communty, commname, commhh, samphh, 
+                       HHID, environChangesDesc)%>%
+                  summarize (environChangesYN = max(environChangesYN, na.rm = TRUE))
+```
+### Environmental Changes Table Review
+
+Please review tables for any obvious errors or issues. When re-running this data with updates, you can visually compare this output to the previous version in Excel before pasting the output file into the Excel template.
+
+```{r environmental impact table review}
+
+tmpEnvironData <- environData
+
+# Calculate percentages.
+tmpEnvironData$yes_pct = tmpEnvironData$yes/tmpEnvironData$samphh
+tmpEnvironData$no_pct = tmpEnvironData$no/tmpEnvironData$samphh
+tmpEnvironData$missing_pct = tmpEnvironData$missing/tmpEnvironData$samphh
+
+tmpEnvironData$yes_pct = paste(as.character(round(tmpEnvironData$yes_pct * 100,1)), '%',sep='')
+tmpEnvironData$no_pct = paste(as.character(round(tmpEnvironData$no_pct * 100,1)), '%',sep='')
+tmpEnvironData$missing_pct = paste(as.character(round(tmpEnvironData$missing_pct * 100,1)), '%',sep='')
+
+for(comm in commnameList$commname)
+{
+environTblData <- filter (tmpEnvironData, commname == comm) %>% ungroup() %>%
+               select(samphh, yes, yes_pct, no, no_pct, missing, missing_pct) 
+
+environTblOut <- kbl(environTblData,
+               caption=formatTableHeader(str_interp("Environmental conditions affected household ability to access subsistence areas: ${comm}, ${studyear}")),
+             col.names = c("Sample", 
+                           "Number",
+                           "Percent",
+                           "Number",
+                           "Percent",
+                           "Number",
+                           "Percent"),                         
+               align="l")%>%
+    kable_styling(full_width = F)%>%
+    kable_styling(full_width = F)%>%
+    add_header_above(c("  " = 1, 
+                       "Yes" = 2, 
+                       "No" = 2,
+                       "Missing" =2))
+
+print(environTblOut)
+}
+
+tmpEnvironDescData <- environDescData
+
+for(comm in commnameList$commname)
+{
+environDescTblData <- filter (tmpEnvironDescData, commname == comm) %>% ungroup() %>%
+               select(HHID, environChangesDesc) 
+
+environDescTblOut <- kbl(environDescTblData,
+             caption=formatTableHeader(str_interp("Description of environmental conditions affecting household access to subsistence areas: ${comm}, ${studyear}")),
+             col.names = c("Household", 
+                           "Reason"),                         
+               align="l")%>%
+    kable_styling(full_width = F)
+
+print(environDescTblOut)
+}
+
+```
+
+# Write out CSV files
+
+```{r write csv files}
+
+# ##############################################################################
+# Write out CSV files.
+# ##############################################################################
+
+  fName = str_interp('../../CSV/05 - Final Analysis Output/transportation_raw.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(transData), ' records to be written', sep='')))
+  
+  # For 2023; we are, by default, working exclusively with R code..
+  rio::export(transData, fName)
+  
+   fName = str_interp('../../CSV/05 - Final Analysis Output/motorizedEquip_raw.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(motorData), ' records to be written', sep='')))
+  
+  # For 2023; we are, by default, working exclusively with R code..
+  rio::export(motorData, fName)
+  
+    fName = str_interp('../../CSV/05 - Final Analysis Output/naturalMaterials_raw.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(naturalMatData), ' records to be written', sep='')))
+  
+  # For 2023; we are, by default, working exclusively with R code..
+  rio::export(naturalMatData, fName)
+  
+    fName = str_interp('../../CSV/05 - Final Analysis Output/resourceHealth(T)_raw.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(resHealthData), ' records to be written', sep='')))
+  
+  # For 2023; we are, by default, working exclusively with R code..
+  rio::export(resHealthData, fName)
+ 
+     fName = str_interp('../../CSV/05 - Final Analysis Output/resourceHealthReasons_raw.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(resHealthDescData), ' records to be written', sep='')))
+  
+  # For 2023; we are, by default, working exclusively with R code..
+  rio::export(resHealthDescData, fName)
+  
+    fName = str_interp('../../CSV/05 - Final Analysis Output/firewoodUse(T)_raw.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(firewoodUseData), ' records to be written', sep='')))
+  
+  # For 2023; we are, by default, working exclusively with R code..
+  rio::export(firewoodUseData, fName)
+  
+    fName = str_interp('../../CSV/05 - Final Analysis Output/firewoodChanges_raw.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(firewoodChangeData), ' records to be written', sep='')))
+  
+  # For 2023; we are, by default, working exclusively with R code..
+  rio::export(firewoodChangeData, fName) 
+  
+     fName = str_interp('../../CSV/05 - Final Analysis Output/firewoodReasons_raw.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(firewoodReasonsData), ' records to be written', sep='')))
+  
+  # For 2023; we are, by default, working exclusively with R code..
+  rio::export(firewoodReasonsData, fName)
+  
+     fName = str_interp('../../CSV/05 - Final Analysis Output/environChanges(T)_raw.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(environData), ' records to be written', sep='')))
+  
+  # For 2023; we are, by default, working exclusively with R code..
+  rio::export(environData, fName)
+  
+     fName = str_interp('../../CSV/05 - Final Analysis Output/environComments_raw.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(environDescData), ' records to be written', sep='')))
+  
+  # For 2023; we are, by default, working exclusively with R code..
+  rio::export(environDescData, fName)  
+
+```
+
+<p class="h1footer"> End of Check SDS HH0 script. </p>
+
+<p class="footer">
+  Alaska Department of Fish and Game, Division of Subsistence (Subsistence Section), 2023.
+</p>

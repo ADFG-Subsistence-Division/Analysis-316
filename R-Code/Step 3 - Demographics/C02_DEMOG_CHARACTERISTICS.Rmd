@@ -1,0 +1,527 @@
+---
+title: "C02_DEMOG_CHARACTERISTICS - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-15"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">C02_DEMOG_CHARACTERISTICS - (316) NPS Ambler Comprehensive</div>
+</div>
+
+# Demographic characteristics
+
+This file uses the population profile file in step C01 to produce tables and figures for the technical report.
+
+## Change log
+- Programmer: D.S.Koster  
+- Date: 05/21/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output.  
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates  
+
+## Input data
+  
+- /CSV/03 - Main/REC01_clean.csv  
+- /CSV/03 - Main/sample.csv  
+
+## Output data
+  
+- /CSV/05 - Final Analysis Output/demogCharacteristics(T)_raw.csv  
+
+## Background
+
+This file produces a summary of various demographic characteristics including age, gender, ethnicity, and other factors. These factors are important for describing the characteristics of a community and can be used to assist in assessments such as those that are used in the process of determining non subsistence areas by the joint boards of game and fish.
+
+## Checklist
+  
+- Update 'Author' to your name  
+- Update the project information in 'title' to the current project  
+- Update the development log with any changes you've made to the template file, including your name  
+- Evaluate the outputs and look for unusual characteristics  
+- Look at available census information and determine whether or not this analysis has produced similar statistics  
+
+## Additional information
+
+### Functions used/dependencies
+
+- f_standardizeColumns  
+
+### Required libraries (adjust as needed)
+  
+- tidyVerse  
+- rio  
+- knitr  
+- kableExtra  
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+
+# Additional libraries
+library(knitr)
+library(kableExtra)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+source('../Functions/f_RMD_HTML_FORMATTING_FUNCTIONS.r')
+
+source('../Functions/f_standardizeColumns.r')
+
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+```
+
+## Load data
+
+```{r load data}
+
+# ##############################################################################
+# Load data
+# ##############################################################################
+
+personData <- read.csv(str_interp('../../CSV/03 - Main/REC01_clean.csv'), 
+                       na = '', 
+                       header = TRUE, 
+                       strip.white = TRUE)
+count = nrow(personData)
+cat(formatSummaryBlock(paste('Opened REC01_clean.csv, ', count, ' records loaded.', sep='')))
+
+personData <- select(personData, projID, communty, studyear, HHID, strata, person, answerQuestions, sex, birthyear, relation, yrcomcat, residpar, ethnic, birthPlace,birthPlaceName, personID, personAge)
+
+sampData <- read.csv(str_interp('../../CSV/03 - Main/sample.csv'), 
+                       na = '', 
+                       header = TRUE, 
+                       strip.white = TRUE)
+count = nrow(sampData)
+cat(formatSummaryBlock(paste('Opened sample.csv, ', count, ' records loaded.', sep='')))
+
+sampData <- select(sampData, projID, communty, studyear, samphh, commhh, NHouseholds, NPopulation, commname, commPop, sampPop, strataWt)
+
+personData <- left_join( personData, sampData, by=c ("projID", "studyear", "communty"))
+
+```
+
+```{r automation lists and standardize}
+
+# List of columns to summarize to; this will make later steps
+#    a bit more straight forward.
+demogCharList <- c("sampPop", "nHHHead", "samphh", "hSize_mean", "personAge_median", 
+                   "personAge_mean", "personAge_min", "personAge_max",
+                   "yrcomcat_mean", "yrcomcat_min","yrcomcat_max", 
+                   "yrcomcat_HHHead_mean", "yrcomcat_HHHead_min", "yrcomcat_HHHead_max",
+                   "male_sum female_sum", "ethnic_HHHead", "ethnic_HH_sum", 
+                   "nativePerson", "nativePerson_sum", "hSize_CI", "male_CI",
+                   "female_CI", "nativeHH_CI", "native_CI", "hSize_CIP", "male_CIP", 
+                   "female_CIP", "nativeHH_CIP", "native_CIP")
+
+commnameList <- sampData$commname
+
+tableLabelList <- c(
+'Sampled households',
+'Eligible households',
+'Percentage sampled',
+'Sampled population',
+'Estimated community population',
+'Mean',
+'Minimum',
+'Maximum',
+'Mean',
+'Minimum',
+'Maximum',
+'Median',
+'Mean',
+'Minimum',
+'Maximum',
+'Mean',
+'Minimum',
+'Maximum',
+'Number',
+'Percentage',
+'Number',
+'Percentage')
+
+personData <- standardizeColumns(personData, demogCharList)
+
+```
+
+## Calculate  statistics
+
+Calculate the min, max, mean, median, sum, CI, CIP for various demographic characteristics.
+
+```{r}
+# 2.1 - make codes consistent for processing.
+personData$ethnic[personData$ethnic < 0] = NA
+personData$personAge[personData$personAge < 0] = NA
+personData$yrcomcat[personData$yrcomcat < 0] = NA
+personData$sex[personData$sex < 0] = NA
+personData$person[personData$person < 0] = -9
+
+# 2.2.1 Initialize reported values for CIs.
+personData$reptMale = 0
+personData$reptFemale = 0
+personData$reptNative = 0
+personData$reptNativeHH = 0
+
+# 2.3 calculate median age here to avoid getting tangled up in the multiple
+#    levels of aggregation later on; NOTE for stratified samples this 
+#    needs to be bootstrapped. For the moment, we will use a community-wide
+#    median as a place-holder.
+medianData <- group_by(personData, projID, studyear, communty) %>%
+              summarize(personAge_median = median(personAge, na.rm=TRUE)) %>%
+              ungroup()
+
+# 2.4 sampled households and people, calculate and set aside.
+samphhData <- group_by(personData, projID, studyear, communty, strata) %>%
+  summarize(samphh = max(samphh, na.rm=TRUE),
+            sampPop = max(sampPop, na.rm=TRUE)) %>%
+  summarize(samphh = sum(samphh, na.rm=TRUE),
+            sampPop = sum(sampPop, na.rm=TRUE))
+
+# 2.5 Set number of years reside for household heads.
+personData$yrcomcat_HHHead[personData$person == 1 | 
+                              personData$person == 2] = personData$yrcomcat[personData$person == 1 | 
+                                                                              personData$person == 2]
+
+# 2.6 Set flag if person is household head. This will allow us to get a count.
+personData$nHHHead[personData$person == 1 | 
+                     personData$person == 2] = 1
+
+# 2.7 Set AK Native Heads. If not a head, set to NA for later calculations
+#     based only on hh head.
+personData$ethnic_HHHead[(personData$person == 1 | 
+                            personData$person == 2) & personData$ethnic == 1] = 1
+personData$ethnic_HHHead[(personData$person == 1 | 
+                            personData$person == 2) & is.na(personData$ethnic)] = NA
+
+
+# 2.8 - Get population counts for households, and prep information to make 
+#       a weight adjustment for missing data.
+personData <- group_by(personData, projID, studyear, communty, strata, HHID) %>%
+  mutate(ethnic_HH = max(ethnic_HHHead, na.rm=TRUE)) %>%
+  group_by(projID, studyear, communty) %>%
+  mutate(missing_sex = sum(is.na(sex)),
+         missing_ethnic = sum(is.na(ethnic)),
+         missing_ethnic_HH = sum(is.na(ethnic_HH)),
+         missing_ethnic_HHHead = sum(is.na(ethnic_HHHead)))
+
+# 2.9 - adjust weighting factors to deal with missing information.
+#       this is the equivalent of mean replace.
+personData$sexWgt = personData$commPop / (personData$sampPop - personData$missing_sex)
+personData$ethnicWgt = personData$commPop / (personData$sampPop - personData$missing_ethnic)
+personData$ethnicHHWgt = personData$commPop / (personData$sampPop - personData$missing_ethnic_HH)
+personData$ethnicHHHeadWgt = personData$commPop / (personData$sampPop - personData$missing_ethnic_HHHead)
+
+# 2.10 - Populate the male / female columns - weighted and unweighted versions.
+personData$male = NA
+personData$female = NA
+personData$male[personData$sex == 1] = 1
+personData$male = personData$sexWgt * personData$male
+personData$female[personData$sex == 2] = 1
+personData$female = personData$sexWgt * personData$female
+
+# 2.10.1 - Reported male/female columns
+personData$reptMale[is.na(personData$sex)] = NA
+personData$reptFemale[is.na(personData$sex)] = NA
+personData$reptMale[personData$sex == 1] = 1
+personData$reptFemale[personData$sex == 2] = 1
+
+# 2.11 - Populate AK Native column and weight it.
+personData$nativePerson[personData$ethnic == 1] = 1
+personData$nativePerson = personData$nativePerson * personData$ethnicWgt
+
+personData$reptNative[personData$ethnic == 1] = 1
+personData$reptNative[is.na(personData$ethnic)] = NA
+
+# 2.12 - Weight household head flags.
+personData$reptNativeHH = personData$ethnic_HH
+personData$nativeHHHead = personData$ethnic_HHHead * personData$ethnicHHHeadWgt
+personData$ethnic_HH = personData$ethnic_HH * personData$ethnicHHWgt
+
+# 2.13 - create strata level means for ages and years.
+personData <- group_by(personData, projID, studyear, communty, strata) %>%
+  mutate(personAge_mr_val=mean(personAge, na.rm=TRUE),
+         yrcomcat_mr_val=mean(yrcomcat, na.rm=TRUE), 
+         yrcomcat_HHHead_mr_val = mean(yrcomcat_HHHead, na.rm=TRUE))
+
+# 2.14 - Reduce the file from 'person' level to 'HHID' level and prep
+#        relevant columns.
+
+# 2.14.1 Calculate the FPC going into the analysis to simplify later math.
+personData$fpc = 0
+personData$fpc = (personData$NHouseholds * (personData$NHouseholds - personData$samphh)) / personData$samphh
+
+personData <- group_by(personData, projID, studyear, communty, commname, strata,
+                       strataWt, NHouseholds, NPopulation, sampPop, samphh, commhh, fpc, HHID) %>%
+  summarize(nHHHead = sum((person == 1 | person == 2), na.rm=TRUE),
+            hhSize = sum(person != -9, na.rm=TRUE),
+            miss_hhSize = sum(person == -9, na.rm=TRUE),
+            personAge_mr_val = sum(personAge_mr_val, na.rm=TRUE),
+            personAge_min = min(personAge, na.rm=TRUE),
+            personAge_max = max(personAge, na.rm=TRUE),
+            yrcomcat_mr_val = sum(yrcomcat_mr_val, na.rm=TRUE),
+            yrcomcat_min = min(yrcomcat, na.rm=TRUE),
+            yrcomcat_max = max(yrcomcat, na.rm=TRUE),
+            yrcomcat_HHHead_mr_val = sum(yrcomcat_HHHead_mr_val*(person == 1 | person==2), na.rm=TRUE),
+            yrcomcat_HHHead_min = min(yrcomcat_HHHead, na.rm=TRUE),
+            yrcomcat_HHHead_max = max(yrcomcat_HHHead, na.rm=TRUE),
+            reptMale = sum(reptMale, na.rm=TRUE),
+            male = sum(male, na.rm=TRUE),
+            reptFemale = sum(reptFemale, na.rm=TRUE),
+            female = sum(female, na.rm=TRUE),
+            ethnic_HH = max(ethnic_HH, na.rm=TRUE),
+            reptNative = sum(reptNative, na.rm=TRUE),
+            nativePerson = sum(nativePerson, na.rm=TRUE),
+            reptNativeHH = max(reptNativeHH, na.rm=TRUE),
+            nativeHHHead = sum(nativeHHHead, na.rm=TRUE)) %>%
+            ungroup()
+
+# 2.15 summarize to strata level, weighting as necessary along the way.
+
+personData <- group_by(personData, projID, studyear, communty, commname, NHouseholds,
+                       NPopulation, strata, commhh, samphh, strataWt, fpc) %>%
+  summarize(estHHHead = sum(nHHHead * strataWt, na.rm=TRUE),
+            nHHHead = sum(nHHHead, na.rm=TRUE),
+            hSize_mean = sum((hhSize * commhh/(samphh-miss_hhSize)), na.rm=TRUE),
+            hSize_min = min(hhSize),
+            hSize_max = max(hhSize),
+            hSize_sd = sd(hhSize),
+            personAge_mean = sum(personAge_mr_val * strataWt, na.rm=TRUE),
+            personAge_min = min(personAge_min, na.rm=TRUE),
+            personAge_max = max(personAge_max, na.rm=TRUE),
+            yrcomcat_mean = sum(yrcomcat_mr_val * strataWt, na.rm=TRUE),
+            yrcomcat_min = min(yrcomcat_min, na.rm=TRUE),
+            yrcomcat_max = max(yrcomcat_max, na.rm=TRUE),
+            yrcomcat_HHHead_mean = sum(yrcomcat_HHHead_mr_val * strataWt, na.rm=TRUE),
+            yrcomcat_HHHead_min = min(yrcomcat_HHHead_min, na.rm=TRUE),
+            yrcomcat_HHHead_max = max(yrcomcat_HHHead_max, na.rm=TRUE),
+            rMale = sum(reptMale, na.rm=TRUE),
+            male_sd = sd(reptMale, na.rm=TRUE),
+            male_sum = sum(male, na.rm=TRUE),
+            female_sd = sd(reptFemale, na.rm=TRUE),
+            rFemale = sum(reptFemale, na.rm=TRUE),
+            female_sum = sum(female, na.rm=TRUE),
+            rNativeHH = sum(reptNativeHH, na.rm=TRUE),
+            nativeHH_sd = sd(reptNativeHH, na.rm=TRUE),
+            ethnic_HH_sum = sum(ethnic_HH, na.rm=TRUE),
+            rNative = sum(reptNative, na.rm=TRUE),
+            native_sd = sd(reptNative, na.rm=TRUE),
+            nativePerson_sum = sum(nativePerson, na.rm=TRUE),
+            nativeHHHead_sum = sum(nativeHHHead, na.rm=TRUE)) %>%
+  group_by(projID, studyear, communty, commname, NHouseholds,
+           NPopulation) %>%
+  summarize(estHHHead = sum(estHHHead, na.rm=TRUE),
+            nHHHead = sum(nHHHead, na.rm=TRUE),
+            hSize_var = sum(fpc * hSize_sd^2, na.rm=TRUE),
+            hSize_df = sum(fpc^2 * hSize_sd^4 / (samphh - 1), na.rm=TRUE),
+            hSize_mean = sum(hSize_mean, na.rm=TRUE),
+            hSize_min = min(hSize_min),
+            hSize_max = max(hSize_max),
+            personAge_mean = sum(personAge_mean, na.rm=TRUE),
+            personAge_min = min(personAge_min, na.rm=TRUE),
+            personAge_max = max(personAge_max, na.rm=TRUE),
+            yrcomcat_mean = sum(yrcomcat_mean, na.rm=TRUE),
+            yrcomcat_min = min(yrcomcat_min, na.rm=TRUE),
+            yrcomcat_max = max(yrcomcat_max, na.rm=TRUE),
+            yrcomcat_HHHead_mean = sum(yrcomcat_HHHead_mean, na.rm=TRUE),
+            yrcomcat_HHHead_min = min(yrcomcat_HHHead_min, na.rm=TRUE),
+            yrcomcat_HHHead_max = max(yrcomcat_HHHead_max, na.rm=TRUE),
+            reptMale = sum(rMale, na.rm=TRUE),
+            male_var = sum(fpc * male_sd, na.rm=TRUE),
+            male_df = sum(fpc^2 * male_sd^4 / (samphh - 1), na.rm=TRUE),            
+            male_sum = sum(male_sum, na.rm=TRUE),
+            female_var = sum(fpc * female_sd^2, na.rm=TRUE),
+            female_df = sum(fpc^2 * female_sd^4 / (samphh - 1), na.rm=TRUE),
+            reptFemale = sum(rFemale, na.rm=TRUE),
+            female_sum = sum(female_sum, na.rm=TRUE),
+            reptNativeHH = sum(rNativeHH, na.rm=TRUE),
+            nativeHH_var = sum(fpc * nativeHH_sd^2, na.rm=TRUE),
+            nativeHH_df = sum(fpc^2 * nativeHH_sd^4 / (samphh - 1), na.rm=TRUE),            
+            ethnic_HH_sum = sum(ethnic_HH_sum, na.rm=TRUE),
+            reptNative = sum(rNative, na.rm=TRUE),
+            native_var = sum(fpc * native_sd^2, na.rm=TRUE),
+            native_df = sum(fpc^2 * native_sd^4 / (samphh - 1), na.rm=TRUE),
+            nativePerson_sum = sum(nativePerson_sum, na.rm=TRUE),
+            nativeHHHead_sum = sum(nativeHHHead_sum, na.rm=TRUE))
+
+# Weighted means.
+personData$yrcomcat_HHHead_mean = personData$yrcomcat_HHHead_mean / personData$estHHHead
+personData$hSize_mean = personData$hSize_mean / personData$NHouseholds
+personData$personAge_mean = personData$personAge_mean / personData$NPopulation
+personData$yrcomcat_mean = personData$yrcomcat_mean / personData$NPopulation
+
+# Finalize the df.
+personData$hSize_df = personData$hSize_var^2 / personData$hSize_df
+personData$male_df = personData$male_var^2 / personData$male_df
+personData$female_df = personData$female_var^2 / personData$female_df
+personData$nativeHH_df = personData$nativeHH_var^2 / personData$nativeHH_df
+personData$native_df = personData$native_var^2 / personData$native_df
+
+personData$hSize_CI = sqrt((1/(personData$NHouseholds^2)) * personData$hSize_var) * qt(c(0.975), personData$hSize_df)
+personData$male_CI = sqrt((1/(personData$NHouseholds^2)) * personData$male_var) * qt(c(0.975), personData$male_df)
+personData$female_CI = sqrt((1/(personData$NHouseholds^2)) * personData$female_var) * qt(c(0.975), personData$female_df)
+personData$nativeHH_CI = sqrt((1/(personData$NHouseholds^2)) * personData$nativeHH_var) * qt(c(0.975), personData$nativeHH_df)
+personData$native_CI = sqrt((1/(personData$NHouseholds^2)) * personData$native_var) * qt(c(0.975), personData$native_df)
+
+# Calculate means for use with CIP.
+personData$hSize_CIP = personData$hSize_CI / (personData$hSize_mean)
+personData$male_CIP = personData$male_CI / (personData$male_sum / personData$NHouseholds)
+personData$female_CIP = personData$female_CI / (personData$female_sum / personData$NHouseholds)
+personData$nativeHH_CIP = personData$nativeHH_CI / (personData$ethnic_HH_sum / personData$NHouseholds)
+personData$native_CIP = personData$native_CI / (personData$nativePerson_sum / personData$NHouseholds)
+
+
+# 2.16 - Re-add the sample pop/hhs and the median from above.
+personData <- left_join(personData, medianData, by=c('projID', 'studyear', 'communty'))
+personData <- left_join(personData, samphhData, by=c('projID', 'studyear', 'communty'))
+personData$pctHHSamp = personData$samphh / personData$NHouseholds
+
+personData$pctEthnic_HH_sum = personData$ethnic_HH_sum / personData$NHouseholds
+personData$pctNativePerson_sum = personData$nativePerson_sum / personData$NPopulation
+
+#2.17 - Select statement to organize the final output file.
+personData <- select(personData, projID,
+                     studyear,
+                     communty,
+                     commname,
+                     nHHHead,
+                     samphh,
+                     NHouseholds,
+                     pctHHSamp,
+                     sampPop,
+                     NPopulation,
+                     hSize_mean,
+                     hSize_min,
+                     hSize_max,
+                     personAge_mean,
+                     personAge_min,
+                     personAge_max,
+                     personAge_median,                     
+                     yrcomcat_mean,
+                     yrcomcat_min,
+                     yrcomcat_max,
+                     yrcomcat_HHHead_mean,
+                     yrcomcat_HHHead_min,
+                     yrcomcat_HHHead_max,
+                     ethnic_HH_sum,
+                     pctEthnic_HH_sum,
+                     nativePerson_sum,
+                     pctNativePerson_sum,
+                     male_sum,
+                     female_sum,                     
+                     hSize_CI,
+                     male_CI,
+                     female_CI,
+                     nativeHH_CI,
+                     native_CI,
+                     hSize_CIP, 
+                     male_CIP, 
+                     female_CIP, 
+                     nativeHH_CIP,
+                     native_CIP)
+
+
+```
+### Demog Characteristics Table
+
+In this step, please review each table for obvious errors or issues. When re-running this data with updates, you can visually compare this output to the previous version in excel before pasting the output file into the excel template.
+
+```{r demog characteristics table}
+
+
+tmpTblData <- ungroup(personData)
+
+tmpTblData <- select(tmpTblData, commname, samphh, NHouseholds, pctHHSamp, sampPop, NPopulation, hSize_mean,
+                     hSize_min, hSize_max, personAge_mean, personAge_min , personAge_max, personAge_median, 
+                     yrcomcat_mean, yrcomcat_min, yrcomcat_max, yrcomcat_HHHead_mean, yrcomcat_HHHead_min, 
+                     yrcomcat_HHHead_max, ethnic_HH_sum, pctEthnic_HH_sum,
+                     nativePerson_sum, pctNativePerson_sum)
+
+tmpTblData <- mutate(tmpTblData, across(starts_with("pct"), ~ . * 100))  
+tmpTblData <- mutate(tmpTblData, across(where(is.numeric), ~ round(. , 1)))
+
+tmpTblData <- mutate(tmpTblData, across(where(is.numeric), ~ as.character(.)))
+
+tmpTblData <- mutate(tmpTblData, across(starts_with("pct"), (~ paste(., "%", sep=""))))
+  
+tmpTblData <- tmpTblData %>%
+  pivot_longer(cols=all_of(names(select(tmpTblData, -commname))),
+                             names_to = "column", values_to="value") %>%
+  pivot_wider(id_cols="column", names_from=commname, values_from=value)
+
+tmpTblData <- select(tmpTblData, -column)
+tmpTblData <- data.frame(tableLabelList, tmpTblData)
+
+#Add some formatting rows in.
+tmpTblData <- tmpTblData %>% add_row(tableLabelList="Household size", .before=6)
+tmpTblData <- tmpTblData %>% add_row(tableLabelList="Age", .before=10)
+tmpTblData <- tmpTblData %>% add_row(tableLabelList="Length of residency", .before=15)
+tmpTblData <- tmpTblData %>% add_row(tableLabelList="Total population", .before=16)
+tmpTblData <- tmpTblData %>% add_row(tableLabelList="Heads of household", .before=20)
+tmpTblData <- tmpTblData %>% add_row(tableLabelList="Alaska Native", .before=24)
+tmpTblData <- tmpTblData %>% add_row(tableLabelList="Estimated households", .before=25)
+tmpTblData <- tmpTblData %>% add_row(tableLabelList="Estimated population", .before=28)
+    
+tblOut <- kbl(tmpTblData,
+    col.names = c("", names(select(tmpTblData, -tableLabelList))),
+    caption=formatTableHeader(str_interp("Demographic characteristics, ${studyear}"))) %>%
+      kable_styling(full_width = F) %>%
+      row_spec(6,bold=T,hline_after = T) %>%
+      row_spec(10,bold=T,hline_after = T) %>%
+      row_spec(15,bold=T,hline_after = T) %>%
+      row_spec(24,bold=T,hline_after = T) %>%
+      add_indent(c(7,8,9,11,12,13,14,17,18,19,
+                   21,22,23,26,27,29,30))
+  
+print(tblOut)
+
+
+```
+
+
+
+# Write out CSV files
+
+```{r write csv files}
+
+# ##############################################################################
+# Write out CSV files.
+# ##############################################################################
+
+# Write demog characteristics raw file
+  fName = '../../CSV/05 - Final Analysis Output/demogCharacteristics(T)_raw.csv'
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(personData), ' records to be written', sep='')))
+
+  rio::export(personData, fName)
+
+  
+```
+
+<p class="h1footer"> End of demographic characteristics script. </p>

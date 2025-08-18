@@ -1,0 +1,282 @@
+---
+title: "B13_PREP_REC24 - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-15"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">B13_PREP_REC24 - (316) NPS Ambler Comprehensive</div>
+</div>
+
+# Prep REC24 
+
+Organize, recode, and generally prepare REC24 (Other source of income) for analysis.
+
+## Changelog
+
+### Change 1
+- Programmer: D.S.Koster  
+- Date: 05/21/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output.  
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive template
+
+### Change 2
+- Programmer: Jesse Coleman
+- Date: 03/18/2025
+- Change Description: Removed source() calls; all functions are included in the library adfgSubs.
+- Template Update [Y|N]: Y
+- One-Off: No-include in all future comprehensive templates 
+
+### Change 3
+- Programmer: Jesse Coleman
+- Date: 05/06/2025
+- Change Description: Refactor using tidyverse language and DRY ("don't repeat yourself") principles.
+- Template Update [Y|N]: Y
+- One-Off: No - include in all future comprehensive templates 
+
+
+## Input data
+  
+- /CSV/01 - Database Extract/REC24_raw.csv  
+
+## Output data
+  
+- /CSV/03 - main/REC24_OTH_INCOME_clean.csv  
+
+## Background
+
+An important aspect of understanding subsistence economies and evaluating things like non-subsistence use areas in a joint board setting is understanding the diversity of income sources. Record type 24 is intended to capture non-employment income.
+
+## Checklist
+  
+- Update 'Author' to your name  
+- Update the project information in 'title' to the current project  
+- Update the development log with any changes you've made to the template file, including your name  
+- Standardize coding  
+- Account for project-specific nuance   
+- Force appropriate handling of values given missing value codes for filter questions
+
+## Additional information
+
+### Functions used/dependencies
+
+### Required libraries (adjust as needed)
+
+- tidyVerse  
+- rio  
+- knitr
+- adfgSubs
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+
+# Load required libraries.
+library(knitr)
+library(adfgSubs)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+
+```
+
+## Load data
+
+```{r load data}
+
+# ##############################################################################
+# Load data from intermediate files.
+# ##############################################################################
+
+REC24Data <- read.csv(str_interp('../../CSV/01 - Database Extract/REC24_raw.csv'), 
+                      na = '', 
+                      header = TRUE, 
+                      strip.white = TRUE)
+count = nrow(REC24Data)
+cat(formatSummaryBlock(paste('Opened REC24_raw.csv, ', count, ' records loaded.', sep='')))
+
+
+```
+
+## Recode and format
+
+A role variable is added here, all columns of information that are MISSING will be replaced with NA for now, erroneous records (those without an income source) will be removed. Ensure that the filter questions are properly named, if not, you will need to uncomment the code below. If additional networking information is incorporated also comment out role and resource; otherwise those will be set to defaults.
+
+<div class="todoBlock"> TO DO: Double check the naming of the filter questions and re-assign if necessary. </div>
+
+```{r recode and format, echo=TRUE}
+
+#REC24Data$pfdOrNatCorpYN = 0
+#REC24Data$otherIncomeYN = 0
+
+#REC24Data$pfdOrNatCorpYN = REC24Data$filterq
+#REC24Data$otherIncomeYN = REC24Data$usuallyq
+
+# Add Networking vars
+REC24Data$role = 0
+REC24Data$resource = 910300000
+
+```
+```{r recode and format 2}
+
+REC24Data$displayGroup = 0
+
+# Set all missing data to NA initially.
+REC24Data <- REC24Data %>%
+  mutate(across(c(pfdOrNatCorpYN, otherIncomeYN, incReceived, amount),
+                ~if_else(. < 0, NA_real_, .)))
+
+# Remove erroneous records - there should always be an income source.
+REC24Data <- filter(REC24Data, !is.na(incsrce))
+
+```
+
+## Remove duplicate rows
+
+```{r remove duplicates}
+
+count = nrow(REC24Data)
+
+REC24Data <- group_by(REC24Data, projID, studyear, communty,strata,HHID,
+                                   version, recordTypeCD, subRecordCD, subRecordDesc,
+                      pfdOrNatCorpYN, otherIncomeYN, displayGroup, resource,
+                                   role, incsrce) %>%
+             summarize(incReceived = max(incReceived, na.rm = TRUE),
+                       amount = sum(amount, na.rm=TRUE)) %>%
+  ungroup()
+
+count = count - nrow(REC24Data)
+
+cat(formatSummaryBlock(
+  str_interp('${count} rows have been removed from REC24.')))
+
+```
+
+## Recode and standardize
+
+To ensure proper computation of summary statistics and bootstrapping procedures, ensure that all income sources not on the survey form but volunteered by at least 1 household appear with 0 income for all other households.
+
+```{r standardize income info}
+
+# 2.4 - Restore -8 codes to ensure correct processing.
+
+REC24Data <- REC24Data %>%
+  mutate(across(c(amount, incReceived, pfdOrNatCorpYN, otherIncomeYN),
+                ~if_else(is.na(.) | is.infinite(.), -8, .)))
+
+count = nrow(REC24Data)
+
+# Standardize code list so that all codes used in the dataset are present
+#     for all households.
+REC24Data <- standardizeHHRecords(REC24Data, c("recordTypeCD", "subRecordCD", 
+                                               "subRecordDesc", "displayGroup",
+                                               "role","resource", "incsrce"))
+count = nrow(REC24Data) - count
+cat(formatSummaryBlock(
+  str_interp('${count} rows have been added to REC24.')))
+
+# Codes that have been added to households, but were NOT originally on the survey
+#   tool need to be set to 0 amounts.
+REC24Data$incReceived[which(is.na(REC24Data$incReceived) & is.na(REC24Data$version))] = 0
+REC24Data$amount[which(is.na(REC24Data$amount) & is.na(REC24Data$version))] = 0
+
+### TODO: to improve efficiency, this code should eliminate all income sources where no income was reported.
+#         it would not remove instances where income amount is missing. This will abbreviate the file
+#         however, substantial changes will need to be made to the employment/income analysis routines
+#         so this change may need to wait. The change will involve re-adding pre-printed income sources
+#         to the trimmed file.
+
+### Programmer note on above - this was skipped in the 2024 calendar year revision due to time and
+###   resource constraints. This is purely an efficiency step and isn't required.
+
+
+```
+
+## final clean-up and sorting
+
+```{r final clean up and sorting 2}
+
+# 2.9 Enforce missing values for amount with filter questions
+
+REC24Data <- REC24Data %>%
+  mutate(
+    # Update amount
+    amount = case_when(
+      amount == 0 & incsrce %in% c(32, 13) & pfdOrNatCorpYN < 0 ~ -8,
+      amount == 0 & !incsrce %in% c(32, 13) & otherIncomeYN < 0 ~ -8,
+      TRUE ~ amount
+    ),
+    
+    # Update incReceived 
+    incReceived = case_when(
+      incReceived == 0 & incsrce %in% c(32, 13) & pfdOrNatCorpYN < 0 ~ -8,
+      incReceived == 0 & !incsrce %in% c(32, 13) & otherIncomeYN < 0 ~ -8,
+      TRUE ~ incReceived
+    )
+  )
+
+# 2.10 Arrange values for better visual evaluation.
+REC24Data <- dplyr::arrange(REC24Data, 
+                     projID, studyear, communty, strata, HHID, incsrce)
+
+
+tempData <- REC24Data %>% group_by(communty, incsrce) %>%
+  summarize(householdsReporting = sum(incReceived, na.rm=TRUE)) %>%
+  ungroup() %>%
+  filter(householdsReporting > 0)
+
+knitr::kable(tempData,
+             caption=formatTableHeader("Income sources reported."),
+             align="l")
+
+```
+
+
+# Write out CSV files
+
+```{r write csv files, message=FALSE}
+
+# ##############################################################################
+# Write out CSV files.
+# ##############################################################################
+
+# Write out clean income file
+  fName = str_interp('../../CSV/03 - main/REC24_OTH_INCOME_clean.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(REC24Data), ' records to be written', sep='')))
+
+rio::export(REC24Data, fName)
+
+```
+
+<p class="h1footer"> End of Prep REC24 script. </p>

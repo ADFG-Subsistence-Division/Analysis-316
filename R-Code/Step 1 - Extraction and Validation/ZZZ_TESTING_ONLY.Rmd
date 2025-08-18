@@ -1,16 +1,19 @@
 ---
-title: "ZZZ - For knit testing ONLY"
-author: "D. S. Koster"
-date: "2023-04-18"
-output: 
+title: "ZZZ_TESTING_ONLY - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-15"
+output:
   html_document:
     theme: null
-    css: ../style.css
-    include: 
-      before_body: ../header.html
-      after_body: ../footer.html
-
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
 ---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">ZZZ_TESTING_ONLY - (316) NPS Ambler Comprehensive</div>
+</div>
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
 knitr::opts_chunk$set(include = TRUE)

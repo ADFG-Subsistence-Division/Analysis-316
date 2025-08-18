@@ -1,15 +1,19 @@
 ---
-title: "A03_GET_EMPLOYMENT_RECORDS - (294) Yukon Comprehensives 2023"
-author: "L. Navarro"
-date: "2024-05-22"
+title: "A03_GET_EMPLOYMENT_RECORDS - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-15"
 output:
   html_document:
     theme: null
-    css: ../HTML/style.css
-    include: 
+    css: ../HTML/adfg-style.css
+    include:
       before_body: ../HTML/header.html
       after_body: ../HTML/footer.html
 ---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">A03_GET_EMPLOYMENT_RECORDS - (316) NPS Ambler Comprehensive</div>
+</div>
 
 # Get employment records
 

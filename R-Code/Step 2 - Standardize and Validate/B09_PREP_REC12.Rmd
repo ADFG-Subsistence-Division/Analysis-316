@@ -1,0 +1,777 @@
+---
+title: "B09_PREP_REC12 - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-15"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">B09_PREP_REC12 - (316) NPS Ambler Comprehensive</div>
+</div>
+# Prep REC12
+
+Organize and standardize REC12 (Marine mammals) in order to merge with all other harvest record types in a later step. 
+
+## Changelog
+
+### Change 1
+- Programmer: D.S.Koster  
+- Date: 04/18/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output. Additional updates were made to allow knit to go forward and provide meaningful output rather than failing to knit with cryptic errors. Substantial automation has been implemented. TODO statements and red error boxes describe changes required per project.  
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive template
+
+### Change 2
+- Programmer: D.S.Koster  
+- Date: 07/22/2024  
+- Change Description: Corrected issue that was causing double counting for some species.  
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates 
+
+### Change 3
+- Programmer: Jesse Coleman
+- Date: 03/18/2025
+- Change Description: Removed source() calls; all functions are included in the library adfgSubs.
+- Template Update [Y|N]: Y
+- One-Off: No-include in all future comprehensive templates 
+
+### Change 4
+- Programmer: Jesse Coleman
+- Date: 04/23/2025
+- Change Description: Refactor using tidyverse language and DRY ("don't repeat yourself") principles.
+- Template Update [Y|N]: Y
+- One-Off: No - include in all future comprehensive templates 
+
+
+## Input data
+  
+- /CSV/01 - Database Extract/REC12_raw.csv  
+- /CSV/03 - Main/convFact.csv  
+- /CSV/03 - Main/sample.csv  
+
+*NOTE* Record type files MUST contain, at a minimum, the following: "projID", "studyear", "communty", "strata", "resource", "units". Conversion factor file (convFact.csv), MUST contain, at a minimum, the  following: "projID", "studyear", "communty", "resource", "units", "convFact","defaultUnits". 
+
+## Output data
+  
+- /CSV/03 - main/REC12_CSIS_ORG_clean.csv
+
+## Background
+
+Each harvest record type has been designed to contain the information relevant for a specific category of data. For example, record type 12 has been designed to contain harvest information for harvest of Marine Mammals. This record type typically involves month of harvest, sex, and the number of resources eaten, depending on the design of the survey tool. The final product of this file is to ensure that REC12 is organized in such a way it can be combined with all other harvest record types and is properly configured for incorporation with the CSIS dataset.
+
+## Checklist
+
+- Update 'Author' to your name 
+- Update the project information in 'title' to the current project
+- Update the development log with any changes you've made to the template file, including your name
+- Convert units to defaults
+- add missing resources to households
+- Missing data replacement
+- Add missing columns
+- Organize into CSIS format (Sex)
+
+## Additional information
+
+### Functions used / dependencies
+
+Lists from Z00_PROJECT_PARAMETERS.r, fullHarvColList
+
+### Required libraries
+
+- tidyVerse  
+- rio  
+- knitr
+- adfgSubs
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment}
+
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+library(knitr)
+library(adfgSubs)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+```
+
+## Load data
+
+For this file, we are loading the raw data extract for record type 12 - Marine Mammals.
+
+```{r load data}
+
+# Load data from intermediate files.
+# ##############################################################################
+
+# Load working data file.
+REC12Data <- read.csv(str_interp('../../CSV/01 - Database Extract/REC12_raw.csv'), 
+                      na = '', 
+                      header = TRUE, 
+                      strip.white = TRUE)
+count = nrow(REC12Data)
+cat(formatSummaryBlock(paste('Opened REC12_raw.csv, ', count, ' records loaded.', sep='')))
+
+# Load lookup file(s) & Limit to essential data.
+convFactData <- read.csv('../../CSV/03 - Main/convFact.csv', 
+                         na = '', header = TRUE, 
+                         strip.white = TRUE) %>%
+  select(projID, studyear, communty, resName, resource, units, convFact, lbsToDefault, defaultUnits)
+count <- nrow(convFactData)
+cat(formatSummaryBlock(paste('Opened convFact.csv, ', count, ' records loaded.', sep='')))
+
+
+# Load sample data
+sampleData <- read.csv(str_interp('../../CSV/03 - Main/sample.csv'), 
+                       na = '', 
+                       header = TRUE, 
+                       strip.white = TRUE)
+count <- nrow(sampleData)
+cat(formatSummaryBlock(paste('Opened sample.csv, ', count, ' records loaded.', sep='')))
+
+```
+
+### Reduce file
+
+The code chunk below (echoed for clarity), filters the record type 12 so only harvest records are included. When historical patterns or species-specific questions are asked separately from the main harvest and use section of the survey, they are sometimes stored in a 'sub-record' for REC12. This code should either:  
+- Do nothing  
+- Remove necessary rows  
+
+```{r remove non-harvest records, echo=TRUE}
+
+#REC12Data <- filter(REC12Data, subRecordCD == 0)
+
+```
+
+### Create lists for automation
+In the section of code below, please review column names and ensure that all data columns from the data entry screen are present for this analysis project. If there are columns used in the data entry screen, but are not present here, they will need to be added. The harvAmtList vector needs to contain all of the harvest information columns. The recodeColList vector contains all of the columns that require recoding from the negative codes (-6, -7, -8 -9) to a standard missing code. The harvest amount columns need to be present in both of these vectors. 
+
+<div class="todoBlock"> TO DO: Make sure months are properly specified below. Also verify that sexNotAsked contains the list of resources where sex was not asked on the survey form. </div>
+
+```{r create lists for automation}
+
+# Recodes here, if necessary; example below recodes feral bison to bison.
+#REC12Data$resource [REC12Data$resource == 230200000] = 210400000
+
+# Use the standard mammal harvest columns.
+harvAmtList <- standardMammalColumns
+
+# If sex wasn't asked, add it with a -6.
+if(!("sex" %in% colnames(REC12Data)))
+{
+  REC12Data$sex = -6
+  cat(warningMessage("Column sex was added - verify that this is accurate."))
+}
+
+# This line shouldn't require editing; this will have to be added to if we ask 'hideOnly'.
+meanReplaceList = harvAmtList
+
+# create a list of columns that can or will be used for analysis steps.
+recodeColList <- c("used","attempt","harvestq","received","giveaway", "filterq", "usuallyq", harvAmtList)
+
+cat("<h4>Harvest columns:</h4>The following columns are listed as harvest columns that can be summed to get the total for a household")
+cat(formatValueList(harvAmtList))
+
+cat("<h4>Mean replace columns:</h4>The following columns are listed as amounts that will be evaluated for mean replacement:")
+cat(formatValueList(meanReplaceList))
+
+# Create a list of resources appearing on or added to the survey form where we did not ask about sex.
+#   this list can be extended in a later step if required. If communities in the same project differ
+#   we will assume sex was asked for all, but report communities where it's not as 'unknown sex'.
+
+# If sex is NA, recode to -9 to assure automation is working properly.
+REC12Data$sex[which(is.na(REC12Data$sex))] = -9
+
+# If the only reported sex is a - code for a species, we can assume it belongs on the
+#   sex not asked list.
+sexData <- REC12Data %>% group_by(resource) %>%
+  summarize(sex = max(sex, na.rm=TRUE)) %>%
+  filter(sex < 0)
+
+sexNotAskedList = sexData$resource 
+sexNotAskedList = sexNotAskedList + 9
+
+cat(warningMessage(str_interp("The following resources have been identified as not having 'sex' information: ${sexNotAskedList}")))
+
+
+```
+
+### Verify column contents
+
+If the data columns we require for analysis are not present, an error message will be returned. If we have the error message, display that to the screen and create an empty data frame that does contain all of the necessary records. Note that the REC12 data frame can have MORE columns than those listed as 'required'. In order for this file to work, all required columns must be present. To remedy this error, you must remove the missing column from the lists in the chunk of code displayed above (if it is not ever present) as well as from any subsequent code in this .Rmd file. Alternatively, you can add the missing column with default 0 values.
+
+```{r verify record contents}
+
+# Verify certain required columns are present.
+verifyColList <- c("projID", "studyear", "communty", "HHID", "strata", recodeColList)
+
+# Get a list of the missing columns
+colList <- intersect(verifyColList, names(REC12Data))
+colList <- verifyColList[!(verifyColList %in% colList)]
+
+if(length(colList) > 0) {
+  msgList = paste(colList, collapse=', ')
+  cat(errorMessage(str_interp('Expected columns missing: ${msgList} <br> These will be added with 0 values; please verify this is accurate!')))
+  
+  REC12Data <- standardizeColumns(REC12Data, colList)
+  
+} else
+{
+  cat(greenMessage("REC12 successfully checked. All required columns are present."))
+}
+
+```
+
+## Standardize coding
+
+Evaluate columns of data used for development of tables and figures. Recode missing values to a single value for easier processing, rename columns as needed, and add missing community/resource records as needed. In this section the following steps take place:  
+- Check for missing filterq data, report on results, standardize missing to -8 and recode harvest and use to -8 for all resources.  
+- Recode all variables named in recodeColList to -8 if they are coded as any negative code.  
+- For any resource added to any household that goes beyond the defaults on the printed survey, we need to add that to all other households. Note that the code allows us to retain certain key information, but it isn't required. By standardizing the resource list in this manner, summary statistics can be reliably computed using built-in R functions such as sd() and mean().  
+- Recode variables to ensure proper handling of missing data. We interpret empty or missing data as 0 or NO. The reason for this is partially one of expediency in data processing, and also a matter of ensuring that when collected data is reviewed, it has been VERIFIED as some type of 'unknown' data.  
+```{r standarize coding, message=FALSE}
+
+# #############################################################################
+# Reporting on missing data for filterq
+# #############################################################################
+
+# Code columns when filterq is missing/unknown
+#   how many households require recoding?
+nRecode <- filter(REC12Data, filterq < 0) %>%
+  group_by(HHID) %>%
+  summarize(nd = n()) %>%
+  summarize(nCount = n())
+
+if(nRecode$nCount == 0) {
+  cat(greenMessage(("No page-level filter questions (filterq) were marked as missing, refused, not asked, or unknown.")))
+} 
+if(nRecode$nCount / sum(sampleData$samphh) > 0 &
+   nRecode$nCount / sum(sampleData$samphh) < 0.07) {
+  cat(warningMessage("Fewer than 7% of filter questions (filterq) were marked as missing, refused, not asked, or unknown."))
+  cat(warningMessage(paste(nRecode$nCount, " records will be updated to indicate missing harvest information.", sep='')))
+} 
+if(nRecode$nCount / sum(sampleData$samphh) >= 0.07) {
+  cat(errorMessage(("More than 7% of filter questions (filterq) were marked as missing, refused, not asked, or unknown. Please review surveys to ensure that no systematic or administration errors are present before continuing.")))
+  cat(warningMessage(paste(nRecode$nCount, " records will be updated to indicate missing harvest information.", sep='')))
+  
+} 
+
+# #############################################################################
+# Reporting on missing data for used
+# #############################################################################
+
+count = length(REC12Data$used[REC12Data$used < 0])
+nRec = nrow(REC12Data)
+
+if(count == 0) {
+  cat(greenMessage(("No 'used' were marked as missing, refused, not asked, or unknown.")))
+} 
+if((count / nRec) > 0 & (count / nRec) < 0.07) {
+  cat(warningMessage("Fewer than 7% of used questions were marked as missing, refused, not asked, or unknown."))
+  cat(warningMessage(paste(count, " records will be treated as 'unknown' for used.", sep='')))
+} 
+if(count / nRec >= 0.07) {
+  cat(errorMessage(("More than 7% of used were marked as missing, refused, not asked, or unknown. Please review surveys to ensure that no systematic or administration errors are present before continuing.")))
+  cat(warningMessage(paste(count, " records will be treated as 'unknown' for used.", sep='')))
+  
+} 
+
+# #############################################################################
+# Reporting on missing data for attempt
+# #############################################################################
+
+count = length(REC12Data$attempt[REC12Data$attempt < 0])
+nRec = nrow(REC12Data)
+
+if(count == 0) {
+  cat(greenMessage(("No 'attempt' were marked as missing, refused, not asked, or unknown.")))
+} 
+if((count / nRec) > 0 & (count / nRec) < 0.07) {
+  cat(warningMessage("Fewer than 7% of attempt questions were marked as missing, refused, not asked, or unknown."))
+  cat(warningMessage(paste(count, " records will be treated as 'unknown' for attempt.", sep='')))
+} 
+if(count / nRec >= 0.07) {
+  cat(errorMessage(("More than 7% of attempt were marked as missing, refused, not asked, or unknown. Please review surveys to ensure that no systematic or administration errors are present before continuing.")))
+  cat(warningMessage(paste(count, " records will be treated as 'unknown' for attempt.", sep='')))
+  
+} 
+
+# #############################################################################
+# Reporting on missing data for harvestq
+# #############################################################################
+
+count = length(REC12Data$harvestq[REC12Data$harvestq < 0])
+nRec = nrow(REC12Data)
+
+if(count == 0) {
+  cat(greenMessage(("No 'harvestq' were marked as missing, refused, not asked, or unknown.")))
+} 
+if((count / nRec) > 0 & (count / nRec) < 0.07) {
+  cat(warningMessage("Fewer than 7% of harvestq questions were marked as missing, refused, not asked, or unknown."))
+  cat(warningMessage(paste(count, " records will be treated as 'unknown' for harvestq.", sep='')))
+} 
+if(count / nRec >= 0.07) {
+  cat(errorMessage(("More than 7% of harvestq were marked as missing, refused, not asked, or unknown. Please review surveys to ensure that no systematic or administration errors are present before continuing.")))
+  cat(warningMessage(paste(count, " records will be treated as 'unknown' for harvestq.", sep='')))
+} 
+
+# #############################################################################
+# Reporting on missing data for received
+# #############################################################################
+
+count = length(REC12Data$received[REC12Data$received < 0])
+nRec = nrow(REC12Data)
+
+if(count == 0) {
+  cat(greenMessage(("No 'received' were marked as missing, refused, not asked, or unknown.")))
+} 
+if((count / nRec) > 0 & (count / nRec) < 0.07) {
+  cat(warningMessage("Fewer than 7% of received questions were marked as missing, refused, not asked, or unknown."))
+  cat(warningMessage(paste(count, " records will be treated as 'unknown' for received", sep='')))
+} 
+if(count / nRec >= 0.07) {
+  cat(errorMessage(("More than 7% of received were marked as missing, refused, not asked, or unknown. Please review surveys to ensure that no systematic or administration errors are present before continuing.")))
+  cat(warningMessage(paste(count, " records will be treated as 'unknown' for received.", sep='')))
+}
+
+# #############################################################################
+# Reporting on missing data for giveaway
+# #############################################################################
+
+count = length(REC12Data$giveaway[REC12Data$giveaway < 0])
+nRec = nrow(REC12Data)
+
+if(count == 0) {
+  cat(greenMessage(("No 'giveaway' were marked as missing, refused, not asked, or unknown.")))
+} 
+if((count / nRec) > 0 & (count / nRec) < 0.07) {
+  cat(warningMessage("Fewer than 7% of giveaway questions were marked as missing, refused, not asked, or unknown."))
+  cat(warningMessage(paste(count, " records will be treated as 'unknown' for giveaway", sep='')))
+} 
+if(count / nRec >= 0.07) {
+  cat(errorMessage(("More than 7% of giveaway were marked as missing, refused, not asked, or unknown. Please review surveys to ensure that no systematic or administration errors are present before continuing.")))
+  cat(warningMessage(paste(count, " records will be treated as 'unknown' for giveaway.", sep='')))
+}
+
+# 2.1 Code when filterq is missing, update with any additional harvest columns, such as 'month'; Comment 
+#     where necessary.
+missingPageData <- REC12Data %>% filter(filterq < 0)
+notMissingPageData <- REC12Data %>% filter(filterq >= 0)
+
+# This only needs to happen if missingPageData has more than 0 records
+if(nrow(missingPageData) > 0) {
+  # Set all of the recode columns, except usuallyq, if present, equal to -8
+  #  for mean replacement.
+  for (colName in recodeColList[recodeColList != "usuallyq"]) {
+    missingPageData[[colName]] = -8
+#    REC12Data$used[REC12Data$filterq < 0] = -8
+  }
+} 
+
+# Re-merge data
+REC12Data <- dplyr::bind_rows(missingPageData, notMissingPageData)
+
+# Sex, as a categorical variable is always treated as an 'unknown' category.
+REC12Data <- recode_variables(REC12Data, "sex", NA, -8)
+
+# Use a standard 'negative' code, except for -6; that one should only be
+#     applicable for whole categories and does not require special processing.
+REC12Data <- recode_variables(REC12Data, recodeColList, -7, -8)
+REC12Data <- recode_variables(REC12Data, recodeColList, -9, -8)
+
+#  Create dummy display group.
+REC12Data$displayGroup = 0
+
+# For any resource added to any household that goes beyond the defaults on
+#     the printed survey, we need to add that to all other households.
+#     Note that the code below allows us to retain certain key information, but
+#          it isn't required.
+preCount = nrow(REC12Data)
+REC12Data <- standardizeHHRecords(REC12Data, c("recordTypeCD", "subRecordCD", 
+                                               "subRecordDesc", "displayGroup", 
+                                               "version", "resource", "units"))
+
+postCount <- nrow(REC12Data)
+if(preCount == postCount){
+  cat(greenMessage("No additional resource codes were added to households."))
+} else
+{
+  cat(warningMessage(paste(postCount - preCount, ' resource records were added to households; some resources may be duplicates because of non-standard units.', sep='')))
+}
+
+# Recode variables to ensure proper handling of missing data. We interpret
+#     empty or missing data as 0 or NO. The reason for this is partially one of
+#     expediency in data processing, and also a matter of ensuring that when
+#     collected data is reviewed, it has been VERIFIED as some type of 'unknown'
+#     data.
+
+tmpTxt  = paste(recodeColList, collapse=', ')
+
+cat(formatSummaryBlock(paste('Recoding NA values to 0 for all columns: ', tmpTxt, sep='')))
+REC12Data <- recode_variables(REC12Data, recodeColList, NA, 0)
+cat(formatSummaryBlock(paste('Recoding -8 values to NA for all columns: ', tmpTxt, sep='')))
+REC12Data <- recode_variables(REC12Data, recodeColList, -8, NA)
+
+```
+
+## Merge sampling information.
+After initial standardization, additional information can be added to each record for further processing.
+
+```{r merge sampling}
+
+REC12Data <- left_join(REC12Data, sampleData, by=c("projID", "studyear", "communty", "strata"))
+cat(formatSummaryBlock('Sampling information merged.'))
+
+```
+
+## Convert to standard units
+
+Before analysis can begin or missing data addressed, reported amounts of harvest need to be standardized for each resource so that summaries for each resource are dealing with comparable units. 
+
+To convert from the amount in reported units, which may differ from those that will be reported in the CSIS and technical papers, the following math is used:  
+
+$$x \times unit_d = (x \times {unit_r}) * \left(\frac{b \times pounds}{1 \times unit_r}\right) * \frac{1}{\frac{b \times pounds}{1 \times unit_d}}$$  
+Where:  
+- $x \times unit_d = $ Amount of resource in default units d,  
+- $x \times unit_r = $ Amount of resource in reported units r,  
+- $\left(\frac{b \times pounds}{1 \times unit_r}\right) = $ The number of pounds (b) per 1 reported unit $unit_r$  
+- $\frac{b \times pounds}{1 \times unit_d} = $ The number of pounds (b) per 1 default unit $unit_d$  
+
+Note that both $\left(\frac{b \times pounds}{1 \times unit_r}\right) = $ and $\frac{b \times pounds}{1 \times unit_d} = $ are determined in the conversion factor tables (convFact.csv) and, whenever possible, should be obtained from the conversion factor database within the SDS. 
+
+This process described above is handled in a standardized function: standardizeConvFact found in the f_standardizeConversionFactors.r file.
+  
+Identification of reported resources and units of harvest as well as default units need to have occurred BEFORE this step of the analysis can be run. If convFact.csv has not yet been developed or substantial corrections have occurred to the data, the conversion factors will need to be evaluated. Please run B03_PREP_CONVERSION_FACTOR.Rmd.
+
+The table of resource/units to be converted may include apparent 'duplicate' resource. This is because if a household indicated pounds of harbor seal, for instance, then pounds of harbor seal were added to all households in an earlier step. This table will show ALL rows that were added as well as any added to households because of non-standard units. De-duplication via aggregation occurs in a later step.
+
+**Note** Non-standard units are uncommon with marine mammals.
+
+```{r standardize units}
+
+# Show resources that require unit standardization.
+stdData <- left_join(REC12Data, convFactData, by=c("projID", "studyear", "communty", "resource","units")) %>%
+  filter(units != defaultUnits) 
+print(knitr::kable(stdData,
+                   caption=formatTableHeader("Harvest records with non-standard units.")))
+
+# Standardize units using standard Subsistence Methods.
+REC12StdData <- standardizeConvFact(REC12Data, convFactData, harvAmtList)
+
+if(nrow(REC12StdData) == 0)
+{
+  cat(errorMessage(("Standardized conversion factors for REC12 produced no records - Have you remembered to update convFact.csv? - Records without standardized conversion factors will be used.")))
+  
+  REC12StdData <- REC12Data
+  
+} else {
+  cat(formatSummaryBlock('Successfully Standardized units for all REC12 resource codes'))
+}
+```
+
+## De-duplicate
+Eliminate duplicates introduced when adding volunteered resources to the harvest record.
+
+*NOTE* Please evaluate the code chunk below. Before finalizing this code and running analysis procedures, ensure that the columns below are a complete list of those that will be included in the final standardized file. Verify the following:
+
+- Harvest rows are combined using sum() functions
+- Binomial (yes/no) rows are combined using max() functions
+- Key data used to identify unique household/resource/units (projID, studyear, HHID etc...) defind using group_by()
+- Categorical information (ie: less/same/more) will be eliminated from this part of the processing. If that data exists per-species, a separate chunk starting with REC12_raw.csv should be written for processing.
+
+*NOTE* If you receive a -InfWarning message regarding no missing arguments to max, you should have already received a message previously regarding missing data for the use/sharing questions. These are processed here.
+
+```{r eliminate duplicates, echo=TRUE, message=FALSE}
+# Eliminate duplicates.
+REC12StdData <- group_by(REC12StdData, projID, studyear, communty, commname, commhh, 
+                     samphh, sampPop, NHouseholds, strata, HHID, 
+                     resource, units, sex, strataWt, commPop, 
+                     NPopulation) %>%
+  summarize(
+    # Apply max() to these columns
+    across(c(filterq,usuallyq,used,attempt,harvestq,received,giveaway), 
+           ~max(., na.rm=TRUE)),
+    # Apply sum() to these columns
+    across(all_of(c(harvAmtList)), 
+           ~sum(., na.rm=TRUE)),
+    # Ungroup to remove messages later
+    .groups = "drop"
+    )
+
+count <- nrow(REC12StdData)
+
+cat(formatSummaryBlock(
+  str_interp('Removing duplicate rows. REC12 record count: ${count}')))
+
+# Convert all Inf codes to NA.
+REC12StdData <- inf_to_NA(REC12StdData, recodeColList)
+
+
+```
+## Process missing data
+
+Prior to the development of harvest estimates, missing data must be properly handled. The Division of Subsistence standard relies on the following key assumptions:
+- Missing data is sporadic, uniformly random, and free from discernible bias,
+- Missing harvest data represents information believed to be consistent with the distribution of household harvests within the community as a whole.
+
+From these assumptions, we extend the theorem that the sample mean is an unbiased estimator of the population mean (Cochran 1977) to resolve most instances of missing harvest data. Thus, a mean is calculated by gear-type, sex, month, location and/or age class and subsequently applied to all instances where some harvest was indicated but amounts not provided.
+
+In the event that a single household indicated harvest of a resource, but did not provide an amount, we assume a 'minimum' replacement value of the strata or community minimum (for a simple random sample, these are the same). This is based on the assumption that the household DID harvest something, and therefore we know zero is not appropriate. Any value other value is speculation and must be justified. The minimum value is applied as the only reasonable replacement because we are assuming that the harvest was nonzero.
+
+*NOTE* for the table below, verify that the total mean replaced harvest _MR is consistent with the sum of harvest amounts. Also verify that mean replacements (typically small amounts with decimal points) seem to make sense. Only rows with harvests are displayed.
+
+<div class="todoBlock">Revise the mean replacement code if months are not used.</div>
+
+```{r Missing replacement, message=FALSE}
+
+# Bring back in conversion factors.
+REC12StdData <- select(convFactData, projID, studyear, communty, resName, resource, units, convFact) %>%
+  right_join(REC12StdData, by=c("projID", "studyear", "communty", "resource", "units"))
+
+# Compute reported harvest amount.
+REC12StdData <- rowwise(REC12StdData) %>% 
+             mutate(reptHarvestAmt = sum(across(all_of(harvAmtList))))
+
+# Recode resource to reflect sex of the animals for mean replacements;
+#   we will do this at the 'sex' level as frequently bulls are targeted
+#   more heavily than cows.
+
+REC12StdData <- REC12StdData %>%
+  # First recode sex based on resource value and existing sex value
+  mutate(
+    sex = case_when(
+      # When resource is in sexNotAskedList and sex is NA, set to -6
+      (resource + 9) %in% sexNotAskedList & is.na(sex) ~ -6,
+      # When resource is in sexNotAskedList and sex is not NA, set to -9
+      (resource + 9) %in% sexNotAskedList & !is.na(sex) ~ -9,
+      # Otherwise keep the original sex value
+      TRUE ~ sex
+    )
+  ) %>%
+  # Then modify resource based on sex value
+  mutate(
+    resource = case_when(
+      sex == 1 ~ resource + 1,
+      sex == 2 ~ resource + 2,
+      sex %in% c(-8, -6, -9) ~ resource + 9,
+      TRUE ~ resource
+    )
+  )
+
+
+# SpecList is 2 for detail rows.
+REC12StdData$specList = 2
+
+# Missing data replacements.
+REC12StdData <- dfMeanReplaceStratified(REC12StdData, replCols = harvAmtList, checkCol = "harvestq")
+
+# Calculate missing replaced total harvest.
+REC12StdData <- rowwise(REC12StdData) %>% 
+  mutate(harvestAmt_MR = sum(across(all_of(harvAmtList))))
+
+# Mean replaced data flag.
+REC12StdData$mRepl = 0
+REC12StdData$mRepl[is.na(REC12StdData$reptHarvestAmt) & REC12StdData$harvestAmt_MR > 0] = 1
+
+tRec <- nrow(REC12StdData)
+count <- sum(REC12StdData$mRepl)
+
+if(count == 0) {
+  cat(greenMessage(("There were NO missing-value replacements for harvests at the resource-code level.")))
+} 
+if(count / tRec > 0 &
+   count / tRec < 0.07) {
+  cat(warningMessage("Fewer than 7% of resource harvest records were marked as missing, refused, not asked, or unknown."))
+  cat(warningMessage(paste(count, " records were replaced with the mean or minimum values.", sep='')))
+} 
+if(count / tRec >= 0.07) {
+  cat(errorMessage(("More than 7% of resource harvest records were marked as missing, refused, not asked, or unknown. Please review surveys to ensure that no systematic or administration errors are present before continuing.")))
+  cat(warningMessage(paste(count, " records were replaced with the mean or minimum values.", sep='')))
+} 
+
+# Mean replaced table for review.
+tempData <- select(REC12StdData, commname, resource, HHID, mRepl, 
+                   !!!syms(harvAmtList), 
+                   harvestAmt_MR, units) %>%
+    filter(harvestAmt_MR > 0) %>%
+    arrange(desc(mRepl), desc(harvestAmt_MR))
+knitr::kable(tempData,
+             caption=formatTableHeader("Detail columns with mean replacements"),
+             align="l")
+
+```
+
+## Estimated pounds
+
+Now that mean replacements have occurred, a mean-replaced amount column will be calculated for use with an imputed estimated column. Computation of pounds harvested is also made at this time. In the table below, verify that the reported and mean replaced pounds appear to be correct and that all amounts are expanded. Only records with harvests are shown.
+
+```{r harvest total columns}
+
+# Pounds harvested
+REC12StdData$reptHarvestLbs = REC12StdData$reptHarvestAmt * REC12StdData$convFact 
+REC12StdData$harvestLbs_MR = REC12StdData$harvestAmt_MR * REC12StdData$convFact 
+
+# 2.13 Recode amtFoodFur to N/A when -6
+# REC12StdData$amtFur[REC12StdData$amtFur==-6]=NA
+
+# Pounds harvested table for review.
+tempData <- select(REC12StdData, commname, resource, units, reptHarvestAmt, 
+                   reptHarvestLbs, harvestAmt_MR, harvestLbs_MR) %>%
+    filter(harvestAmt_MR > 0) %>%
+    arrange(desc(harvestLbs_MR))
+knitr::kable(tempData,
+             caption=formatTableHeader("Reported harvest Amount & Pounds"),
+             align="l")
+
+```
+
+
+## Enforce logic rules
+
+Note that for large game, because of the level of detail we ask, that additional columns of data are added AFTER CSIS formatting. We will enforce logic rules first.
+
+```{r insert missing and derived columns}
+
+
+# 3.1 Enforce logic rules.
+
+# 3.1.1 If a harvest amount is specified, ensure harvestq = 1
+REC12StdData$harvestq[REC12StdData$harvestAmt_MR > 0] = 1
+
+# 3.1.2 If harvest occurred, then an attempt did as well.
+REC12StdData$attempt[REC12StdData$harvestq == 1] = 1
+
+# 3.1.3 If any was harvested or given away, then we count it as used.
+REC12StdData$used[REC12StdData$received == 1 | REC12StdData$harvestq == 1] = 1
+
+# 3.1.4 If an amount was reported as given away, but none harvested or 
+#       received, we assume it came from a previous year
+REC12StdData$giveaway[REC12StdData$received == 0 & REC12StdData$harvestq == 0] = 0
+
+# 3.2 Create any required, but missing columns, with defaults.
+REC12StdData$specList[which(REC12StdData$sex == -6)] = 1
+REC12StdData$specList[which(REC12StdData$sex != -6)] = 2
+
+
+```
+
+## Create rows for CSIS aggregation.
+
+Subsistence marine mammal harvests are recorded with the detail digit of 0 in the resource code. For the CSIS, harvests are separated by sex for select species. Here we would add a 1 for male, 2 for female, or 9 for unspecified. For integration with CSIS and ensuring that species are properly combined with commercially retained resources, harvests records are duplicated and resources aggregated to the species level (from detail sex) to ensure accurate totals.
+
+```{r CSIS rows}
+
+count <- nrow(REC12StdData)
+
+# 4.1 Duplicate the file
+REC12SubsDataTemp <- REC12StdData
+REC12SubsDataTemp %>%
+  filter(sex != -6)
+
+# 4.2 Recode resource to the species level: divide resource code by 10 then multiple by 10
+REC12SubsDataTemp$resource=trunc(REC12SubsDataTemp$resource / 10) * 10
+
+# 4.3 Recode sex to -6 at the species level
+REC12SubsDataTemp <- REC12SubsDataTemp %>% 
+  mutate(sex = case_when(is.na(sex) | sex %in% c(1,2,9,-8,-9) ~ -6,
+                         TRUE ~ sex))
+
+# 4.4 Recode amtFoodFur=-6 to 0 (??)
+# REC12SubsDataTemp$amtFur[REC12SubsDataTemp$amtFur == -6] = NA
+REC12SubsDataTemp$specList = 1
+
+# 4.5 Group by and Summarize HHID and species
+REC12SubsDataTemp <- group_by(REC12SubsDataTemp, projID, studyear, communty, commname, strata, HHID, resName, resource, units, specList, convFact, sex, commhh, samphh, sampPop, commPop, strataWt, NHouseholds, NPopulation) %>%
+  summarize(across(c(filterq,usuallyq,used,attempt,harvestq,giveaway,received),
+                   ~max(., na.rm = TRUE)),
+            across(all_of(c(harvAmtList, "harvestAmt_MR", "reptHarvestAmt", "harvestLbs_MR", "reptHarvestLbs")),
+                          ~sum(., na.rm = TRUE))
+  )
+
+# Merge and sort
+REC12CSISData <- bind_rows(REC12StdData, REC12SubsDataTemp, .id = NULL) %>%
+   arrange(projID, studyear, communty, commname, strata, HHID, resName, resource)
+
+# Recode amtFur back to -6 as needed 
+# REC12CSISData$amtFur[is.na(REC12CSISData$amtFur)]=-6
+
+# 4.8 Delete rows for resource codes where we didn't ask about sex
+# REC12CSISData <- filter(REC12CSISData, !(resource %in% sexNotAskedList))
+
+# 4.9 Final clean-up: recode NaN and inf to NA.
+REC12CSISData <- inf_to_NA(REC12CSISData, c("used","attempt", "received", "harvestq", "giveaway"))
+REC12CSISData <- nan_to_NA(REC12CSISData, c("used","attempt", "received", "harvestq", "giveaway"))
+
+count = nrow(REC12CSISData) - count
+
+cat(formatSummaryBlock(
+  str_interp('${count} rows have been added to REC12.')))
+
+```
+
+
+# Add missing column names
+
+Add any column names that will be used for final combination of harvest and use record types
+
+```{r add missing col names}
+
+# Number of columns.
+count = length(REC12CSISData)
+
+# 3.3 Add all of the columns that we don't already have.
+REC12CSISData <- standardizeColumns(REC12CSISData, fullHarvColList)
+
+count = length(REC12CSISData) - count
+
+cat(formatSummaryBlock(
+  str_interp('${count} column names have been added to REC12.')))
+
+```
+
+
+# Write out CSV files
+
+```{r write csv files, message=FALSE}
+
+# ##############################################################################
+# Write out CSV files.
+# ##############################################################################
+
+# Write out Marine Mammals CSIS formatted datafile
+  fName = str_interp('../../CSV/03 - main/REC12_CSIS_ORG_clean.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(REC12CSISData), ' records to be written', sep='')))
+
+rio::export(REC12CSISData, fName)
+
+```
+
+<p class="h1footer"> End of prep REC12 script. </p>

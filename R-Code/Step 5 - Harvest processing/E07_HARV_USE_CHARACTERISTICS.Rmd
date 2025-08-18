@@ -1,0 +1,704 @@
+---
+title: "E07_HARV_USE_CHARACTERISTICS - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-15"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">E07_HARV_USE_CHARACTERISTICS - (316) NPS Ambler Comprehensive</div>
+</div>
+
+# Harvest and use characteristics
+
+Produces output for use with the harvest and use characteristics file. This is a summary of use/harvest/attempt etc... along with some basic summary stats (the top line of the harvest and use table). 
+
+## Change log
+
+### Change 1
+- Programmer: D.S.Koster  
+- Date: 05/21/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output. Corrected a few issues with outputs.  
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates
+
+### Change 2
+- Programmer: Jesse Coleman
+- Date: 07/14/2025
+- Change Description: Refactor using tidyverse language and DRY ("don't repeat 
+yourself") principles.
+- Template Update [Y|N]: Y
+- One-Off: No - include in all future comprehensive templates
+
+## Input data
+  
+- /CSV/03 - Main/harvData_HH_finalPrepped.csv  
+- /CSV/00 - Lookup Codes/fullResList_raw.csv
+
+## Output data
+  
+- /CSV/05 - Final Analysis Output/harvuse_characteristics(T)_raw.csv  
+- /CSV/05 - Final Analysis Output/harvuse_characteristicsFigure_raw.csv  
+
+## Background
+
+## Checklist
+  
+- Update 'Author' to your name  
+- Update the project information in 'title' to the current project  
+- Update the development log with any changes you've made to the template file, including your name  
+- Update the table template  
+- Compare results presented here to those in the template  
+
+## Additional information
+
+
+### Required libraries (adjust as needed)
+
+- tidyVerse  
+- rio  
+- knitr  
+- kableExtra
+- adfgSubs
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+
+# Additional libraries
+library(knitr)
+library(kableExtra)
+library(adfgSubs)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+
+```
+
+## Load data
+
+```{r load data}
+
+# Load data from intermediate files.
+
+# 1.1 - Load working data file.
+harvData <- read.csv('../../CSV/03 - Main/harvData_HH_finalPrepped.csv', 
+                      na = '', 
+                      header = TRUE, 
+                      strip.white = TRUE) %>%
+  filter(specList == 1)
+
+count <- nrow(harvData)
+cat(formatSummaryBlock(paste("Opening file: harvData_HH_finalPrepped.csv, ", 
+                             count, 
+                             " records loaded (filtered to specList==1).", sep="")))
+
+# 1.2 - resource code list
+resCodeData <- read.csv('../../CSV/00 - Lookup Codes/fullResList_raw.csv', 
+                           na = '', 
+                           header = TRUE, 
+                           strip.white = TRUE)
+
+count <- nrow(resCodeData)
+cat(formatSummaryBlock(paste("Opening file: fullResList_raw.csv, ", 
+                             count, 
+                             " records loaded .", sep="")))
+
+
+```
+
+## Automation lists
+
+```{r automation lists}
+
+# Community name.
+commnameList <- select(harvData, commname) %>% distinct(commname)
+
+tableColList <- c('used_mean', 
+                  'used_min', 
+                  'used_max', 
+                  'used_cip', 
+                  'used_median',
+                  'attempt_mean', 
+                  'attempt_min', 
+                  'attempt_max', 
+                  'attempt_cip', 
+                  'attempt_median',
+                  'harvestq_mean', 
+                  'harvestq_min', 
+                  'harvestq_max', 
+                  'harvestq_cip', 
+                  'harvestq_median', 
+                  'received_mean',
+                  'received_min', 
+                  'received_max', 
+                  'received_cip', 
+                  'received_median',
+                  'giveaway_mean', 
+                  'giveaway_min', 
+                  'giveaway_max', 
+                  'giveaway_cip', 
+                  'giveaway_median',
+                  'lbsHarvested_mean',                   
+                  'lbsHarvested_min', 
+                  'lbsHarvested_max', 
+                  'lbsHarvested_median',
+                  'elbsHarvested_sum', 
+                  'lbsHarvestedPercap',
+                  'used_any', 
+                  'attempt_any', 
+                  'harvest_any', 
+                  'received_any', 
+                  'giveaway_any',
+                  'samphh', 
+                  'nResources')
+
+tableLabelList <- c('Mean number of resources used per household',
+'	Minimum',
+'	Maximum',
+'	95% confidence interval (±)',
+'	Median',
+	
+'Mean number of resources attempted to harvest per household',
+'	Minimum',
+'	Maximum',
+'	95% confidence interval (±)',
+'	Median',
+	
+'Mean number of resources harvested per household',
+'	Minimum',
+'	Maximum',
+'	95% confidence interval (±)',
+'	Median',
+	
+'Mean number of resources received per household',	
+'	Minimum',
+'	Maximum',
+'	95% confidence interval (±)',
+'	Median',
+	
+'Mean number of resources given away per household',	
+'	Minimum',
+'	Maximum',
+'	95% confidence interval (±)',
+'	Median',
+
+'Mean household harvest (lb)',	
+'	Minimum',
+'	Maximum',
+'	Median',
+	
+'Total harvest weight (lb)',
+'Community per capita harvest (lb)',
+'Percentage using any resource',
+'Percentage attempting to harvest any resource',
+'Percentage harvesting any resource',
+'Percentage receiving any resource',
+'Percentage giving away any resource',
+'Number of households in sample',
+'Number of resources asked about and identified voluntarily by respondents')
+
+                  
+                  
+```
+
+## Reduce file
+
+Reduce the data frame to just columns of interest for this analysis and summarize to the household level - household 'any resource / all resources' - we will count the number of resources attempted etc...
+
+```{r reduce file}
+
+harvData <- group_by(harvData, projID, studyear, communty, commname, strata,
+                     NHouseholds, NPopulation, commhh, samphh,
+                     sampPop, commPop, strataWt, HHID) %>%
+  summarize(nResources = n(),
+            attempt = sum(attempt, na.rm=TRUE),
+            used = sum(used, na.rm=TRUE), 
+            giveaway = sum(giveaway, na.rm=TRUE), 
+            received = sum(received, na.rm=TRUE), 
+            harvestq = sum(harvestq, na.rm=TRUE),
+            lbsHarvested = sum(harvestLbs_MR, na.rm=TRUE), 
+            estHarvestLbs = sum(estHarvestLbs, na.rm=TRUE)) %>%
+  ungroup() %>% 
+  
+  # 'Any resource' flag.
+  mutate(
+    used_any = if_else(used > 0, 1, 0),
+    attempt_any = if_else(attempt > 0, 1, 0),
+    harvest_any = if_else(harvestq > 0, 1, 0),
+    giveaway_any = if_else(giveaway > 0, 1, 0),
+    received_any = if_else(received > 0, 1, 0)
+  )
+
+cat(formatSummaryBlock(str_interp("Data frame summarized to household level, there are now  ${count} rows")))
+
+```
+
+## Plot characteristics
+
+```{r plot characteristics}
+
+# Make an output file for figures
+
+# Define a helper function to process categories
+process_category <- function(data, category, order, resource_column) {
+  data %>%
+    mutate(
+      category = category,
+      catOrder = order,
+      resources = .[[resource_column]]
+    ) %>%
+    select(projID, studyear, commname, HHID, catOrder, category, resources)
+}
+
+# Process the categories and combine into plotData
+plotData <- bind_rows(
+  process_category(harvData, "Using", 1, "used"),
+  process_category(harvData, "Attempting", 2, "attempt"),
+  process_category(harvData, "Harvesting", 3, "harvestq"),
+  process_category(harvData, "Receiving", 4, "received"),
+  process_category(harvData, "Giving", 5, "giveaway")
+)
+
+# Add Pounds Harvested to figFinalData
+figFinalData <- bind_rows(
+  plotData,
+  process_category(harvData, "Pounds Harvested", 6, "lbsHarvested")
+) %>%
+  arrange(projID, studyear, commname, catOrder)
+
+# Modify plotData for plotting
+plotData <- plotData %>%
+  mutate(
+    Mean = "mean",
+    category = factor(
+      category,
+      ordered = TRUE,
+      levels = c("Using", "Attempting", "Harvesting", "Receiving", "Giving")
+    )
+  )
+  # tmpData <- harvData
+  # tmpData$category = "Using"
+  # tmpData$catOrder = 1
+  # tmpData$resources = tmpData$used
+  # tmpData <- select(tmpData, projID, studyear, commname, HHID, catOrder, category, resources)
+  # plotData <- tmpData
+  # 
+  # tmpData <- harvData
+  # tmpData$category = "Attempting"
+  # tmpData$catOrder = 2
+  # tmpData$resources = tmpData$attempt
+  # tmpData <- select(tmpData, projID, studyear, commname, HHID, catOrder, category, resources)
+  # plotData <- dplyr::bind_rows(plotData, tmpData)
+  # 
+  # tmpData <- harvData
+  # tmpData$category  = "Harvesting"
+  # tmpData$catOrder = 3
+  # tmpData$resources = tmpData$harvestq
+  # tmpData <- select(tmpData, projID, studyear, commname, HHID, catOrder, category, resources)
+  # plotData <- dplyr::bind_rows(plotData, tmpData)
+  # 
+  # tmpData <- harvData
+  # tmpData$category = "Receiving"
+  # tmpData$catOrder = 4
+  # tmpData$resources = tmpData$received
+  # tmpData <- select(tmpData, projID, studyear, commname, HHID, catOrder, category, resources)
+  # plotData <- dplyr::bind_rows(plotData, tmpData)
+  # 
+  # tmpData <- harvData
+  # tmpData$category = "Giving"
+  # tmpData$catOrder = 5
+  # tmpData$resources = tmpData$giveaway
+  # tmpData <- select(tmpData, projID, studyear, commname, HHID, catOrder, category, resources)
+  # plotData <- dplyr::bind_rows(plotData, tmpData)
+  # 
+  # # Pounds, but only for the final figure out to excel, we need to add
+  # #   a second axis or second set of box-whisker figures to the HTML output
+  # #   but that will have to wait.
+  # figFinalData <- plotData
+  # tmpData <- harvData
+  # tmpData$category = "Pounds Harvested"
+  # tmpData$catOrder = 6
+  # tmpData$resources = tmpData$lbsHarvested
+  # tmpData <- select(tmpData, projID, studyear, commname, HHID, catOrder, category, resources)
+  # figFinalData <- dplyr::bind_rows(figFinalData, tmpData)
+  # figFinalData <- arrange(figFinalData, projID, studyear, commname, catOrder)
+  # 
+  # plotData$Mean = "mean"
+  # plotData$category = factor(plotData$category, ordered=TRUE,
+  #                            levels = c('Using',
+  #                                       'Attempting',
+  #                                       'Harvesting',
+  #                                       'Receiving',
+  #                                       'Giving'))
+
+for(comm in commnameList$commname) 
+{
+  tmpPlotData <- filter(plotData, commname == comm)
+  
+  plotOut <- ggplot(tmpPlotData,        # Create ggplot2 boxplot
+                aes(x = category,
+                    y = resources)) +
+    ggtitle(str_interp("Distribution of number of resources used and harvested, ${comm}, ${studyear}")) +
+    geom_boxplot() +
+    stat_summary(fun = max,
+                 geom = "line",
+                 aes(group = 1),
+                 col = "#f46d43") +
+    stat_summary(fun = mean,
+                 geom = "point",
+                 aes(group = 1, 
+                     shape="Mean"),
+                 col = "#3288bd") +
+    stat_summary(fun = mean,
+                 geom = "text",
+                 aes(label=round(after_stat(y),1), 
+                 vjust = -0.5),
+                 col = "#3288bd") +  
+    stat_summary(fun = max,
+                 geom = "text",
+                 aes(label=round(after_stat(y),0), 
+                     vjust = 1.5),
+                 col = "#f46d43") +  
+    scale_shape_manual(name = "Mean", values = c(4)) +
+    ylab("Number of resources") +
+    xlab("")  + 
+    theme(legend.title = element_blank()) +
+    theme(text=element_text(family="serif")) +
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+          panel.background = element_blank(), axis.line = element_line(colour = "black"))
+    
+  print(plotOut)
+  
+}
+
+```
+
+## Calculate median values
+
+Here we're using the median of reported data. For stratified samples, a bootstrapping implementation would be better to ensure that we're getting a reasonable estimate of the median. However, the median from the entirety of the sample is still a reasonable approximation and fully correct for all non-stratified samples.
+
+In the event that there are very substantial differences in a stratified sample, it will be worthwhile to more closely evaluate the computation of the median.
+
+```{r prep median values}
+
+medianData <- group_by(harvData, projID, studyear, communty) %>%
+  summarize(used_median = median(used, na.rm=TRUE),
+            attempt_median = median(attempt, na.rm=TRUE),
+            harvestq_median = median(harvestq, na.rm=TRUE),
+            received_median = median(received, na.rm=TRUE),
+            giveaway_median = median(giveaway, na.rm=TRUE), 
+            lbsHarvested_median = median(lbsHarvested, na.rm=TRUE))
+
+tblOut <- medianData %>% select(communty, used_median, attempt_median,
+                                    harvestq_median, received_median, giveaway_median,
+                                    lbsHarvested_median) %>%
+          kbl(caption=formatTableHeader(str_interp("Median calculations"))) %>%
+  kable_styling() %>% 
+  scroll_box(width = "100%", height = "400px")
+    
+print(tblOut)
+
+
+```
+
+## Calculate summary stats
+
+Summary statistics min, mean, max for the numbers of resources used and harvested use the usual formulas built into R. The confidence intervals, however, are calculated according to the method described in Cochran 1977:  
+
+$$s^2_\bar{y} = \frac{1}{N^2}\sum_{l=1}^{n}N_l(N_l - n_l)\frac{s^2_l}{n_l}$$  
+$$n_e = \frac{\left( \sum_{l=1}^L{\left( \frac{N_l(N_l - n_l)}{n_l}s_l^2 \right)} \right)^2}{\sum_{l=1}^L{\left( \frac{\left(N_l(N_l - n_l) \right)^2}{n_l - 1}s^4_l\right)}}$$  
+$$CI\%(\pm) = \frac{1}{\hat{x}}\left(t_{\alpha/2,n_e} \times \sqrt{s^2_{\bar y}}\right)$$  
+Where:  
+- $s^2_l = $ sample variance for strata l of number of resources used/harvested per household  
+- $\hat x$ = estimated population (household mean),  
+- L = total number of strata (this can be 1),  
+- N = the total number of occupied and eligible households in all strata combined,  
+- $N_l$ = the total number of occupied and eligible households for strata $l$ (this is the same as total community households *commhh* if there is only 1 strata),  
+- $n_l$ = the total number of returned surveys for strata l (this is the same as sampled households in the community *samphh* if there is only 1 strata),
+- $n_e$ = effective degrees of freedom (Cochran 1977, p.96), this simplifies to n-1 if there is only 1 strata,  
+- $t_{\alpha/2, n_e}$ = Student's two-tailed critical value for $\alpha = $ 0.95 and $n_e$ degrees of freedom obtained from the inverse CDF in R with the function: qt().
+
+Note that these formulas include a set of terms for finite population correction. The finite population correction factor can be formulated and incorporated in the computation of standard error in a few ways. The method above matches the formulation present in Cochran. This term is calculated separately throughout the code to simplify computations and simplify the readability for identification of errors.
+
+
+```{r Summary stats}
+
+harvData <- group_by(harvData, projID, studyear, communty, commname,
+                     strata, NHouseholds, NPopulation,
+                     commhh, samphh, sampPop, commPop,
+                     strataWt) %>% 
+  summarize(nResources = max(nResources, na.rm=TRUE),
+            used_mean = mean(used, na.rm=TRUE), 
+            used_min = min(used, na.rm=TRUE), 
+            used_max = max(used, na.rm=TRUE), 
+            used_sd = sd(used, na.rm=TRUE), 
+            attempt_mean = mean(attempt, na.rm=TRUE), 
+            attempt_min = min(attempt, na.rm=TRUE), 
+            attempt_max = max(attempt, na.rm=TRUE), 
+            attempt_sd = sd(attempt, na.rm=TRUE), 
+            harvestq_mean = mean(harvestq, na.rm=TRUE), 
+            harvestq_min = min(harvestq, na.rm=TRUE), 
+            harvestq_max = max(harvestq, na.rm=TRUE), 
+            harvestq_sd = sd(harvestq, na.rm=TRUE), 
+            received_mean = mean(received, na.rm=TRUE), 
+            received_min = min(received, na.rm=TRUE), 
+            received_max = max(received, na.rm=TRUE), 
+            received_sd = sd(received, na.rm=TRUE), 
+            giveaway_mean = mean(giveaway, na.rm=TRUE), 
+            giveaway_min = min(giveaway, na.rm=TRUE), 
+            giveaway_max = max(giveaway, na.rm=TRUE), 
+            giveaway_sd = sd(giveaway, na.rm=TRUE),
+            lbsHarvested_min = min(lbsHarvested, na.rm=TRUE), 
+            lbsHarvested_max = max(lbsHarvested, na.rm=TRUE), 
+            lbsHarvested_mean = sum(estHarvestLbs, na.rm=TRUE), 
+            elbsHarvested_sum = sum(estHarvestLbs, na.rm=TRUE),
+            lbsHarvestedPercap = sum(estHarvestLbs, na.rm=TRUE),
+            used_any = mean(used_any, na.rm=TRUE), 
+            attempt_any = mean(attempt_any, na.rm=TRUE), 
+            harvest_any  = mean(harvest_any, na.rm=TRUE), 
+            received_any = mean(received_any, na.rm=TRUE), 
+            giveaway_any = mean(giveaway_any, na.rm=TRUE))
+
+harvData$fpc = 0
+harvData$fpc = (harvData$commhh * (harvData$commhh - harvData$samphh)) / harvData$samphh
+
+# 2.3 Compute variances with FPC.
+harvData$used_var = 0
+harvData$attempt_var = 0
+harvData$harvestq_var = 0
+harvData$attempt_var = 0
+harvData$received_var = 0
+harvData$giveaway_var = 0
+
+harvData$used_var = harvData$fpc * (harvData$used_sd^2)
+harvData$attempt_var = harvData$fpc * (harvData$attempt_sd^2)
+harvData$harvestq_var = harvData$fpc * (harvData$harvestq_sd^2)
+harvData$attempt_var = harvData$fpc * (harvData$attempt_sd^2)
+harvData$received_var = harvData$fpc * (harvData$received_sd^2)
+harvData$giveaway_var = harvData$fpc * (harvData$giveaway_sd^2)
+
+harvData$gh_used = 0
+harvData$gh_attempt = 0
+harvData$gh_harvestq = 0
+harvData$gh_received = 0
+harvData$gh_giveaway = 0
+
+harvData$gh_used = (harvData$fpc^2 * harvData$used_sd^4) /  (harvData$samphh - 1)
+harvData$gh_attempt = (harvData$fpc^2 * harvData$attempt_sd^4) /  (harvData$samphh - 1)
+harvData$gh_harvestq = (harvData$fpc^2 * harvData$harvestq_sd^4) /  (harvData$samphh - 1)
+harvData$gh_received = (harvData$fpc^2 * harvData$received_sd^4) /  (harvData$samphh - 1)
+harvData$gh_giveaway = (harvData$fpc^2 * harvData$giveaway_sd^4) /  (harvData$samphh - 1)
+
+harvData$used_mean = harvData$used_mean * harvData$commhh 
+harvData$attempt_mean = harvData$attempt_mean * harvData$commhh 
+harvData$harvestq_mean = harvData$harvestq_mean * harvData$commhh 
+harvData$received_mean = harvData$received_mean * harvData$commhh 
+harvData$giveaway_mean = harvData$giveaway_mean * harvData$commhh 
+harvData$used_any = harvData$used_any * harvData$commhh 
+harvData$attempt_any = harvData$attempt_any * harvData$commhh 
+harvData$harvest_any  = harvData$harvest_any * harvData$commhh 
+harvData$received_any = harvData$received_any * harvData$commhh 
+harvData$giveaway_any = harvData$giveaway_any * harvData$commhh 
+
+harvData <- group_by(harvData, projID, studyear, communty, commname,
+                     NHouseholds, NPopulation) %>% 
+  summarize(samphh = sum(samphh, na.rm=TRUE),
+            nResources = max(nResources),
+            used_mean = sum(used_mean, na.rm=TRUE), 
+            used_min = min(used_min, na.rm=TRUE), 
+            used_max = max(used_max, na.rm=TRUE), 
+            used_var = sum(used_var, na.rm=TRUE),
+            gh_used = sum(gh_used, na.rm=TRUE),
+            attempt_mean = sum(attempt_mean, na.rm=TRUE), 
+            attempt_min = min(attempt_min, na.rm=TRUE), 
+            attempt_max = max(attempt_max, na.rm=TRUE), 
+            attempt_var = sum(attempt_var, na.rm=TRUE), 
+            gh_attempt = sum(gh_attempt, na.rm=TRUE),
+            harvestq_mean = sum(harvestq_mean, na.rm=TRUE), 
+            harvestq_min = min(harvestq_min, na.rm=TRUE), 
+            harvestq_max = max(harvestq_max, na.rm=TRUE), 
+            harvestq_var = sum(harvestq_var, na.rm=TRUE),
+            gh_harvestq = sum(gh_harvestq, na.rm=TRUE),
+            received_mean = sum(received_mean, na.rm=TRUE), 
+            received_min = min(received_min, na.rm=TRUE), 
+            received_max = max(received_max, na.rm=TRUE), 
+            received_var = sum(received_var, na.rm=TRUE),
+            gh_received = sum(gh_received, na.rm=TRUE),
+            giveaway_mean = sum(giveaway_mean, na.rm=TRUE), 
+            giveaway_min = min(giveaway_min, na.rm=TRUE), 
+            giveaway_max = max(giveaway_max, na.rm=TRUE), 
+            giveaway_var = sum(giveaway_var, na.rm=TRUE),
+            gh_giveaway = sum(gh_giveaway, na.rm=TRUE),
+            lbsHarvested_min = min(lbsHarvested_min, na.rm=TRUE), 
+            lbsHarvested_max = max(lbsHarvested_max, na.rm=TRUE), 
+            lbsHarvested_mean = sum(lbsHarvested_mean, na.rm=TRUE), 
+            elbsHarvested_sum = sum(elbsHarvested_sum, na.rm=TRUE),
+            lbsHarvestedPercap = sum(lbsHarvestedPercap, na.rm=TRUE),
+            used_any = sum(used_any, na.rm=TRUE), 
+            attempt_any = sum(attempt_any, na.rm=TRUE), 
+            harvest_any  = sum(harvest_any, na.rm=TRUE), 
+            received_any = sum(received_any, na.rm=TRUE), 
+            giveaway_any = sum(giveaway_any, na.rm=TRUE)) %>%
+  ungroup()
+
+
+harvData$used_mean = harvData$used_mean / harvData$NHouseholds 
+harvData$attempt_mean = harvData$attempt_mean / harvData$NHouseholds 
+harvData$harvestq_mean = harvData$harvestq_mean / harvData$NHouseholds 
+harvData$received_mean = harvData$received_mean / harvData$NHouseholds 
+harvData$giveaway_mean = harvData$giveaway_mean / harvData$NHouseholds 
+harvData$lbsHarvested_mean = harvData$lbsHarvested_mean / harvData$NHouseholds 
+harvData$used_any = harvData$used_any / harvData$NHouseholds 
+harvData$attempt_any = harvData$attempt_any / harvData$NHouseholds 
+harvData$harvest_any  = harvData$harvest_any / harvData$NHouseholds 
+harvData$received_any = harvData$received_any / harvData$NHouseholds 
+harvData$giveaway_any = harvData$giveaway_any / harvData$NHouseholds 
+harvData$lbsHarvestedPercap = harvData$lbsHarvestedPercap / harvData$NPopulation 
+
+# Finish estimating degrees of freedom.
+harvData$ne_used = 0
+harvData$ne_attempt = 0
+harvData$ne_harvestq = 0
+harvData$ne_received = 0
+harvData$ne_giveaway = 0
+
+harvData$ne_used = harvData$used_var^2 / harvData$gh_used
+harvData$ne_attempt = harvData$attempt_var^2 / harvData$gh_attempt
+harvData$ne_harvestq = harvData$harvestq_var^2 / harvData$gh_harvestq
+harvData$ne_received = harvData$received_var^2 / harvData$gh_received
+harvData$ne_giveaway = harvData$giveaway_var^2 / harvData$gh_giveaway
+
+harvData$used_cip = 0
+harvData$attempt_cip = 0
+harvData$harvestq_cip = 0
+harvData$received_cip = 0
+harvData$giveaway_cip = 0
+
+harvData$used_cip = sqrt((1/(harvData$NHouseholds^2)) * harvData$used_var) * qt(c(0.975), harvData$ne_used) / harvData$used_mean
+harvData$attempt_cip = sqrt((1/(harvData$NHouseholds^2)) * harvData$attempt_var) * qt(c(0.975), harvData$ne_attempt) / harvData$attempt_mean
+harvData$harvestq_cip = sqrt((1/(harvData$NHouseholds^2)) * harvData$harvestq_var) * qt(c(0.975), harvData$ne_harvestq) / harvData$harvestq_mean
+harvData$received_cip = sqrt((1/(harvData$NHouseholds^2)) * harvData$received_var) * qt(c(0.975), harvData$ne_received) / harvData$received_mean
+harvData$giveaway_cip = sqrt((1/(harvData$NHouseholds^2)) * harvData$giveaway_var) * qt(c(0.975), harvData$ne_giveaway) / harvData$giveaway_mean
+
+# Merge back in median.
+harvData <- left_join(harvData, medianData, by=c("projID", "studyear","communty"))
+
+# Organize data for output that will be pasted into the excel figure.
+harvData <- select(harvData, projID, studyear, communty, commname, samphh, NHouseholds, !!!syms(tableColList))
+```
+
+## Output table review
+
+Please review this table to make sure it matches the excel output table and also that summary statistics match the same stats reported in other tables.
+
+```{r output table review}
+# Format for RMarkdown table.
+tblTmpData <- harvData
+
+# Turn percentages into rounded values between 0 and 100.
+tblTmpData <- mutate(tblTmpData, across(c(ends_with("_cip"), ends_with("_any")), ~ round(. * 100, 1)))
+tblTmpData <- mutate(tblTmpData, across(ends_with("_mean"), ~ round(. , 1)))
+tblTmpData <- mutate(tblTmpData, across(contains("lbsHarvested"), ~ round(. , 1)))
+
+tblTmpData <- select(tblTmpData,
+                     commname, !!!syms(tableColList))
+
+# Make them all character values for 'easy' pivoting.
+tblTmpData <- mutate(tblTmpData, across(all_of(names(tblTmpData)), ~ as.character(.)))
+
+# Put a percent symbol behind certain columns
+tblTmpData <- mutate(tblTmpData, across(c(ends_with("_cip"), ends_with("_any")), ~ paste(., "%", sep="")))
+
+# Pivot to a fully long format maintaining commname as a key column, then partially pivot back.
+#   to where we can use the commname as column names.
+tblTmpData <- tblTmpData %>%
+  pivot_longer(cols=all_of(names(select(tblTmpData, -commname))),
+                             names_to = "column", values_to="value") %>%
+  pivot_wider(id_cols="column", names_from=commname, values_from=value)
+
+tblTmpData <- select(tblTmpData, -column)
+tblTmpData <- data.frame(tableLabelList, tblTmpData)
+
+#Add some formatting rows in.
+tblTmpData <- tblTmpData %>% add_row(.before=6)
+tblTmpData <- tblTmpData %>% add_row(.before=12)
+tblTmpData <- tblTmpData %>% add_row(.before=18)
+tblTmpData <- tblTmpData %>% add_row(.before=24)
+tblTmpData <- tblTmpData %>% add_row(.before=30)
+tblTmpData <- tblTmpData %>% add_row(.before=35)
+
+
+kbl(tblTmpData,
+    col.names = c("", names(select(tblTmpData, -tableLabelList)) %>% str_replace(., "\\.", " ")),
+    caption=formatTableHeader(str_interp("Harvest and use characteristics, ${studyear}"))) %>%
+      kable_styling(full_width = F) %>%
+      row_spec(1,bold=T,hline_after = T) %>%
+      row_spec(7,bold=T,hline_after = T) %>%
+      row_spec(13,bold=T,hline_after = T) %>%
+      row_spec(19,bold=T,hline_after = T) %>%
+      row_spec(25,bold=T,hline_after = T) %>%
+      row_spec(31,bold=T,hline_after = T) %>%
+      add_indent(c(2,3,4,5,8,9,10,11,14,15,16,17,
+                   20,21,22,23,26,27,28, 29,
+                   32,33,34,35)) 
+
+
+```
+
+## Write CSV files
+
+```{r write csv files}
+
+# ##############################################################################
+# Write out CSV files.
+# ##############################################################################
+
+# Write harvest and use characteristics data file
+  fName = '../../CSV/05 - Final Analysis Output/harvuse_characteristics(T)_raw.csv'
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(harvData), ' records to be written', sep='')))
+
+# For 2023; we are, by default, working exclusively with R code..
+  rio::export(harvData, fName)
+  
+# Write harvest and use characteristics for box and whisker data
+  fName = '../../CSV/05 - Final Analysis Output/harvuse_characteristicsFigure_raw.csv'
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(figFinalData), ' records to be written', sep='')))
+
+# For 2023; we are, by default, working exclusively with R code..
+  rio::export(figFinalData, fName)
+
+```
+
+<p class="h1footer"> End of Harvest and Use Characteristics script. </p>

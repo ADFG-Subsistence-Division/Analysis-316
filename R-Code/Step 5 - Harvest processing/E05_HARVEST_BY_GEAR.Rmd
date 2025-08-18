@@ -1,0 +1,1027 @@
+---
+title: "E05_HARVEST_BY_GEAR - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-15"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">E05_HARVEST_BY_GEAR - (316) NPS Ambler Comprehensive</div>
+</div>
+
+# Harvest by gear
+
+Create harvest by gear type summary files for final tables and figures.
+
+## Change log
+
+### Change 1
+- Programmer: D.S.Koster  
+- Date: 05/21/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output. Improved automation so that code will largely run without needing substantial updates first. 
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates  
+
+### Change 2
+- Programmer: Jesse Coleman
+- Date: 03/18/2025
+- Change Description: Removed source() calls; all functions are included in the library adfgSubs.
+- Template Update [Y|N]: Y
+- One-Off: No-include in all future comprehensive templates 
+
+### Change 3
+- Programmer: Jesse Coleman
+- Date: 07/10/2025
+- Change Description: Refactor using tidyverse language and DRY ("don't repeat 
+yourself") principles.
+- Template Update [Y|N]: Y
+- One-Off: No - include in all future comprehensive templates
+
+
+## Input data
+  
+- /CSV/03 - Main/harvData_HH_finalPrepped.csv  
+- /CSV/00 - Lookup Codes/salmonGear.csv  
+- /CSV/00 - Lookup Codes/nonSalmonGear.csv  
+
+## Output data
+
+- /CSV/05 - Final Analysis Output/Fish_By_Gear_Table_raw.csv  
+- /CSV/05 - Final Analysis Output/Fish_By_Gear_FIG_raw.csv  
+- /CSV/05 - Final Analysis Output/Fish_By_GearPCT_raw.csv 
+
+
+### Checklist
+  
+- Update 'Author' to your name
+- Update the project information in 'title' to the current project
+- Update the development log with any changes you've made to the template file, including your name  
+- Update template tables with data produced  
+- Compare template tables you created with outputs here  
+
+## Additional information
+
+This file uses a substantial level of automation, please be sure to verify that all columns necessary for harvest by gear are included. 
+
+The harvest estimates are produced from the standardize and validate code and read in as a .csv file.  
+
+### Functions used/dependencies
+ 
+
+### Required libraries (adjust as needed)
+  
+- tidyVerse  
+- rio  
+- knitr  
+- kableExtra  
+- RColorBrewer
+- adfgSubs
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+
+# Additional libraries
+library(knitr)
+library(kableExtra)
+library(adfgSubs)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+
+```
+
+## Load data
+
+```{r load data}
+
+# ##############################################################################
+# Load data from intermediate files.
+# ##############################################################################
+
+harvData <- read.csv('../../CSV/03 - Main/harvData_HH_finalPrepped.csv',
+                   na = '', 
+                   header = TRUE, 
+                   strip.white = TRUE)
+
+count <- nrow(harvData)
+cat(formatSummaryBlock(paste("Opening file: harvData_HH_finalPrepped.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+salmonGearData <- read.csv('../../CSV/00 - Lookup Codes/salmonGear.csv',
+                   na = '', 
+                   header = TRUE, 
+                   strip.white = TRUE)
+
+count <- nrow(salmonGearData)
+cat(formatSummaryBlock(paste("Opening file: salmonGear.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+nonSalmonGearData <- read.csv('../../CSV/00 - Lookup Codes/nonSalmonGear.csv',
+                   na = '', 
+                   header = TRUE, 
+                   strip.white = TRUE)
+
+count <- nrow(nonSalmonGearData)
+cat(formatSummaryBlock(paste("Opening file: nonSalmonGear.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+projectGear <- dplyr::bind_rows(salmonGearData, nonSalmonGearData) %>%
+  distinct()
+
+projectGear <- projectGear$harvAmtList
+
+
+```
+
+## Lists for automation
+
+Set lists of subsistence gear type names. Make sure these are in the order you want to see them on the output table, and remove unwanted or unnecessary columns. By Default, all columns are listed; these should also all be present in the data file.
+
+<div class="todoBlock"> TO DO: Verify that the lists for subsistence and 'other' shown below are correct and that 'other' gear appropriately incldues or excludes DipNet; this change will need to be made in allSubsGearList and allOtherGearList.</div>
+
+```{r project specific automation lists}
+
+# Full standard list of names; sub-set as needed.
+allSubsGearList = c("amtDriftGillNet", "amtSetGillNet", "amtUnspecifiedGillNet", "amtSeine", 
+                 "amtUnspecifiedSubsistenceNet", "amtFishTrap", "amtFishWheel", 
+                 "amtJigHandLine", "amtHookUnderIce", "amtTrotLine", "amtFishTrapUnderIce", 
+                 "amtUnspecifiedIceFishing", "amtLongLineSkate", "amtSpearGaff", 
+                 "amtCastNet", "amtOtherGear")
+
+#Subset subsistence
+subsGearList = intersect(projectGear, allSubsGearList)
+
+cat("<h4>Subsistence gear types found:</h4>")
+cat(formatValueList(subsGearList))
+
+# List of commercial fishing columns (Always include all, even if 0)
+cfHarvList = c("amtGavetoCrew", "amtGaveOthers", "removeOwnUse")
+
+# List of sport / non-subsistence gear (check local regs on dipnet)
+allOtherGearList = c("amtDipNet", "amtTrolling", "amtRodReel")
+
+# Example subset
+otherGearList = intersect(projectGear, allOtherGearList)
+
+cat("<h4>Other gear types found:</h4>")
+cat(formatValueList(otherGearList))
+
+
+```
+
+```{r other automation lists}
+
+commnameList <- select(harvData, commname) %>% distinct(commname)
+
+# Make the full starting list of gear type names.
+fullGearList = c(cfHarvList, subsGearList, otherGearList)
+fullGearData <- syms(fullGearList)
+
+#Cross reference for gear-column name to label
+gearLabelData <- data.frame(gearType = c("amtGavetoCrew", "amtGaveOthers", "removeOwnUse", 
+                                         "amtCFHarv","amtSubsHarv",
+                                         "amtDriftGillNet", "amtSetGillNet", "amtUnspecifiedGillNet", "amtSeine", 
+                                         "amtUnspecifiedSubsistenceNet", "amtFishTrap", "amtFishWheel", 
+                                         "amtJigHandLine", "amtHookUnderIce", "amtTrotLine", "amtFishTrapUnderIce", 
+                                         "amtUnspecifiedIceFishing", "amtLongLineSkate", "amtSpearGaff", 
+                                         "amtCastNet", "amtOtherGear",
+                                         "amtDipNet", "amtTrolling", "amtRodReel"),
+                            gearName = c("Commercial-Gave to crew", 
+                                         "Commercial-Gave to others", 
+                                         "Commercial-Remove own use",
+                                         "Commercial retention",
+                                         "Subsistence gear subtotal",
+                                         "Drift net", 
+                                         "Set net", 
+                                         "Gill net", 
+                                         "Seine", 
+                                         "Unspecified subs. net", 
+                                         "Fish trap", 
+                                         "Fish wheel", 
+                                         "Jig/Hand-line", 
+                                         "Hook Under Ice", 
+                                         "Trot line", 
+                                         "Fish trap under ice", 
+                                         "Ice fishing", 
+                                         "Long line/skate", 
+                                         "Spear/gaff", 
+                                         "Cast net", 
+                                         "Other Gear",
+                                         "Dip net", "Trolling", "Rod & reel"))
+
+
+# Initalize the final output list.
+finalGearCols = c()
+
+# Commercial fishing gear will be the first detail gear to use.
+for(gear in cfHarvList)
+{
+  finalGearCols = c(finalGearCols, 
+                    gear,
+                    paste("lbs_", gear, sep=""))
+}
+
+# Add totals columns for CF into the final output columns 
+finalGearCols = c(finalGearCols, "amtCFHarv", "lbs_amtCFHarv")
+
+# Subsistence gear.
+for(gear in subsGearList)
+{
+  finalGearCols = c(finalGearCols, 
+                      gear,
+                      paste("lbs_", gear, sep=""))
+}
+
+# Totals for subsistence gear.
+finalGearCols = c(finalGearCols, "amtSubsHarv", "lbs_amtSubsHarv")
+
+# Other gear.
+for(gear in otherGearList)
+{
+  finalGearCols = c(finalGearCols, 
+                      gear,
+                      paste("lbs_", gear, sep=""))
+}
+
+# Finalize the 'final' output columns; broken by gear type and
+#       'key' information. Note that we are only including 
+#        estimated data for clarity.
+finalGearCols <- paste("e", finalGearCols, sep="")
+keyOutputCols <- c("projID", "studyear", "communty", "commname", 
+                   "NHouseholds", "NPopulation", "resource", "resName", 
+                   "units", "convFact")
+totalAmtCols <- c("estHarvestAmt", "estHarvestLbs")
+finalOutputCols <- c(keyOutputCols, finalGearCols, totalAmtCols)
+
+```
+
+## Reduce data
+
+For more streamlined processing, the data frame is reduced to just fish (resource < 200000000) and only individual species. 
+
+```{r reduce data}
+# Trim extra spaces from resource names; add indentation for species names.
+harvData <- harvData %>%
+  mutate(resName = trimws(resName),
+         case_when(specList == 1 ~ paste('     ', resName, sep=''),
+                   TRUE ~ resName))
+
+# Just individual species for salmon and other fish.
+amtByGearData <- harvData %>% 
+  filter(specList == 1 & resource < 200000000) %>% 
+
+#  Only columns necessary for analysis.
+  select(projID, studyear, communty, commname, strata, strataWt, NHouseholds,
+         NPopulation, resource, resName, units, convFact, 
+         harvestAmt_MR, harvestLbs_MR, estHarvestAmt, estHarvestLbs,
+         !!!fullGearData, amtDogFood)
+
+# Set aside for comparisons
+totalRowsData <- harvData %>% 
+  filter(resource %in% c(110000000, 120000000))
+
+
+```
+
+# Harvest by gear tables
+
+## Summarize for export
+
+```{r harvest by gear tables}
+# Set up gear lists
+  # Add commercial and subsistence harvest columns to the full gear type list
+  fullGearList2 <- c("amtCFHarv", "amtSubsHarv", fullGearList) 
+  # Expand the fullGearList to include pounds
+  fullGearList3 <- c(fullGearList2, paste("lbs_", fullGearList2, sep="")) 
+  # Expand the fullGearList to include estimated values
+  fullGearList4 <- c(fullGearList3, paste("e", fullGearList3, sep=""))
+  
+
+finalHarvByGearData <- amtByGearData %>%
+  # Calculate total amounts for commercial and subsistence harvests
+  rowwise() %>%
+  mutate(amtCFHarv = sum(across(all_of(cfHarvList)), na.rm=TRUE),
+         amtSubsHarv = sum(across(all_of(subsGearList)), na.rm=TRUE)) %>%
+  ungroup() %>%
+  
+  # Calculate pounds; new columns will simply be given 'lbs_' to distinguish
+  mutate(across(all_of(c(fullGearList2, 'amtDogFood')),
+                ~ . * convFact,
+                .names='lbs_{.col}')) %>%
+  
+  # Make estimates by applying stratified weights
+  mutate(across(all_of(c(fullGearList3, 'amtDogFood', 'lbs_amtDogFood')),
+                ~ . * strataWt,
+                .names="e{.col}")) %>%
+  
+  # Summarize to community/species level; include the estimated amount
+  # and pounds previously calculated
+  group_by(projID, studyear, communty, commname,
+           NHouseholds, NPopulation, resource, resName, units, convFact) %>%
+  summarize(across(all_of(c(fullGearList4, totalAmtCols,
+                            'amtDogFood', 'lbs_amtDogFood', 
+                            'eamtDogFood', 'elbs_amtDogFood')), sum),
+            .groups = "drop") %>%
+  
+  # Create the sub-totals for salmon and non-salmon species
+  { subTotData <<- .; subTotData } %>%
+  mutate(resource = trunc(resource / 10000000) * 10000000,
+         resName = case_when(
+           resource == 110000000 ~ "Salmon",
+           resource == 120000000 ~ "Nonsalmon fish",
+           TRUE ~ resName
+         ),
+         # Units for nonsalmon fish are always 'lb'
+         units = if_else(resource == 120000000, 2, units)
+  ) %>%
+  
+  # Sub-totals for salmon and nonsalmon species
+  group_by(projID, studyear, communty, commname,
+           NHouseholds, NPopulation, resource, resName, units) %>%
+  summarize(across(all_of(c(fullGearList4, totalAmtCols,
+                            'amtDogFood', 'lbs_amtDogFood', 
+                            'eamtDogFood', 'elbs_amtDogFood')), sum),
+            .groups = "drop") %>%
+  
+  # Combine sub-totals with the original data and sort the results
+  bind_rows(subTotData) %>%
+  arrange(projID, studyear, communty, resource) %>%
+  
+  # Select the final output columns and include additional calculated columns
+  select(
+    !!!syms(finalOutputCols), 
+    eamtDogFood, elbs_amtDogFood
+  )
+```
+
+## Review harvest by gear tables  
+
+### Salmon harvest by gear  
+```{r salmon table output review}
+
+tmpData <- ungroup(finalHarvByGearData) %>%
+  filter(resource < 120000000)
+
+# Round the columns for display.
+tmpData <- mutate(tmpData, across(all_of(c(finalGearCols, totalAmtCols)), ~ round(., 1)))
+
+for(comm in commnameList$commname)
+{
+  
+  tblTmpData <- filter(tmpData, commname == comm) %>%
+    select(resName, !!!syms(c(finalGearCols, totalAmtCols)))
+  
+  tblOut <- kbl(tblTmpData,
+                caption=formatTableHeader(str_interp("Harvests of salmon by gear type: ${comm}, ${studyear}"))) %>%
+    kable_styling() %>% 
+    scroll_box(width = "100%", height = "400px")
+  
+  print(tblOut)
+  
+  # Check to see if the sum-totals match from earlier processing steps. If not, throw an error message.
+  thisEstAmt = tmpData$estHarvestAmt[tmpData$resource == 110000000 & comm==tmpData$commname]
+  prevEstAmt = round(sum(totalRowsData$estHarvestAmt[totalRowsData$resource == 110000000 & comm==totalRowsData$commname]),1)
+  
+  if(thisEstAmt != prevEstAmt)
+  {
+    cat(errorMessage(str_interp("ERROR! - total amounts from harvest by gear for salmon do not match those calculated for the CSIS/Harvest and Use table for ${comm}, ${studyear}")))
+  } else {
+    cat(greenMessage(str_interp("${comm} harvest by gear total amount for salmon match those calculated for CSIS/Harvest and Use tables.")))
+  }
+}
+
+
+```
+
+### Non Salmon harvest by gear  
+```{r non salmon table output review}
+
+tmpData <- finalHarvByGearData %>% 
+  ungroup() %>% 
+  filter(resource >= 120000000) %>% 
+
+# Round the columns for display.
+  mutate(across(all_of(c(finalGearCols, totalAmtCols)), ~ round(., 1)))
+
+for(comm in commnameList$commname)
+{
+
+    tblTmpData <- filter(tmpData, commname == comm) %>%
+    select(resName, !!!syms(c(finalGearCols, totalAmtCols)))
+  
+    tblOut <- kbl(tblTmpData,
+        caption=formatTableHeader(str_interp("Harvests of non salmon fish by gear type: ${comm}, ${studyear}"))) %>%
+    kable_styling() %>% 
+    scroll_box(width = "100%", height = "400px")
+    
+    print(tblOut)
+    
+    # Check to see if the sum-totals match from earlier processing steps. If not, throw an error message.
+    thisEstLbs = tmpData$estHarvestLbs[tmpData$resource == 120000000 & comm==tmpData$commname]
+    prevEstLbs = round(sum(totalRowsData$estHarvestLbs[totalRowsData$resource == 120000000 & comm==totalRowsData$commname]),1)
+    
+    if(thisEstLbs != prevEstLbs)
+    {
+      cat(errorMessage(str_interp("ERROR! - total pounds from harvest by gear for non salmon do not match those calculated for the CSIS/Harvest and Use table for ${comm}, ${studyear}")))
+    } else {
+      cat(greenMessage(str_interp("${comm} harvest by gear total pounds for non salmon match those calculated for CSIS/Harvest and Use tables.")))
+    }
+}
+```
+
+# Harvest data for figures  
+
+## Organize data for figures  
+
+Data is organized into categories for salmon, marine fish, 'Whitefishes' and 'other fish'
+
+```{r harvest data for figures}
+
+figData <- finalHarvByGearData %>%
+  # Set default category info
+  mutate(
+    fishCategory = case_when(
+      resource < 120000000 ~ "Salmon",
+      resource >= 120000000 & resource < 124500000 ~ "Marine fish",
+      (resource >= 125600000 & resource <= 125600003) |
+        (resource >= 126400000 & resource < 126500000) ~ "Whitefishes",
+      TRUE ~ "Other fish"
+    ),
+    sOrder = case_when(
+      resource < 120000000 ~ 1,
+      resource >= 120000000 & resource < 124500000 ~ 2,
+      (resource >= 125600000 & resource <= 125600003) |
+        (resource >= 126400000 & resource < 126500000) ~ 3,
+      TRUE ~ 4
+    )
+  ) %>%
+  # Remove species that weren't harvested
+  filter(estHarvestLbs > 0) %>%
+  # Remove summary rows
+  filter(resource != 120000000 & resource != 110000000) %>%
+  # Rank species within each group
+  group_by(projID, studyear, communty, sOrder) %>%
+  mutate(
+    harvRank = order(order(desc(estHarvestLbs))),
+    nCases = n()
+  ) %>%
+  ungroup() %>%
+  # Split into top 9 species and others
+  mutate(
+    resource = if_else(harvRank >= 10, 999999999, resource),
+    harvRank = if_else(harvRank >= 10, 10, harvRank),
+    resName = case_when(
+      sOrder == 1 & harvRank == 10 ~ "Other salmon",
+      sOrder == 2 & harvRank == 10 ~ "Other marine fishes",
+      sOrder == 3 & harvRank == 10 ~ "Other whitefishes",
+      sOrder == 4 & harvRank == 10 ~ "Other non salmon fishes",
+      TRUE ~ resName
+    )
+  ) %>%
+  # Aggregate the bottom ranks
+  group_by(projID, studyear, communty, commname, fishCategory, resource, resName, sOrder, 
+           NHouseholds, NPopulation, harvRank) %>%
+  summarize(
+    estHarvestLbs = sum(estHarvestLbs, na.rm = TRUE),
+    across(starts_with("elbs_"), \(xx) sum(xx, na.rm = TRUE)),
+    .groups = "drop"
+  ) %>%
+  # Combine top 9 species with aggregated bottom ranks
+  arrange(projID, studyear, communty, sOrder, harvRank) %>%
+  # Select final columns
+  select(
+    projID, studyear, communty, commname, fishCategory, resource, resName, sOrder, 
+    NHouseholds, NPopulation, estHarvestLbs, harvRank, starts_with("elbs_")
+  ) %>%
+  mutate(resName = trimws(resName))
+
+```
+
+## Review outputs  
+
+When creating figures, you need to verify that these figures generally match those appearing in the excel tables after those have been created, this will provide a check against copy-paste errors or 'linking' errors in excel as well as other types of mistakes readily attributed to excel, rather than the analysis.
+
+### Salmon figures  
+
+In producing salmon figures, columns will be selected according to basic rules:  
+  
+- Detail commercial fishing rows are not collected, only the aggregate for commercial retention  
+- "Subsistence" subtotal column is removed  
+- Overall total column is removed  
+
+In order for this figure to work properly in ggplot2, the data must be pivoted such that gear types are depicted as categories, rather than column names. This is accomplished via pivot_longer(). Data is then limited to just gear types having non-zero harvests. When developing figures for excel, we will the same approach of skipping gear types with zero-harvests, with the caveat that footnotes must be added if gear types were asked explicitly on the survey, but not used.
+
+example footnote: "Note: Dip net for salmon was asked on the survey form, but respondents did not indicate use." or something similar. 
+
+```{r salmon figures}
+
+# Remove all gear types without harvest quantities for clarity (by category).
+plotSalmonData <- pivot_longer(figData, cols=starts_with("elbs_"), names_to="gearType", values_to="harvestLbs") %>%
+  filter(resource < 120000000 & 
+           !(gearType %in% paste('elbs_', cfHarvList, sep="")) &
+           gearType != 'elbs_amtSubsHarv')
+
+# Find the 'max' harvest for each specified gear type as a mutate. Filter on this so that gear types
+#   without harvests don't appear (this is done to provide a mechanism for analysts
+#   to simply RUN the R-Markdown without first correctly identifying gear type).
+plotSalmonData <- group_by(plotSalmonData, projID, studyear, communty, gearType) %>%
+  mutate(maxGearLbs = max(harvestLbs, na.rm=TRUE)) %>%
+  filter(harvestLbs > 0) %>%
+  ungroup()
+
+plotSalmonData$gearType = str_replace(plotSalmonData$gearType, 'elbs_', '')
+plotSalmonData <- left_join(plotSalmonData, gearLabelData, by="gearType")
+
+for(comm in commnameList$commname)
+{
+  tmpFigData <- filter(plotSalmonData, commname == comm) %>%
+    select(fishCategory, harvRank, resName, gearName, harvestLbs)
+
+  colCount = nrow(distinct(tmpFigData, gearName))
+  colrs <- getColors(nColors = colCount)
+
+  # ggplot labels  
+  tmpFigLabels <- group_by(tmpFigData, fishCategory, harvRank) %>%
+    summarize(labelValue = sum(harvestLbs, na.rm=TRUE)) %>% 
+    arrange(desc(harvRank)) %>%
+    ungroup()
+
+  # Start with initial plot information.
+  plotOut <- ggplot(tmpFigData, aes(x=reorder(resName, desc(harvRank)), y=harvestLbs)) +
+  ggtitle(str_interp("Harvests of salmon by gear type ${comm}, ${studyear}")) +
+      geom_col(aes(fill = gearName), width=0.7) +
+      scale_fill_manual(values = colrs)
+                        
+  # Add labels, use 1% of highest harvest amount as the margin.
+  margin = ceiling(max(tmpFigLabels$labelValue) *.01)
+  for(ii in 1:nrow(tmpFigLabels))
+  {
+    tmpAmt = round(tmpFigLabels$labelValue[ii], 1)
+    
+    # Default align to the RIGHT.
+    lrAlign = 0
+    # If we think that the label will spill over the edge of the plot,
+    #  align to the inside edge.
+    if(tmpAmt/max(tmpFigLabels$labelValue) > 0.75)
+    { 
+      lrAlign = 1 
+      margin = margin * -1
+    }
+    
+    plotOut = plotOut + 
+          annotate("text", x=ii, y=tmpAmt+margin, 
+                    label=tmpAmt, hjust=lrAlign, angle=0)
+  }
+  
+  # Add remainder of formatting.
+  plotOut = plotOut +
+    coord_flip() +
+    ylab("Harvest (Pounds)") +
+    xlab("Resource/Gear type") +
+    theme(text=element_text(family="serif")) +
+    theme(legend.title = element_blank()) +
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+    panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+    theme(legend.position="bottom")
+  
+  # Display plots
+  print(plotOut)
+  
+}
+
+
+```
+
+### Non salmon figures
+```{r non salmon figures}
+
+
+#Remove all gear types without harvest quantities for clarity (by category).
+plotNonSalmonData <- pivot_longer(figData, cols=starts_with("elbs_"), names_to="gearType", values_to="harvestLbs") %>%
+  filter(resource > 120000000 & 
+           !(gearType %in% paste('elbs_', cfHarvList, sep="")) &
+           gearType != 'elbs_amtSubsHarv')
+
+# Find the 'max' harvest for each specified gear type as a mutate. Filter on this so that gear types
+#   without harvests don't appear (this is done to provide a mechanism for analysts
+#   to simply RUN the R-Markdown without first correctly identifying gear type).
+plotNonSalmonData <- group_by(plotNonSalmonData, projID, studyear, communty, gearType) %>%
+  mutate(maxGearLbs = max(harvestLbs, na.rm=TRUE)) %>%
+  filter(harvestLbs > 0) %>%
+  ungroup()
+
+plotNonSalmonData$gearType = str_replace(plotNonSalmonData$gearType, 'elbs_', '')
+plotNonSalmonData <- left_join(plotNonSalmonData, gearLabelData, by="gearType")
+
+for(comm in commnameList$commname)
+{
+
+  tmpFigData <- filter(plotNonSalmonData, commname == comm) %>%
+    select(fishCategory, harvRank, resName, gearName, harvestLbs)
+
+  if(nrow(tmpFigData) > 0)
+  {
+    colCount = nrow(distinct(tmpFigData, gearName))
+    colrs <- getColors(nColors = colCount)
+  
+    # ggplot labels  
+    tmpFigLabels <- group_by(tmpFigData, fishCategory, harvRank) %>%
+      summarize(labelValue = sum(harvestLbs, na.rm=TRUE)) %>% 
+      arrange(desc(fishCategory), desc(harvRank)) %>%
+      ungroup()
+    
+    tmpFigData <- arrange(tmpFigData, fishCategory, harvRank, desc(harvestLbs))
+    tmpFigData$dispOrder = 1:nrow(tmpFigData)
+    
+    # Start with initial plot information.
+    plotOut <- ggplot(tmpFigData, aes(x=reorder(resName, desc(dispOrder)), y=harvestLbs)) +
+    ggtitle(str_interp("Harvests of non-salmon fish by gear type ${comm}, ${studyear}")) +
+        geom_col(aes(fill = gearName), width=0.7) +
+        scale_fill_manual(values = colrs) 
+                          
+    # Add labels, use 1% of highest harvest amount as the margin.
+    margin = ceiling(max(tmpFigLabels$labelValue) *.01)
+    for(ii in 1:nrow(tmpFigLabels))
+    {
+      tmpAmt = round(tmpFigLabels$labelValue[ii], 1)
+      # Default align to the RIGHT.
+      lrAlign = 0
+      # If we think that the label will spill over the edge of the plot,
+      #  align to the inside edge.
+      if(tmpAmt/max(tmpFigLabels$labelValue) > 0.75)
+      { 
+        lrAlign = 1
+        margin = margin * -1
+      }
+      
+      plotOut = plotOut + 
+        annotate("text", x=ii, y=tmpAmt + margin, 
+                 hjust=lrAlign, label=tmpAmt)
+    }
+    
+    # Add remainder of formatting.
+    plotOut = plotOut +
+      coord_flip() +
+      ylab("Harvest (Pounds)") +
+      xlab("Resource/Gear type") +
+      theme(text=element_text(family="serif")) +
+      theme(legend.title = element_blank()) +
+      theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+      panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+      theme(legend.position="bottom") +
+      theme(plot.margin = margin(t=1,r=0,b=1,l=1, "cm"))
+    
+    # Display plots
+    print(plotOut)
+  }  # End of 'if no records' logic item.
+}
+
+```
+
+# Harvest by gear percentages
+
+The next bit of code develops what is the most challenging table to folks to interpret. It presents percentages by species and gear type, but those percentages depict the following 3 things:  
+- Percent of gear (Gear type)  
+- Percent of resource (resource)  
+- Percent of total category harvest (Total)  
+
+The confusion part of this is that these are presented in groupings by resource. For each resource on the table, there will be 3 percent bases to evaluate. Ensuring that tables have been properly constructed is also somewhat confounding. For the purposes of ensuring that the analysis is correct, at least, the 3 bases are split up in the tables presented below.
+
+## Percentage of harvests by gear
+
+This section of code is not straight-forward. mutate(across()) is used to run across each gear column and divide by the category total for each gear type. Three data frames are used to accomplish this.  
+
+The first data frame is the denominator. This will be the the base of the percent. To create this dataframe, start with an aggregation to get the summary total for each gear type by category. All other columns are stripped out. Summary values are re-merged with the original data frame so that there is one row for every resource.  
+
+The second data frame is the numerator. This is simply the estimated values for each amount and pounds of gear.  
+
+The third dataset contains only key information, such as projID, studyear, community and other information we want to show up in the final table. Mutate() across() is used to step through each gear type in the numerator and denominator and divide to get a percentage. These percentages are finally merged with key information. The reason this will work is that R doesn't re-order rows unless arrange() is used.
+
+
+Evaluate the table below to ensure that for each **GEAR TYPE**, percentages sum to 1. This is **SUM WITHIN EACH COLUMN**. The component resources should sum to 1 and the top row (Salmon / Non Salmon) should always == 1.
+
+```{r pct harvest by gear}
+# Prep a temporary dataset for use in calculating each of the 3 bases.
+gearPctPrepData <- finalHarvByGearData %>% 
+  mutate(category = if_else(resource < 120000000, 1, 2))
+  # Get the denominator (percent base) for the percentage calculation, and only
+  #   keep the gear columns.
+
+denomByGearData1 <- group_by(gearPctPrepData, projID, studyear, communty, category) %>%
+                summarize(across(all_of(c("estHarvestAmt", "estHarvestLbs", finalGearCols)), max)) 
+
+denomByGearData2 <- select(gearPctPrepData, projID, studyear, communty, resource, category) %>%
+                 group_by(projID, studyear, communty, resource, category) %>%
+                 right_join(denomByGearData1, by=c("projID", "studyear", "communty", "category"))
+
+denomByGearData3 <- ungroup(denomByGearData2) %>%
+                select(!!!syms(c("estHarvestAmt", "estHarvestLbs", finalGearCols)))
+
+
+# Get the key identifying information (ki) for this dataset. Ungroup to prevent
+#   columns from unexpected and unwanted columns being re-added.
+kiData <- gearPctPrepData %>% 
+  ungroup() %>%
+  select(projID, studyear, communty, commname, resource, resName, units)
+
+# Get the numerators for the operation into a single data frame
+numByGearData <- ungroup(gearPctPrepData) %>%
+                select(!!!syms(c("estHarvestAmt", "estHarvestLbs", finalGearCols)))
+
+# Calculate percentages using base of 'all resources for category'
+pctByGearData <- mutate(numByGearData, across(all_of(c("estHarvestAmt", "estHarvestLbs", finalGearCols)), ~ . / denomByGearData3[[cur_column()]]))
+
+# Put key (ki) data back together with the percent by gear data.
+pctByGearData <- dplyr::bind_cols(kiData, pctByGearData)
+
+# Give 'base' a value for the output table and a number for sorting.
+pctByGearData$base = 1
+pctByGearData$baseDesc = "Gear type"
+
+for(comm in commnameList$commname) 
+{
+  # Do salmon and non salmon separately 
+  tblTmpData <- filter(pctByGearData, 
+                      commname == comm & resource < 120000000) %>%
+    mutate(across(seq(8, ncol(.) - 2), ~ scales::percent(., accuracy = 0.1))) %>% 
+    select(resName, units, !!!syms(c("estHarvestAmt", "estHarvestLbs", finalGearCols))) %>%
+    select(where(~ all(!is.na(.))))
+  
+  tblOut <- kbl(tblTmpData,
+                caption=formatTableHeader(str_interp("Percent of salmon harvested by gear type: ${comm}, ${studyear}"))) %>%
+    kable_styling() %>% 
+    scroll_box(width = "100%", height = "400px")
+
+  print(tblOut)
+  
+  # Do salmon and non salmon separately 
+  tblTmpData = filter(pctByGearData, 
+                      commname == comm & resource >= 120000000) %>%
+    # Reformat all gear amount/pounds columns as percentages
+    mutate(across(seq(8, ncol(.) - 2), ~ scales::percent(., accuracy = 0.1))) %>% 
+    select(resName, units, !!!syms(c("estHarvestAmt", "estHarvestLbs", finalGearCols))) %>% 
+    # Don't show the columns were there are no data/only zeros.
+    select(where(~ all(!is.na(.))))
+  
+  tblOut <- kbl(tblTmpData,
+                caption=formatTableHeader(str_interp("Percent of non salmon harvested by gear type: ${comm}, ${studyear}"))) %>%
+    kable_styling() %>% 
+    scroll_box(width = "100%", height = "400px")
+  print(tblOut)
+  
+}
+
+```
+
+## Percent of harvests by resource
+
+Evaluate the table below to ensure that for each resource the gear type percentages sum to 1 **across the row**. Note that subsHarv and CFHarv are sub-totals that has been left in to verify that constituent categories are appropriately calculated. Note that subsistence gear should sum to subsHarv and commercial retention columns should sum to CFHarv. Finally, subHarv + CFHarv + any sport gears (Rod and reel / Dip net) sum to 1 across the row.
+
+The total harvest columns should always be == 1. The categories (Salmon / Non Salmon) will not == 1 for each component gear type. These will add across the row the same as the component species.
+
+```{r percent harvest by resource}
+# Get just the columns of gear, separated by pounds and amount so that
+#   we can later divide by the correct denominator.
+numByResData <- ungroup(gearPctPrepData) %>%
+                select(!!!syms(finalGearCols))
+
+# Prepare percentage data for both pounds and amount
+pctByResData <- gearPctPrepData %>%
+  ungroup() %>%
+  # Extract gear columns
+  select(!!!syms(finalGearCols)) %>%
+  # Separate into pounds and amount, then calculate percentages
+  { 
+    numByResLbsData <- select(., starts_with("elbs_")) %>%
+      mutate(estHarvestLbs = gearPctPrepData$estHarvestLbs) %>%
+      mutate(across(everything(), ~ . / gearPctPrepData$estHarvestLbs))
+    
+    numByResAmtData <- select(., !starts_with("elbs_")) %>%
+      mutate(estHarvestAmt = gearPctPrepData$estHarvestAmt) %>%
+      mutate(across(everything(), ~ . / gearPctPrepData$estHarvestAmt))
+    
+    # Combine key information, percent by pounds, and percent by amount
+    dplyr::bind_cols(kiData, numByResLbsData, numByResAmtData)
+  } %>%
+  # Re-order columns for readability
+  select(!!!syms(c(colnames(kiData), "estHarvestLbs", "estHarvestAmt", finalGearCols))) %>%
+  # Add "base" and "baseDesc" for the output table
+  mutate(
+    base = 2,
+    baseDesc = "Resource"
+  )
+
+# Iterate through each community and generate tables for salmon and non-salmon
+for (comm in commnameList$commname) {
+  # Salmon data
+  tblTmpData <- pctByResData %>%
+    filter(commname == comm & resource < 120000000) %>%
+    mutate(across(seq(8, ncol(.) - 2), ~ scales::percent(., accuracy = 0.1))) %>% 
+    select(resName, units, !!!syms(c("estHarvestAmt", "estHarvestLbs", finalGearCols)))
+  
+  tblOut <- kbl(
+    tblTmpData,
+    caption = formatTableHeader(str_interp("Percent of salmon harvested by resource/gear type: ${comm}, ${studyear}"))
+  ) %>%
+    kable_styling() %>% 
+    scroll_box(width = "100%", height = "400px")
+  
+  print(tblOut)
+  
+  # Non-salmon data
+  tblTmpData <- pctByResData %>%
+    filter(commname == comm & resource >= 120000000) %>%
+    mutate(across(seq(8, ncol(.) - 2), ~ scales::percent(., accuracy = 0.1))) %>% 
+    select(resName, units, !!!syms(c("estHarvestAmt", "estHarvestLbs", finalGearCols)))
+  
+  tblOut <- kbl(
+    tblTmpData,
+    caption = formatTableHeader(str_interp("Percent of non salmon harvested by resource/gear type: ${comm}, ${studyear}"))
+  ) %>%
+    kable_styling() %>% 
+    scroll_box(width = "100%", height = "400px")
+  
+  print(tblOut)
+}
+
+```
+
+## Percent of total
+
+The table and calculations below depict the % contribution to the whole category (Salmon / Non Salmon). In this case, all individual cells, except for the total harvest amount by category, will sum to 0. If it appears that these are summing to a larger value or values will apparently sum to a higher value, then there is an error and it must be corrected.  
+
+```{r percent of total}
+
+# Get totals to use for denominator.
+gearPctPrepData$catHarvestAmt <- gearPctPrepData$estHarvestAmt
+gearPctPrepData$catHarvestLbs <- gearPctPrepData$estHarvestLbs
+
+denomByTotData <- group_by(gearPctPrepData, projID, studyear, communty, category) %>%
+  summarize(across(c("catHarvestAmt", "catHarvestLbs"), max))
+
+denomByTotData <- select(gearPctPrepData, projID, studyear, communty, resource, category) %>%
+  group_by(projID, studyear, communty, resource, category) %>%
+  right_join(denomByTotData, by=c("projID", "studyear", "communty", "category"))
+
+# We can use the same numerator by res data frame that contains all columns to
+#   start off with, but we have to use a different data frame of numerators.
+numLbsByTotData <- select(numByResData, starts_with("elbs_"))
+numLbsByTotData$estHarvestLbs = gearPctPrepData$estHarvestLbs
+numLbsByTotData$catHarvestLbs = denomByTotData$catHarvestLbs
+
+numAmtByTotData <- select(numByResData, !starts_with("elbs_"))
+numAmtByTotData$estHarvestAmt = gearPctPrepData$estHarvestAmt
+numAmtByTotData$catHarvestAmt = denomByTotData$catHarvestAmt
+
+#  Calculate percent of category total for all gear columns.
+pctByTotLbsData <- mutate(numLbsByTotData,
+                          across(everything(), ~ . / denomByTotData$catHarvestLbs))
+pctByTotAmtData <- mutate(numAmtByTotData,
+                          across(everything(), ~ . / denomByTotData$catHarvestAmt))
+
+# Merge the files: Key information, percent by total pounds and percent by total amount.
+pctByTotData <- dplyr::bind_cols(kiData, pctByTotLbsData) %>%
+  dplyr::bind_cols(pctByTotAmtData)
+
+# re-order the files (not strictly necessary, but helpful for step-by-step review.)
+pctByTotData <- select(pctByTotData, !!!syms(c(colnames(kiData), "estHarvestLbs", "estHarvestAmt",
+                                               finalGearCols)))
+
+# Give 'base' a value for the output table and a number for sorting.
+pctByTotData$base = 3
+pctByTotData$baseDesc = "Total"
+
+
+for(comm in commnameList$commname)
+{
+  # Do salmon and non salmon separately
+  tblTmpData = filter(pctByTotData,
+                      commname == comm & resource < 120000000) %>%
+    mutate(across(seq(8, ncol(.) - 2), ~ scales::percent(., accuracy = 0.1))) %>% 
+    select(resName, units, !!!syms(c("estHarvestAmt", "estHarvestLbs", finalGearCols)))
+
+  tblOut <- kbl(tblTmpData,
+                caption=formatTableHeader(str_interp("Percent of salmon harvested by resource/gear type: ${comm}, ${studyear}"))) %>%
+    kable_styling() %>% 
+    scroll_box(width = "100%", height = "400px")
+
+  print(tblOut)
+
+  # Do salmon and non salmon separately
+  tblTmpData = filter(pctByTotData,
+                      commname == comm & resource >= 120000000) %>%
+    mutate(across(seq(8, ncol(.) - 2), ~ scales::percent(., accuracy = 0.1))) %>% 
+    select(resName, units, !!!syms(c("estHarvestAmt", "estHarvestLbs", finalGearCols)))
+
+  tblOut <- kbl(tblTmpData,
+                caption=formatTableHeader(str_interp("Percent of non salmon harvested by resource/gear type: ${comm}, ${studyear}"))) %>%
+    kable_styling() %>% 
+    scroll_box(width = "100%", height = "400px")
+  print(tblOut)
+
+}
+
+```
+
+## Final merge of percentage table
+
+Before writing out files, the 3-base percentage data frames are combined and sorted.
+
+```{r final merge percentage}
+
+# Create percentage by community/category totals.
+
+# Merge percentages output data into single data frame for output.
+pctFinalOutputData <- dplyr::bind_rows(pctByTotData, pctByResData) %>%
+  dplyr::bind_rows(pctByGearData)
+
+# Sort final percentage output 
+pctFinalOutputData <- arrange(pctFinalOutputData, projID, studyear, communty,
+                              resource, base)
+
+# Clean up all of the problematic data created in steps 5-8.
+pctFinalOutputData <- nan_to_NA(pctFinalOutputData, 
+                                c(colnames(kiData), "estHarvestLbs", "estHarvestAmt",
+                                                      finalGearCols))
+pctFinalOutputData <- inf_to_NA(pctFinalOutputData, 
+                                c(colnames(kiData), "estHarvestLbs", "estHarvestAmt",
+                                  finalGearCols))
+
+pctFinalOutputData <- recode_variables(pctFinalOutputData, 
+                                c(colnames(kiData), "estHarvestLbs", "estHarvestAmt",
+                                  finalGearCols), NA, 0)
+
+# Remove labels for resources for 2 and 3, just to simplify the process
+#   of table creation.
+pctFinalOutputData$resName[pctFinalOutputData$base == 2 | pctFinalOutputData$base == 3] = ""
+
+```
+
+# Write CSV files
+
+```{r write csv files}
+
+# Write out CSV files.
+
+# Write out fish by gear table raw data.
+  fName = '../../CSV/05 - Final Analysis Output/Fish_By_Gear_Table_raw.csv'
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(finalHarvByGearData), ' records to be written', sep='')))
+
+# For 2023; we are, by default, working exclusively with R code..
+  rio::export(finalHarvByGearData, fName)
+
+# Write out fish by gear table raw data.
+  fName = '../../CSV/05 - Final Analysis Output/Fish_By_Gear_FIG_raw.csv'
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(figData), ' records to be written', sep='')))
+
+# For 2023; we are, by default, working exclusively with R code..
+  rio::export(figData, fName)
+  
+  
+# Write out fish by gear table raw data.
+  fName = '../../CSV/05 - Final Analysis Output/Fish_By_GearPCT_raw.csv'
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(pctFinalOutputData), ' records to be written', sep='')))
+
+# For 2023; we are, by default, working exclusively with R code..
+  rio::export(pctFinalOutputData, fName)
+  
+```
+
+<p class="h1footer"> End of harvest by gear type script. </p>

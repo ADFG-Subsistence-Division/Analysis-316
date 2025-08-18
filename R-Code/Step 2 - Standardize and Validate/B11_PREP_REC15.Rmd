@@ -1,0 +1,1065 @@
+---
+title: "B11_PREP_REC15 - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-15"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">B11_PREP_REC15 - (316) NPS Ambler Comprehensive</div>
+</div>
+# Prep REC15
+
+Organize and standardize REC15 (Birds and eggs) in order to merge with all other harvest record types in a later step. 
+
+## Changelog
+
+### Change 1
+- Programmer: D.S.Koster  
+- Date: 04/18/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output. Additional updates were made to allow knit to go forward and provide meaningful output rather than failing to knit with cryptic errors. Substantial automation has been implemented. TODO statements and red error boxes describe changes required per project.  
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive template
+
+### Change 2
+- Programmer: Jesse Coleman
+- Date: 03/18/2025
+- Change Description: Removed source() calls; all functions are included in the library adfgSubs.
+- Template Update [Y|N]: Y
+- One-Off: No-include in all future comprehensive templates 
+
+### Change 3
+- Programmer: Jesse Coleman
+- Date: 04/23/2025
+- Change Description: Refactor using tidyverse language and DRY ("don't repeat yourself") principles.
+- Template Update [Y|N]: Y
+- One-Off: No - include in all future comprehensive templates 
+
+## Input data
+  
+- /CSV/01 - Database Extract/REC15_raw.csv  
+- /CSV/03 - Main/convFact.csv  
+- /CSV/03 - Main/sample.csv
+
+*NOTE* Record type files MUST contain, at a minimum, the following: "projID", "studyear", "communty", "strata", "resource", "units". Conversion factor file (convFact.csv), MUST contain, at a minimum, the  following: "projID", "studyear", "communty", "resource", "units", "convFact","defaultUnits".
+
+## Output data
+  
+- /CSV/03 - main/REC15_CSIS_ORG_clean.csv  
+
+## Background
+
+Each harvest record type has been designed to contain the information relevant for a specific category of data. For example, record type 15 has been designed to contain harvest information for harvest for Migratory Birds. This record type typically involves season of harvest as well as a category for egg harvests. The final product of this file is to ensure that REC15 is organized in such a way it can be combined with all other harvest record types and is properly configured for incorporation with the CSIS dataset.
+
+## Checklist
+  
+- Update 'Author' to your name  
+- Update the project information in 'title' to the current project  
+- Update the development log with any changes you've made to the template file, including your name  
+- Convert units to defaults  
+- add missing resources to households  
+- Missing data replacement  
+- Add missing columns  
+- Organize into CSIS format (Season)
+
+## Additional Information
+
+Because the birds records are so consistent and there are quirks with the way seasons are reported (are reported for birds, are not for eggs), less automation has been implemented. Note that if there are changes with seasonal collection or harvest columns that will require evaluation for missing replacement, go to the "Missing replace" chunk and manually update.
+
+### Functions used/dependencies
+
+Lists from Z00_PROJECT_PARAMETERS.r, fullHarvColList
+
+### Required libraries
+
+- tidyVerse  
+- rio  
+- knitr
+- adfgSubs
+
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+library(knitr)
+library(adfgSubs)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+```
+
+## Load data
+
+For this file, we are loading the raw data extract for record type 5 - Birds and eggs.
+
+```{r load data}
+
+# Load data from intermediate files.
+# ##############################################################################
+
+# Load working data file.
+REC15Data <- read.csv(str_interp('../../CSV/01 - Database Extract/REC15_raw.csv'), 
+                      na = '', 
+                      header = TRUE, 
+                      strip.white = TRUE)
+count = nrow(REC15Data)
+cat(formatSummaryBlock(paste('Opened REC15_raw.csv, ', count, ' records loaded.', sep='')))
+
+# Load lookup file(s) & Limit to essential data.
+convFactData <- read.csv('../../CSV/03 - Main/convFact.csv', 
+                         na = '', header = TRUE, 
+                         strip.white = TRUE) %>%
+  select(projID, studyear, communty, resName, resource, units, convFact, lbsToDefault, defaultUnits)
+count <- nrow(convFactData)
+cat(formatSummaryBlock(paste('Opened convFact.csv, ', count, ' records loaded.', sep='')))
+
+# Load sample data
+sampleData <- read.csv(str_interp('../../CSV/03 - Main/sample.csv'), 
+                       na = '', 
+                       header = TRUE, 
+                       strip.white = TRUE)
+count <- nrow(sampleData)
+cat(formatSummaryBlock(paste('Opened sample.csv, ', count, ' records loaded.', sep='')))
+
+```
+
+## Reduce file
+
+The code chunk below (echoed for clarity), filters the record type 15 so only harvest records are included. When historical patterns or species-specific questions are asked separately from the main harvest and use section of the survey, they are sometimes stored in a 'sub-record' for REC15. This code should either:  
+- Do nothing  
+- Remove necessary rows  
+
+```{r remove non-harvest records, echo=TRUE}
+
+#REC15Data <- filter(REC15Data, subRecordCD == 0)
+
+```
+
+## Create lists for automation
+In the section of code below, please review column names and ensure that all data columns from the data entry screen are present for this analysis project. If there are columns used in the data entry screen, but are not present here, they will need to be added. The harvAmtList vector needs to contain all of the harvest information columns. The recodeColList vector contains all of the columns that require recoding from the negative codes (-6, -7, -8 -9) to a standard missing code. The harvest amount columns need to be present in both of these vectors. 
+
+<div class="todoBlock"> TO DO: Make sure seasons and amount harvest (eggs) are properly specified below. </div>
+
+```{r create lists for automation}
+
+# Recodes here, if necessary; example below recodes feral bison to bison.
+#REC15Data$resource [REC15Data$resource == 230200000] = 210400000
+
+# Harvest amount columns - Note that because of eggs, we have to add amtHarvest.
+harvAmtList <- c(standardBirdColumns, "amtHarvest")
+
+# create a list of columns that can or will be used for analysis steps.
+recodeColList <- c("used","attempt","harvestq","received","giveaway", "filterq", "usuallyq", harvAmtList)
+
+cat("<h4>Harvest columns:</h4>The following columns are listed as harvest columns that can be summed to get the total for a household")
+cat(formatValueList(harvAmtList))
+
+```
+
+### Verify column contents
+
+If the data columns we require for analysis are not present, an error message will be returned. If we have the error message, display that to the screen and create an empty data frame that does contain all of the necessary records. Note that the REC15 data frame can have MORE columns than those listed as 'required'. In order for this file to work, all required columns must be present. To remedy this error, you must remove the missing column from the lists in the chunk of code displayed above (if it is not ever present) as well as from any subsequent code in this .Rmd file. Alternatively, you can add the missing column with default 0 values.
+
+```{r verify record contents}
+
+# Verify certain required columns are present.
+verifyColList <- c("projID", "studyear", "communty", "HHID", "strata", recodeColList)
+
+# Get a list of the missing columns
+colList <- intersect(verifyColList, names(REC15Data))
+colList <- verifyColList[!(verifyColList %in% colList)]
+
+if(length(colList) > 0) {
+  msgList = paste(colList, collapse=', ')
+  cat(errorMessage(str_interp('Expected columns missing: ${msgList} <br> These will be added with 0 values; please verify this is accurate!')))
+  
+  REC15Data <- standardizeColumns(REC15Data, colList)
+  
+} else
+{
+  cat(greenMessage("REC15 successfully checked. All required columns are present."))
+}
+
+```
+
+## Standardize coding
+
+Evaluate columns of data used for development of tables and figures. Recode missing values to a single value for easier processing, rename columns as needed, and add missing community/resource records as needed. In this section the following steps take place:  
+- Check for missing filterq data, report on results, standardize missing to -8 and recode harvest and use to -8 for all resources.  
+- Recode all variables named in recodeColList to -8 if they are coded as any negative code.  
+- For any resource added to any household that goes beyond the defaults on the printed survey, we need to add that to all other households. Note that the code allows us to retain certain key information, but it isn't required. By standardizing the resource list in this manner, summary statistics can be reliably computed using built-in R functions such as sd() and mean().  
+- Recode variables to ensure proper handling of missing data. We interpret empty or missing data as 0 or NO. The reason for this is partially one of expediency in data processing, and also a matter of ensuring that when collected data is reviewed, it has been VERIFIED as some type of 'unknown' data.  
+
+```{r standarize coding, message=FALSE}
+
+# #############################################################################
+# Reporting on missing data for filterq
+# #############################################################################
+
+# Code columns when filterq is missing/unknown
+#   how many households require recoding?
+nRecode <- filter(REC15Data, filterq < 0) %>%
+  group_by(HHID) %>%
+  summarize(nd = n()) %>%
+  summarize(nCount = n())
+
+if(nRecode$nCount == 0) {
+  cat(greenMessage(("No page-level filter questions (filterq) were marked as missing, refused, not asked, or unknown.")))
+} 
+if(nRecode$nCount / sum(sampleData$samphh) > 0 &
+   nRecode$nCount / sum(sampleData$samphh) < 0.07) {
+  cat(warningMessage("Fewer than 7% of filter questions (filterq) were marked as missing, refused, not asked, or unknown."))
+  cat(warningMessage(paste(nRecode$nCount, " records will be updated to indicate missing harvest information.", sep='')))
+} 
+if(nRecode$nCount / sum(sampleData$samphh) >= 0.07) {
+  cat(errorMessage(("More than 7% of filter questions (filterq) were marked as missing, refused, not asked, or unknown. Please review surveys to ensure that no systematic or administration errors are present before continuing.")))
+  cat(warningMessage(paste(nRecode$nCount, " records will be updated to indicate missing harvest information.", sep='')))
+  
+} 
+
+# #############################################################################
+# Reporting on missing data for used
+# #############################################################################
+
+count = length(REC15Data$used[REC15Data$used < 0])
+nRec = nrow(REC15Data)
+
+if(count == 0) {
+  cat(greenMessage(("No 'used' were marked as missing, refused, not asked, or unknown.")))
+} 
+if((count / nRec) > 0 & (count / nRec) < 0.07) {
+  cat(warningMessage("Fewer than 7% of used questions were marked as missing, refused, not asked, or unknown."))
+  cat(warningMessage(paste(count, " records will be treated as 'unknown' for used.", sep='')))
+} 
+if(count / nRec >= 0.07) {
+  cat(errorMessage(("More than 7% of used were marked as missing, refused, not asked, or unknown. Please review surveys to ensure that no systematic or administration errors are present before continuing.")))
+  cat(warningMessage(paste(count, " records will be treated as 'unknown' for used.", sep='')))
+  
+} 
+
+# #############################################################################
+# Reporting on missing data for attempt
+# #############################################################################
+
+count = length(REC15Data$attempt[REC15Data$attempt < 0])
+nRec = nrow(REC15Data)
+
+if(count == 0) {
+  cat(greenMessage(("No 'attempt' were marked as missing, refused, not asked, or unknown.")))
+} 
+if((count / nRec) > 0 & (count / nRec) < 0.07) {
+  cat(warningMessage("Fewer than 7% of attempt questions were marked as missing, refused, not asked, or unknown."))
+  cat(warningMessage(paste(count, " records will be treated as 'unknown' for attempt.", sep='')))
+} 
+if(count / nRec >= 0.07) {
+  cat(errorMessage(("More than 7% of attempt were marked as missing, refused, not asked, or unknown. Please review surveys to ensure that no systematic or administration errors are present before continuing.")))
+  cat(warningMessage(paste(count, " records will be treated as 'unknown' for attempt.", sep='')))
+  
+} 
+
+# #############################################################################
+# Reporting on missing data for harvestq
+# #############################################################################
+
+count = length(REC15Data$harvestq[REC15Data$harvestq < 0])
+nRec = nrow(REC15Data)
+
+if(count == 0) {
+  cat(greenMessage(("No 'harvestq' were marked as missing, refused, not asked, or unknown.")))
+} 
+if((count / nRec) > 0 & (count / nRec) < 0.07) {
+  cat(warningMessage("Fewer than 7% of harvestq questions were marked as missing, refused, not asked, or unknown."))
+  cat(warningMessage(paste(count, " records will be treated as 'unknown' for harvestq.", sep='')))
+} 
+if(count / nRec >= 0.07) {
+  cat(errorMessage(("More than 7% of harvestq were marked as missing, refused, not asked, or unknown. Please review surveys to ensure that no systematic or administration errors are present before continuing.")))
+  cat(warningMessage(paste(count, " records will be treated as 'unknown' for harvestq.", sep='')))
+} 
+
+# #############################################################################
+# Reporting on missing data for received
+# #############################################################################
+
+count = length(REC15Data$received[REC15Data$received < 0])
+nRec = nrow(REC15Data)
+
+if(count == 0) {
+  cat(greenMessage(("No 'received' were marked as missing, refused, not asked, or unknown.")))
+} 
+if((count / nRec) > 0 & (count / nRec) < 0.07) {
+  cat(warningMessage("Fewer than 7% of received questions were marked as missing, refused, not asked, or unknown."))
+  cat(warningMessage(paste(count, " records will be treated as 'unknown' for received", sep='')))
+} 
+if(count / nRec >= 0.07) {
+  cat(errorMessage(("More than 7% of received were marked as missing, refused, not asked, or unknown. Please review surveys to ensure that no systematic or administration errors are present before continuing.")))
+  cat(warningMessage(paste(count, " records will be treated as 'unknown' for received.", sep='')))
+}
+
+# #############################################################################
+# Reporting on missing data for giveaway
+# #############################################################################
+
+count = length(REC15Data$giveaway[REC15Data$giveaway < 0])
+nRec = nrow(REC15Data)
+
+if(count == 0) {
+  cat(greenMessage(("No 'giveaway' were marked as missing, refused, not asked, or unknown.")))
+} 
+if((count / nRec) > 0 & (count / nRec) < 0.07) {
+  cat(warningMessage("Fewer than 7% of giveaway questions were marked as missing, refused, not asked, or unknown."))
+  cat(warningMessage(paste(count, " records will be treated as 'unknown' for giveaway", sep='')))
+} 
+if(count / nRec >= 0.07) {
+  cat(errorMessage(("More than 7% of giveaway were marked as missing, refused, not asked, or unknown. Please review surveys to ensure that no systematic or administration errors are present before continuing.")))
+  cat(warningMessage(paste(count, " records will be treated as 'unknown' for giveaway.", sep='')))
+}
+
+# Code when filterq is missing, update with any additional gear types; Comment 
+#     where necessary.
+missingPageData <- REC15Data %>% filter(filterq < 0)
+notMissingPageData <- REC15Data %>% filter(filterq >= 0)
+
+# This only needs to happen if missingPageData has more than 0 records
+if(nrow(missingPageData) > 0) {
+  # Set all of the recode columns, except usuallyq, if present, equal to -8
+  #  for missing replacement.
+  for (colName in recodeColList[recodeColList != "usuallyq"]) {
+    missingPageData[[colName]] = -8
+#    REC15Data$used[REC15Data$filterq < 0] = -8
+  }
+} 
+
+# Re-merge data
+REC15Data <- dplyr::bind_rows(missingPageData, notMissingPageData)
+
+# Use a standard 'negative' code, except for -6; that one should only be
+#     applicable for whole categories and does not require special processing.
+REC15Data <- recode_variables(REC15Data, recodeColList, -7, -8)
+REC15Data <- recode_variables(REC15Data, recodeColList, -9, -8)
+
+#  Create dummy display group.
+REC15Data$displayGroup = 0
+
+# For any resource added to any household that goes beyond the defaults on
+#     the printed survey, we need to add that to all other households.
+#     Note that the code below allows us to retain certain key information, but
+#          it isn't required.
+preCount = nrow(REC15Data)
+REC15Data <- standardizeHHRecords(REC15Data, c("recordTypeCD", "subRecordCD", 
+                                               "subRecordDesc", "displayGroup", 
+                                               "version", "resource", "units"))
+
+postCount <- nrow(REC15Data)
+if(preCount == postCount){
+  cat(greenMessage("No additional resource codes were added to households."))
+} else
+{
+  cat(warningMessage(paste(postCount - preCount, ' resource records were added to households; some resources may be duplicates because of non-standard units.', sep='')))
+}
+
+# Recode variables to ensure proper handling of missing data. We interpret
+#     empty or missing data as 0 or NO. The reason for this is partially one of
+#     expediency in data processing, and also a matter of ensuring that when
+#     collected data is reviewed, it has been VERIFIED as some type of 'unknown'
+#     data.
+
+tmpTxt  = paste(recodeColList, collapse=', ')
+
+cat(formatSummaryBlock(paste('Recoding NA values to 0 for all columns: ', tmpTxt, sep='')))
+REC15Data <- recode_variables(REC15Data, recodeColList, NA, 0)
+cat(formatSummaryBlock(paste('Recoding -8 values to NA for all columns: ', tmpTxt, sep='')))
+REC15Data <- recode_variables(REC15Data, recodeColList, -8, NA)
+
+```
+
+## Merge sampling information.
+After initial standardization, additional information can be added to each record for further processing.
+
+```{r merge sampling}
+
+REC15Data <- left_join(REC15Data, sampleData, by=c("projID", "studyear", "communty", "strata"))
+cat(formatSummaryBlock('Sampling information merged.'))
+
+```
+
+## Convert to standard units
+
+Before analysis can begin or missing data addressed, reported amounts of harvest need to be standardized for each resource so that summaries for each resource are dealing with comparable units. 
+
+To convert from the amount in reported units, which may differ from those that will be reported in the CSIS and technical papers, the following math is used:  
+
+$$x \times unit_d = (x \times {unit_r}) * \left(\frac{b \times pounds}{1 \times unit_r}\right) * \frac{1}{\frac{b \times pounds}{1 \times unit_d}}$$  
+Where:  
+- $x \times unit_d = $ Amount of resource in default units d,  
+- $x \times unit_r = $ Amount of resource in reported units r,  
+- $\left(\frac{b \times pounds}{1 \times unit_r}\right) = $ The number of pounds (b) per 1 reported unit $unit_r$  
+- $\frac{b \times pounds}{1 \times unit_d} = $ The number of pounds (b) per 1 default unit $unit_d$  
+
+Note that both $\left(\frac{b \times pounds}{1 \times unit_r}\right) = $ and $\frac{b \times pounds}{1 \times unit_d} = $ are determined in the conversion factor tables (convFact.csv) and, whenever possible, should be obtained from the conversion factor database within the SDS. 
+
+This process described above is handled in a standardized function: standardizeConvFact found in the f_standardizeConversionFactors.r file.
+  
+Identification of reported resources and units of harvest as well as default units need to have occurred BEFORE this step of the analysis can be run. If convFact.csv has not yet been developed or substantial corrections have occurred to the data, the conversion factors will need to be evaluated. Please run B03_PREP_CONVERSION_FACTOR.Rmd.
+
+The table of resource/units to be converted may include apparent 'duplicate' resource. This is because if a household indicated pounds of mallard, for instance, then pounds of mallard were added to all households in an earlier step. This table will show ALL rows that were added as well as any added to households because of non-standard units. De-duplication via aggregation occurs in a later step.
+
+**Note** Non-standard units are uncommon with birds; but is not unusual with bird eggs.
+
+```{r standardize units}
+
+# Show resources that require unit standardization.
+stdData <- left_join(REC15Data, convFactData, by=c("projID", "studyear", "communty", "resource","units")) %>%
+  filter(units != defaultUnits) 
+print(knitr::kable(stdData,
+                   caption=formatTableHeader("Harvest records with non-standard units.")))
+
+# Standardize units using standard Subsistence Methods.
+REC15StdData <- standardizeConvFact(REC15Data, convFactData, harvAmtList)
+
+if(nrow(REC15StdData) == 0)
+{
+  cat(errorMessage(("Standardized conversion factors for REC10 produced no records - Have you remembered to update convFact.csv? - Records without standardized conversion factors will be used.")))
+  
+  REC15StdData <- REC15Data
+  
+} else {
+  cat(formatSummaryBlock('Successfully Standardized units for all REC10 resource codes'))
+}
+
+```
+
+## De-duplicate
+Eliminate duplicates introduced when adding volunteered resources to the harvest record.
+
+*NOTE* Please evaluate the code chunk below. Before finalizing this code and running analysis procedures, ensure that the columns below are a complete list of those that will be included in the final standardized file. Verify the following:
+
+- Harvest rows are combined using sum() functions
+- Binomial (yes/no) rows are combined using max() functions
+- Key data used to identify unique household/resource/units (projID, studyear, HHID etc...) defind using group_by()
+- Categorical information (ie: less/same/more) will be eliminated from this part of the processing. If that data exists per-species, a separate chunk starting with REC15_raw.csv should be written for processing.
+
+*NOTE* If you receive a -InfWarning message regarding no missing arguments to max, you should have already received a message previously regarding missing data for the use/sharing questions. These are processed here.
+
+```{r eliminate duplicates, echo=TRUE, message=FALSE}
+
+# Eliminate duplicates.
+REC15StdData <- group_by(REC15StdData, projID, studyear, communty, commname, commhh, 
+                     samphh, sampPop, NHouseholds, strata, HHID, 
+                     resource, units, strataWt, commPop,
+                     NPopulation) %>%
+   summarize(
+    # Apply max() to these columns
+    across(c(filterq,usuallyq,used,attempt,harvestq,received,giveaway), 
+           ~max(., na.rm=TRUE)),
+    # Apply sum() to these columns
+    across(all_of(c(harvAmtList)), 
+           ~sum(., na.rm=TRUE)),
+    # Ungroup to remove messages later
+    .groups = "drop"
+    )
+
+count <- nrow(REC15StdData)
+
+cat(formatSummaryBlock(
+  str_interp('Removing duplicate rows. REC15 record count: ${count}')))
+
+# Convert all Inf codes to NA.
+REC15StdData <- inf_to_NA(REC15StdData, recodeColList)
+
+```
+## Process missing data
+
+Prior to the development of harvest estimates, missing data must be properly handled. The Division of Subsistence standard relies on the following key assumptions:
+- Missing data is sporadic, uniformly random, and free from discernible bias,
+- Missing harvest data represents information believed to be consistent with the distribution of household harvests within the community as a whole.
+
+From these assumptions, we extend the theorem that the sample mean is an unbiased estimator of the population mean (Cochran 1977) to resolve most instances of missing harvest data. Thus, a mean is calculated by gear-type, sex, month, location and/or age class and subsequently applied to all instances where some harvest was indicated but amounts not provided.
+
+In the event that a single household indicated harvest of a resource, but did not provide an amount, we assume a 'minimum' replacement value of 1 unit. This is based on the assumption that the household DID harvest something, and therefore we know zero is not appropriate. Any value other value is speculation and must be justified. The minimum value of 1 is applied as the only reasonable replacement because we are assuming that at least 1 unit was harvested.
+
+*NOTE* for the table below, verify that the total missing replaced harvest _MR is consistent with the sum of harvest amounts. Also verify that missing replacements (typically small amounts with decimal points) seem to make sense. Only rows with harvests are displayed.
+
+<div class="todoBlock">Revise the missing replacement code if months are not used.</div>
+
+```{r Missing replacement, message=FALSE}
+
+# Bring back in conversion factors.
+REC15StdData <- select(convFactData, projID, studyear, communty, resName, resource, units, convFact) %>%
+  right_join(REC15StdData, by=c("projID", "studyear", "communty", "resource", "units"))
+
+# Compute reported harvest amount across harvest by season columns (birds only) and amtHarvest (egg harvest; season not asked).
+REC15StdData <- rowwise(REC15StdData) %>% 
+             mutate(reptHarvestAmt = sum(across(all_of(harvAmtList))))
+
+# SpecList is 1 for species level.
+REC15StdData$specList = 1
+
+# Create new column with reported harvest amount per season in preparation for CSIS format
+# Create a named vector for mapping old column names to new ones
+harvColNames <- list(
+  input = harvAmtList,
+  rept = c("reptHarvestAmtSpr", "reptHarvestAmtSum", "reptHarvestAmtFal", 
+    "reptHarvestAmtWin", "reptHarvestAmtUnkn", "reptAmtHarvest"),
+  mr = c("harvSpr_MR","harvSum_MR","harvFal_MR","harvWin_MR","harvUnkn_MR","amtHarvest_MR")
+)
+
+# Duplicate the columns in harvAmtList (i.e., harvSpr, harvSum, harvFal, harvWin, harvUnkn, amtHarvest),
+# rename them with `reptHarvestAmt[season]`. Reported amounts are NOT missing replaced.
+REC15StdData <- REC15StdData %>%
+  mutate(across(
+    all_of(harvColNames$input),
+    .fns = ~ .,
+    .names = "{harvColNames$rept[match(col, harvColNames$input)]}"
+  ))
+
+# Missing replacement: replace harvAmtList columns with mean or minimum values.
+REC15StdData <- dfMeanReplaceStratified(REC15StdData, replCols = harvAmtList, checkCol = "harvestq")
+
+## Duplicate missing replaced data columns, rename with `_MR` suffix in preparation for CSIS format.
+REC15StdData <- REC15StdData %>%
+  mutate(across(
+    all_of(harvColNames$input),
+    .fns = ~ .,
+    .names = "{harvColNames$mr[match(col, harvColNames$input)]}"
+  ))
+
+# Calculate missing replaced total harvest.
+REC15StdData <- rowwise(REC15StdData) %>% 
+  mutate(harvestAmt_MR = sum(across(all_of(harvAmtList))))
+
+# Missing replaced data flag.
+REC15StdData$mRepl = 0
+REC15StdData$mRepl[is.na(REC15StdData$reptHarvestAmt) & REC15StdData$harvestAmt_MR > 0] = 1
+
+tRec <- nrow(REC15StdData)
+count <- sum(REC15StdData$mRepl)
+
+if(count == 0) {
+  cat(greenMessage(("There were NO missing-value replacements for harvests at the resource-code level.")))
+} 
+if(count / tRec > 0 &
+   count / tRec < 0.07) {
+  cat(warningMessage("Fewer than 7% of resource harvest records were marked as missing, refused, not asked, or unknown."))
+  cat(warningMessage(paste(count, " records were replaced with the mean or minimum values.", sep='')))
+} 
+if(count / tRec >= 0.07) {
+  cat(errorMessage(("More than 7% of resource harvest records were marked as missing, refused, not asked, or unknown. Please review surveys to ensure that no systematic or administration errors are present before continuing.")))
+  cat(warningMessage(paste(count, " records were replaced with the mean or minimum values.", sep='')))
+} 
+
+# Missing replaced table for review.
+tempData <- select(REC15StdData, commname, resource, HHID, mRepl, 
+                   !!!syms(harvAmtList), 
+                   harvestAmt_MR, units) %>%
+    filter(harvestAmt_MR > 0) %>%
+    arrange(desc(mRepl), desc(harvestAmt_MR))
+knitr::kable(tempData,
+             caption=formatTableHeader("Detail columns with missing replacements"),
+             align="l")
+
+```
+
+## Estimated pounds
+
+Now that missing replacements have occurred, a missing-replaced amount column will be calculated for use with an imputed estimated column. Computation of pounds harvested is also made at this time. In the table below, verify that the reported and missing replaced pounds appear to be correct and that all amounts are expanded. Only records with harvests are shown.
+
+```{r harvest total columns}
+
+# Define column groups
+regular_harvest_cols <- c("reptHarvestAmt", "harvestAmt_MR")
+seasonal_rept_cols <- c("reptHarvestAmtSpr", "reptHarvestAmtSum", "reptHarvestAmtFal", 
+                        "reptHarvestAmtWin", "reptHarvestAmtUnkn", "reptAmtHarvest")
+seasonal_mr_cols <- c("harvSpr_MR", "harvSum_MR", "harvFal_MR", 
+                      "harvWin_MR", "harvUnkn_MR", "amtHarvest_MR")
+
+# Custom naming functions (defined outside of mutate)
+rept_name_transform <- function(col) {
+  case_when(
+    col == "reptAmtHarvest" ~ "reptLbsHarvest",
+    TRUE ~ str_replace(col, "Amt", "Lbs")
+  )
+}
+
+mr_name_transform <- function(col) {
+  case_when(
+    col == "amtHarvest_MR" ~ "lbsHarvest_MR",
+    TRUE ~ paste0("harvestLbs", str_remove(col, "^harv"))
+  )
+}
+
+REC15StdData <- REC15StdData %>%
+  # Regular harvest amounts
+  mutate(across(
+    all_of(regular_harvest_cols),
+    ~ . * convFact,
+    .names = "{str_replace(col, 'Amt', 'Lbs')}"
+  )) %>%
+  # Seasonal harvest amounts (rept prefix)
+  mutate(across(
+    all_of(seasonal_rept_cols),
+    ~ . * convFact,
+    .names = "{rept_name_transform(col)}"
+  )) %>%
+  # Seasonal harvest amounts with _MR suffix
+  mutate(across(
+    all_of(seasonal_mr_cols),
+    ~ . * convFact,
+    .names = "{mr_name_transform(col)}"
+  ))
+
+# Pounds harvested table for review.
+tempData <- select(REC15StdData, commname, resource, units, reptHarvestAmt, 
+                   reptHarvestLbs, harvestAmt_MR, harvestLbs_MR) %>%
+    filter(harvestAmt_MR > 0) %>%
+    arrange(desc(harvestLbs_MR))
+knitr::kable(tempData,
+             caption=formatTableHeader("Reported harvest Amount & Pounds"),
+             align="l")
+
+```
+
+
+## Enforce logic rules
+
+Note that for large game, because of the level of detail we ask, that additional columns of data are added AFTER CSIS formatting. We will enforce logic rules first.
+
+```{r insert missing and derived columns}
+
+
+# 3.1 Enforce logic rules.
+
+# 3.1.1 If a harvest amount is specified, ensure harvestq = 1
+REC15StdData$harvestq[REC15StdData$harvestAmt_MR > 0] = 1
+
+# 3.1.2 If harvest occurred, then an attempt did as well.
+REC15StdData$attempt[REC15StdData$harvestq == 1] = 1
+
+# 3.1.3 If any was harvested or given away, then we count it as used.
+REC15StdData$used[REC15StdData$received == 1 | REC15StdData$harvestq == 1] = 1
+
+# 3.1.4 If an amount was reported as given away, but none harvested or 
+#       received, we assume it came from a previous year
+REC15StdData$giveaway[REC15StdData$received == 0 & REC15StdData$harvestq == 0] = 0
+
+# Ungroup REC15 to prevent issues with tables later on.
+REC15StdData <- ungroup(REC15StdData)
+
+```
+
+## Create rows for CSIS aggregation.
+
+Subsistence bird harvests are recorded with the detail digit of 0 in the resource code and season of harvest as columns of data. For the CSIS, harvests are separated by seasons for all species. Egg harvests are recorded separately. Detail digits are as follows:  
+- 1 = Spring  
+- 2 = Summer  
+- 3 = Fall   
+- 4 = Winter 
+- 9 = Season unknown  
+
+### Spring season rows
+
+Separate the spring harvests into separate detail rows, this is relevant detail for the CSIS. There is a spring subsistence bird hunt, you should expect to see a fair amount of harvesting going on here.
+
+```{r compute spring season rows, message=FALSE}
+
+# 4.1. Duplicate the file for species harvested in the Spring 
+REC15SpringTemp <- REC15StdData
+
+# Recode resource and resName to reflect spring harvests
+REC15SpringTemp$resource = REC15StdData$resource + 1
+string1 = ", spring"
+REC15SpringTemp$resName = paste(REC15SpringTemp$resName, string1, sep = "")
+REC15SpringTemp$specList = 2
+
+# No eggs.
+REC15SpringTemp <- filter(REC15SpringTemp, resource < 430000000 | resource >= 440000000)
+
+# Group by and summarize all spring harvests by HHID and species
+
+REC15SpringTemp <- REC15SpringTemp %>%
+  group_by(
+    projID, studyear, communty, commname, strata, HHID, resName, 
+    resource, units, specList, convFact, commhh, samphh, sampPop, 
+    commPop, strataWt, NHouseholds, NPopulation
+  ) %>%
+  summarize(
+    across(
+      c(filterq, usuallyq, used, attempt, harvestq, giveaway, received),
+      ~ max(., na.rm = TRUE)
+    ),
+    # Harvest by season - only spring is summed, others set to 0
+    across(
+      c(harvSum, harvFal, harvWin, harvUnkn),
+      ~ 0
+    ),
+    harvSpr = sum(harvSpr, na.rm = TRUE),
+    # Harvest totals and pounds - all summed
+    across(
+      c(harvestAmt_MR = harvSpr_MR, 
+        reptHarvestAmt = reptHarvestAmtSpr,
+        harvestLbs_MR = harvestLbsSpr_MR,
+        reptHarvestLbs = reptHarvestLbsSpr),
+      ~ sum(., na.rm = TRUE)
+    ),
+    .groups = "drop"  # Explicitly drop grouping
+  )
+
+count = nrow(REC15SpringTemp)
+
+tempData <- select(REC15SpringTemp, commname, HHID, resName, harvSum, harvFal, harvWin, harvSpr, harvUnkn,
+                 harvestAmt_MR, reptHarvestAmt, harvestLbs_MR, reptHarvestLbs) %>%
+                 arrange(desc(harvestAmt_MR)) %>%
+  filter(harvestAmt_MR > 0)
+
+knitr::kable(tempData,
+             caption=formatTableHeader("Spring harvest records"),
+             align="l")
+
+cat(formatSummaryBlock(
+  str_interp('${count} Total rows created for SPRING season bird harvests.')))
+
+```
+
+### Summer season rows
+
+Separate the summer harvests into separate detail rows. Note that little bird hunting occurs in the summer, this table should often be empty or contain FEW harvest records. 
+
+```{r compute summer season rows, message=FALSE}
+
+# Duplicate the file for species harvested in the summer
+REC15SummerTemp <- REC15StdData
+
+# 4.2.1. Recode resource to reflect summer harvests
+REC15SummerTemp$resource = REC15StdData$resource + 2
+string2 = ", summer"
+REC15SummerTemp$resName = paste(REC15SummerTemp$resName,string2,sep="")
+REC15SummerTemp$specList = 2
+
+# No eggs.
+REC15SummerTemp <- filter(REC15SummerTemp, resource < 430000000 | resource >= 440000000)
+
+# 4.2.2. Group by and summarize all summer harvests by HHID and species
+REC15SummerTemp <- REC15SummerTemp %>%
+  group_by(
+    projID, studyear, communty, commname, strata, HHID, resName, 
+    resource, units, specList, convFact, commhh, samphh, sampPop, 
+    commPop, strataWt, NHouseholds, NPopulation
+  ) %>%
+  summarize(
+    across(
+      c(filterq, usuallyq, used, attempt, harvestq, giveaway, received),
+      ~ max(., na.rm = TRUE)
+    ),
+    # Harvest by season - only summer is summed, others set to 0
+    across(
+      c(harvSpr, harvFal, harvWin, harvUnkn),
+      ~ 0
+    ),
+    harvSum = sum(harvSum, na.rm = TRUE),
+    # Harvest totals and pounds - all summed
+    across(
+      c(harvestAmt_MR = harvSum_MR, 
+        reptHarvestAmt = reptHarvestAmtSum,
+        harvestLbs_MR = harvestLbsSum_MR,
+        reptHarvestLbs = reptHarvestLbsSum),
+      ~ sum(., na.rm = TRUE)
+    ),
+    .groups = "drop"  # Explicitly drop grouping
+  )
+
+count = nrow(REC15SummerTemp)
+
+tempData <- select(REC15SummerTemp, commname, HHID, resName, harvSum, harvFal, harvWin, harvSpr, harvUnkn,
+                 harvestAmt_MR, reptHarvestAmt, harvestLbs_MR, reptHarvestLbs) %>%
+                 arrange(desc(harvestAmt_MR)) %>%
+  filter(harvestAmt_MR > 0)
+
+knitr::kable(tempData,
+             caption=formatTableHeader("Summer harvest records"),
+             align="l")
+
+cat(formatSummaryBlock(
+  str_interp('${count} Total rows created for SUMMER season bird harvests.')))
+
+
+```
+
+### Fall season rows
+
+Separate the fall harvests into separate detail rows. Fall bird hunting, along with the spring subsistence hunt is an important hunting period for a variety of migratory birds. You should see a substantial level of harvest here. Further, you should see NO nestlings reported for this time of year. If you DO, this may be an error.
+
+```{r compute fall season rows, message=FALSE}
+
+
+# 4.3. Duplicate the file for species harvested in the fall
+REC15FallTemp <- REC15StdData
+
+# 4.3.1. Recode resource to reflect fall harvests
+REC15FallTemp$resource=REC15StdData$resource +3
+string3 = ", fall"
+REC15FallTemp$resName = paste(REC15FallTemp$resName,string3,sep="")
+REC15FallTemp$specList = 2
+
+# No eggs.
+REC15FallTemp <- filter(REC15FallTemp, resource < 430000000 | resource >= 440000000)
+
+# 4.3.2. Group by and summarize all fall harvests by HHID and species
+REC15FallTemp <- REC15FallTemp %>%
+  group_by(
+    projID, studyear, communty, commname, strata, HHID, resName, 
+    resource, units, specList, convFact, commhh, samphh, sampPop, 
+    commPop, strataWt, NHouseholds, NPopulation
+  ) %>%
+  summarize(
+    across(
+      c(filterq, usuallyq, used, attempt, harvestq, giveaway, received),
+      ~ max(., na.rm = TRUE)
+    ),
+    # Harvest by season - only fall is summed, others set to 0
+    across(
+      c(harvSpr, harvSum, harvWin, harvUnkn),
+      ~ 0
+    ),
+    harvFal = sum(harvFal, na.rm = TRUE),
+    # Harvest totals and pounds - all summed
+    across(
+      c(harvestAmt_MR = harvFal_MR, 
+        reptHarvestAmt = reptHarvestAmtFal,
+        harvestLbs_MR = harvestLbsFal_MR,
+        reptHarvestLbs = reptHarvestLbsFal),
+      ~ sum(., na.rm = TRUE)
+    ),
+    .groups = "drop"  # Explicitly drop grouping
+  )
+
+count = nrow(REC15FallTemp)
+
+tempData <- select(REC15FallTemp, commname, HHID, resName, harvSum, harvFal, harvWin, harvSpr, harvUnkn,
+                 harvestAmt_MR, reptHarvestAmt, harvestLbs_MR, reptHarvestLbs) %>%
+                 arrange(desc(harvestAmt_MR)) %>%
+  filter(harvestAmt_MR > 0)
+
+knitr::kable(tempData,
+             caption=formatTableHeader("Fall harvest records"),
+             align="l")
+
+cat(formatSummaryBlock(
+  str_interp('${count} Total rows created for FALL season bird harvests.')))
+
+```
+
+### Winter season rows
+
+Separate the winter harvests into separate detail rows. Little effort occurs for winter harvests and should largely be limited to game birds such as ptarmigan and grouse. If a substantial migratory bird component is present, please evaluate the data and consult with the project PI.
+
+```{r compute winter season rows, message=FALSE}
+
+# 4.4. Duplicate the file for species harvested in the winter
+REC15WinterTemp <- REC15StdData
+
+# 4.4.1. Recode resource to reflect winter harvests
+REC15WinterTemp$resource=REC15StdData$resource +4
+string4 = ", winter"
+REC15WinterTemp$resName = paste(REC15WinterTemp$resName,string4,sep="")
+REC15WinterTemp$specList = 2
+
+# No eggs.
+REC15WinterTemp <- filter(REC15WinterTemp, resource < 430000000 | resource >= 440000000)
+
+# 4.4.2. Group by and summarize all winter harvests by HHID and species
+REC15WinterTemp <- REC15WinterTemp %>%
+  group_by(
+    projID, studyear, communty, commname, strata, HHID, resName, 
+    resource, units, specList, convFact, commhh, samphh, sampPop, 
+    commPop, strataWt, NHouseholds, NPopulation
+  ) %>%
+  summarize(
+    across(
+      c(filterq, usuallyq, used, attempt, harvestq, giveaway, received),
+      ~ max(., na.rm = TRUE)
+    ),
+    # Harvest by season - only winter is summed, others set to 0
+    across(
+      c(harvSpr, harvSum, harvFal, harvUnkn),
+      ~ 0
+    ),
+    harvWin = sum(harvWin, na.rm = TRUE),
+    # Harvest totals and pounds - all summed
+    across(
+      c(harvestAmt_MR = harvWin_MR, 
+        reptHarvestAmt = reptHarvestAmtWin,
+        harvestLbs_MR = harvestLbsWin_MR,
+        reptHarvestLbs = reptHarvestLbsWin),
+      ~ sum(., na.rm = TRUE)
+    ),
+    .groups = "drop"  # Explicitly drop grouping
+  )
+
+count = nrow(REC15WinterTemp)
+
+tempData <- select(REC15WinterTemp, commname, HHID, resName, harvSum, harvFal, harvWin, harvSpr, harvUnkn,
+                 harvestAmt_MR, reptHarvestAmt, harvestLbs_MR, reptHarvestLbs) %>%
+                 arrange(desc(harvestAmt_MR)) %>%
+  filter(harvestAmt_MR > 0)
+
+knitr::kable(tempData,
+             caption=formatTableHeader("Winter harvest records"),
+             align="l")
+
+cat(formatSummaryBlock(
+  str_interp('${count} Total rows created for WIINTER season bird harvests.')))
+
+```
+
+### Unknown season rows
+
+Separate the unknown season harvests into separate detail rows. This category should also be limited, it's okay for all of the most harvested species to have some level of missing information, but in the event ALL or MOST species have 'season unknown' please evaluate the data carefully.
+
+```{r compute unknown season rows, message=FALSE}
+
+# 4.5. Duplicate the file for species harvested during unknown season 
+REC15UnknTemp <- REC15StdData
+
+# 4.5.1. Recode resource to reflect harvests during unknown season
+REC15UnknTemp$resource=REC15StdData$resource + 9
+string9 = ", unknown season"
+REC15UnknTemp$resName = paste(REC15UnknTemp$resName,string9,sep="")
+REC15UnknTemp$specList = 2
+
+# No eggs.
+REC15UnknTemp <- filter(REC15UnknTemp, resource < 430000000 | resource >= 440000000)
+
+# 4.5.2. Group by and summarize all unknown season harvests by HHID and species
+REC15UnknTemp <- REC15UnknTemp %>%
+  group_by(
+    projID, studyear, communty, commname, strata, HHID, resName, 
+    resource, units, specList, convFact, commhh, samphh, sampPop, 
+    commPop, strataWt, NHouseholds, NPopulation
+  ) %>%
+  summarize(
+    across(
+      c(filterq, usuallyq, used, attempt, harvestq, giveaway, received),
+      ~ max(., na.rm = TRUE)
+    ),
+    # Harvest by season - only fall is summed, others set to 0
+    across(
+      c(harvSpr, harvSum, harvFal, harvWin),
+      ~ 0
+    ),
+    harvUnkn = sum(harvUnkn, na.rm = TRUE),
+    # Harvest totals and pounds - all summed
+    across(
+      c(harvestAmt_MR = harvUnkn_MR, 
+        reptHarvestAmt = reptHarvestAmtUnkn,
+        harvestLbs_MR = harvestLbsUnkn_MR,
+        reptHarvestLbs = reptHarvestLbsUnkn),
+      ~ sum(., na.rm = TRUE)
+    ),
+    .groups = "drop"  # Explicitly drop grouping
+  )
+
+count = nrow(REC15UnknTemp)
+
+tempData <- select(REC15UnknTemp, commname, HHID, resName, harvSum, harvFal, harvWin, harvSpr, harvUnkn,
+                 harvestAmt_MR, reptHarvestAmt, harvestLbs_MR, reptHarvestLbs) %>%
+                 arrange(desc(harvestAmt_MR)) %>%
+  filter(harvestAmt_MR > 0)
+
+knitr::kable(tempData,
+             caption=formatTableHeader("Unknown season harvest records"),
+             align="l")
+
+cat(formatSummaryBlock(
+  str_interp('${count} Total rows created for unknown season bird harvests.')))
+  
+```
+
+### Combine season rows
+
+Now that all season rows have been computed, combine into a single, comprehensive REC15 data file.
+
+```{r combine CSIS rows}
+
+count <- nrow(REC15StdData)
+
+# Merge and sort.
+REC15CSISData <- bind_rows(REC15StdData, REC15SpringTemp, REC15SummerTemp, REC15FallTemp, REC15WinterTemp, REC15UnknTemp, .id = NULL) %>%
+  arrange(projID, studyear, communty, commname, strata, HHID, resource, resName)
+
+# Final clean-up: recode nan and inf to NA.
+REC15CSISData <- inf_to_NA(REC15CSISData, c("used","attempt", "received", "harvestq", "giveaway"))
+REC15CSISData <- nan_to_NA(REC15CSISData, c("used","attempt", "received", "harvestq", "giveaway"))
+
+count = nrow(REC15CSISData) - count
+
+cat(formatSummaryBlock(
+  str_interp('${count} rows have been added to REC15.')))
+
+```
+
+
+# Add missing column names
+
+Add any column names that will be used for final combination of harvest and use record types
+
+```{r add missing col names}
+
+# Number of columns.
+count = length(REC15CSISData)
+
+# 3.3 Add all of the columns that we don't already have.
+REC15CSISData <- standardizeColumns(REC15CSISData, fullHarvColList)
+
+count = length(REC15CSISData) - count
+
+cat(formatSummaryBlock(
+  str_interp('${count} column names have been added to REC15.')))
+
+```
+
+
+# Write out CSV files
+
+```{r write csv files, message=FALSE}
+
+# ##############################################################################
+# Write out CSV files.
+# ##############################################################################
+
+# Write out CSIS organized migratory bird file
+  fName = str_interp('../../CSV/03 - main/REC15_CSIS_ORG_clean.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(REC15CSISData), ' records to be written', sep='')))
+
+rio::export(REC15CSISData, fName)
+
+```
+
+<p class="h1footer"> End of prep REC15 script. </p>

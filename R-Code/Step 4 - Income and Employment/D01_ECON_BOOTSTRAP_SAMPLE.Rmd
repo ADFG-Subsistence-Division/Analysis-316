@@ -1,0 +1,355 @@
+---
+title: "D01_ECON_BOOTSTRAP_SAMPLE - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-15"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">D01_ECON_BOOTSTRAP_SAMPLE - (316) NPS Ambler Comprehensive</div>
+</div>
+
+# Economics bootstrapping sample
+
+This file creates a bootstrapped sample for income and employment.
+
+## Change log
+
+### Change 1
+- Programmer: D.S.Koster  
+- Date:  09/2023  
+- Change Description: Silenced warnings regarding many-to-many relationships in the bootstrap creation steps at the end.  
+- Template Update [Y|N]:  Yes - template update  
+- One-Off: No; repeat for all future projects  
+
+### Change 2
+- Programmer: D.S.Koster  
+- Date: 05/21/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output.  
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates  
+
+### Change 3
+- Programmer: Jesse Coleman
+- Date: 03/18/2025
+- Change Description: Removed source() calls; all functions are included in the library adfgSubs.
+- Template Update [Y|N]: Y
+- One-Off: No-include in all future comprehensive templates 
+
+## Input data
+  
+- /CSV/01 - Database Extract/REC01_raw.csv  
+- /CSV/01 - Database Extract/REC00_raw.csv  
+- /CSV/04 - Employment Processing/REC23_adjusted_raw.csv  
+- /CSV/03 - main/REC24_OTH_INCOME_clean.csv  
+
+## Output data
+  
+- {bootSampPath}/bootSamp_HH.csv  
+- {bootSampPath}/bootSamp_Person.csv  
+- {bootSampPath}/bootSamp_Employ.csv
+- {bootSampPath}/bootSamp_OthInc.csv
+
+## Background
+
+While the division standard for estimation of population parameters (household mean harvest) relies on the use of the sample mean, we do not necessarily rely on that directly for income and employment. This is in part because we tend to have a little more information about income categories that contain missing information. Further, because we summarize that information in numerous ways, it means that individual households must have imputed values, otherwise, summaries are difficult. Further, we do make the assumption that the information collected regarding SOC, SIC, months, and shift are all relevant predictor variables.
+
+One method for developing imputations might rely on the use of generalized linear models, however, that strategy relies on a full set of information about jobs and income with only earned income missing. As a result, we approach this using the bootstrapping approach briefly described above. While using simulated approaches seem likely to result in notably different results, they should generally approximate a standard sample average that imputes in such a way that incorporates all information known, addresses potential outliers automatically (per D. Koster: incomes, when classified by industry, occupation, schedule and months can be assumed normally distributed for a given geography, thus the mean == median therefore median is acceptable approach to address unusual values).
+
+## Checklist
+  
+- Update 'Author' to your name  
+- Update the project information in 'title' to the current project  
+- Update the development log with any changes you've made to the template file, including your name  
+
+## Additional information
+
+
+Bootstrapping is a process that relies on resampling with replacement. The default number of resamples, set in Z00_PROJECT_PARAMETERS is k=1000. Do not modify this value without consulting the RA4. In the output files each resampling is distinguished with the column 'samp'. The category of samp == 0 is the true sample we drew. The true sample should not be used for computing CIs, but should be used in calculating estimates.
+
+### Required libraries (adjust as needed)
+  
+- tidyVerse  
+- rio  
+- data.table (for large file output)  
+- knitr
+- adfgSubs
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+
+# Additional libraries
+library(knitr)
+library(data.table)
+library(adfgSubs)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+# source('../Functions/f_RMD_HTML_FORMATTING_FUNCTIONS.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+```
+
+## Load data
+
+Before we begin this step, /04 - Employment Processing/REC23_clean_coded.csv needs to be reviewed and renamed to: REC23_clean_recoded.csv with the CSIS category codes included. If this has not happened, the code will not run.
+
+```{r load data}
+
+# ##############################################################################
+# Load data from intermediate files.
+# ##############################################################################
+
+
+REC01Data <- read.csv('../../CSV/01 - Database Extract/REC01_raw.csv', 
+                      na = '', 
+                      header = TRUE, 
+                      strip.white = TRUE)
+count <- nrow(REC01Data)
+cat(formatSummaryBlock(paste("Opening file: REC01_raw.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+
+REC00Data <- read.csv('../../CSV/01 - Database Extract/REC00_raw.csv', 
+                      na = '', 
+                      header = TRUE, 
+                      strip.white = TRUE)
+count <- nrow(REC00Data)
+cat(formatSummaryBlock(paste("Opening file: REC00_raw.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+# Note: Load CSIS Coded files here ONLY:  03 - Main/REC23Coded.csv
+REC23Data <- read.csv('../../CSV/04 - Employment Processing/REC23_adjusted_raw.csv', 
+                      na = '', 
+                      header = TRUE, 
+                      strip.white = TRUE)
+count <- nrow(REC23Data)
+cat(formatSummaryBlock(paste("Opening file: REC23_adjusted_raw.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+# All reported income types need to be repeated for each household by the time we load here. This should be done in the prep steps.
+REC24Data <- read.csv('../../CSV/03 - main/REC24_OTH_INCOME_clean.csv', 
+                      na = '', 
+                      header = TRUE, 
+                      strip.white = TRUE)
+count <- nrow(REC24Data)
+cat(formatSummaryBlock(paste("Opening file: REC24_OTH_INCOME_clean.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+
+```
+
+## Generate bootstrap sample
+
+Generate the bootstrap sample having k samples and with replacement. 
+
+Start with each community having sample '0', this is the original sample. This 0 sample will be used during analysis for development of the estimate, where the resamplings will be used to develop CIs.
+
+As before, step through each community and strata, separate that record and then create k re-samples with replacement. 
+
+Set the seed to the current study year + the project ID. This will ensure different sequences of numbers for each project, but consistent sequences for each run of this project. Note that changing this seed may cause results to differ from run-to-run.
+
+```{r generate k boostrap samp}
+
+# Initialize the base sample & simplify to the minimum number of columns to 
+#  (hopefully) improve efficiency. We do this with the root HH File because
+#  the econ bootstrapping doesn't require 
+REC00Data <- select(REC00Data, projID, studyear, communty, strata, HHID)
+resampData = REC00Data
+resampData$samp = 0
+
+tempData <- group_by(REC00Data, projID, studyear, communty, strata) %>%
+  summarize(n = n()) %>% 
+  arrange(projID, studyear, communty, strata)
+
+set.seed(studyear + projID)
+for(ii in 1:nrow(tempData))
+{
+  tmpCommData <- tempData[ii,]
+  n = tmpCommData$n[1]
+  hhList <- filter(REC00Data, projID == tmpCommData$projID[1] &
+                              studyear == tmpCommData$studyear[1] &
+                              communty == tmpCommData$communty[1] &
+                              strata == tmpCommData$strata[1])$HHID
+  
+  tmpList = sample(hhList, replace=T, size=(n*econBoot_k))
+  tmpDF <- data.frame("HHID" = tmpList)
+  tmpDF$samp = rep(seq(1:econBoot_k), n)
+  tmpDF$projID = tmpCommData$projID[1]
+  tmpDF$studyear = tmpCommData$studyear[1]
+  tmpDF$communty = tmpCommData$communty[1]
+  tmpDF$strata = tmpCommData$strata[1]
+  resampData <- left_join(tmpDF, REC00Data, by=c("projID", "studyear", "communty", "strata", "HHID")) %>%
+                dplyr::bind_rows(resampData)
+}
+
+# Finally -- Provide a totally unique HHID for the entirety of the dataset to prevent confusion during
+#   analysis; there are several cases where we ahve a 1:many relationship in the data at the household
+#   level and will need to preseve those relationships. 
+resampData$uHHID = seq(1:nrow(resampData))
+
+count = nrow(resampData)
+cat(formatSummaryBlock(str_interp("Bootstrap sample of ${count} rows has been created.")))
+
+
+```
+
+## Create the boostrapped records for person.
+
+When a household is selected, each person in that household must ALSO be selected.  
+  
+Strategy: 
+- use tidyverse inner_join to merge the many:many relationship.
+  
+Key assumptions:  
+- each person has a record in REC01Data  
+
+```{r prep boostrapped person file}
+
+resampPersonData <- inner_join(resampData, REC01Data, 
+                               by=c("projID", "studyear", "communty", "strata", "HHID"),
+                               relationship="many-to-many")
+
+count = nrow(resampPersonData)
+cat(formatSummaryBlock(str_interp("Bootstrap sample of ${count} person record rows has been created.")))
+
+```
+
+
+## Create the boostrapped records for each job
+
+```{r bootstrapped job file}
+
+# Use full join to ensure that records from resampData not having REC23Data records are included.
+#   it should already be coded this way (a household having no employment should still mark all adults
+#   as SOC==0/SIC==0); this isn't always done.
+resampEmployData <- full_join(resampData, REC23Data, 
+                               by=c("projID", "studyear", "communty", "strata", "HHID"),
+                               relationship="many-to-many")
+
+count = nrow(resampEmployData)
+cat(formatSummaryBlock(str_interp("Bootstrap sample of ${count} employment record rows has been created.")))
+
+```
+
+## Create the bootstrapped records for other income
+
+```{r bootstrapped oth income}
+
+resampOthIncData <- inner_join(resampData, REC24Data, 
+                               by=c("projID", "studyear", "communty", "strata", "HHID"),
+                               relationship="many-to-many")
+
+
+count = nrow(resampOthIncData)
+cat(formatSummaryBlock(str_interp("Bootstrap sample of ${count} other income record rows has been created.")))
+
+```
+
+
+# Write out CSV files
+
+Because of the size of these files, all data processing will be handled locally; this is to prevent having to move gigabytes of data back and forth across the network. The following code will ensure that the appropriate local folders exist on your computer in:  
+  
+C:/R-Subist-Data-Local/Bootstrapping Data/{projID} - {studyear}   
+  
+If the appropriate folders do NOT exist, they will be created.
+
+```{r write csv files}
+
+# Start by ensuring required directories are present:
+if(!dir.exists("C:/R-Subist-Data-Local/"))
+{
+  cat(warningMessage("Folder C:/R-Subist-Data-Local/ does not exist, creating folder..."))
+  dir.create("C:/R-Subist-Data-Local")
+} else {
+  cat(greenMessage("Folder C:/R-Subist-Data-Local exists, continue checking..."))
+}
+
+if(!dir.exists("C:/R-Subist-Data-Local/Bootstrapping Data/"))
+{
+  cat(warningMessage("Folder C:/R-Subist-Data-Local/Bootstrapping Data/ does not exist, creating folder..."))
+  dir.create("C:/R-Subist-Data-Local/Bootstrapping Data")
+} else {
+  cat(greenMessage("Folder C:/R-Subist-Data-Local/Bootstrapping Data/, continue checking..."))
+}
+
+if(!dir.exists(bootSampPath))
+{
+  cat(warningMessage(str_interp("Folder ${bootSampPath} does not exist, creating folder...")))
+  dir.create(bootSampPath)
+} else {
+  cat(greenMessage(str_interp("Folder: ${bootSampPath}, exists. Files will be saved.")))
+}
+
+```
+
+## Write CSV files
+
+```{r write CSV files}
+
+# ##############################################################################
+# Write out CSV files.
+# ##############################################################################
+
+# Boot sample raw data.
+  fName = str_interp('${bootSampPath}/bootSamp_HH.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(resampData), ' records to be written', sep='')))
+  fwrite(resampData, fName)
+
+# Bootsample person data.  
+  fName = str_interp('${bootSampPath}/bootSamp_Person.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(resampPersonData), ' records to be written', sep='')))
+  fwrite(resampPersonData, fName)
+  
+# Bootsample employment data.  
+  fName = str_interp('${bootSampPath}/bootSamp_Employ.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(resampEmployData), ' records to be written', sep='')))
+  fwrite(resampEmployData, fName) 
+  
+# Bootsample employment data.  
+  fName = str_interp('${bootSampPath}/bootSamp_OthInc.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(resampOthIncData), ' records to be written', sep='')))
+  fwrite(resampOthIncData, fName) 
+
+```
+
+<p class="h1footer"> End of Prep boot sampling script. </p>

@@ -1,0 +1,377 @@
+---
+title: "B14_PREP_FOOD_SECURITY - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-15"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">B14_PREP_FOOD_SECURITY - (316) NPS Ambler Comprehensive</div>
+</div>
+
+# Prep REC201
+
+Clean and standardize food security data set for later analysis.
+
+## Changelog
+
+### Change 1
+- Programmer: D.S.Koster  
+- Date: 05/21/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output.  
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive template
+
+### Change 2
+- Programmer: Jesse Coleman
+- Date: 03/18/2025
+- Change Description: Removed source() calls; all functions are included in the library adfgSubs.
+- Template Update [Y|N]: Y
+- One-Off: No-include in all future comprehensive templates 
+
+### Change 3
+- Programmer: Jesse Coleman
+- Date: 05/06/2025
+- Change Description: Refactor using tidyverse language and DRY ("don't repeat yourself") principles.
+- Template Update [Y|N]: Y
+- One-Off: No - include in all future comprehensive templates 
+
+
+## Input data
+  
+- /CSV/01 - Database Extract/REC201_raw.csv  
+
+## Output data
+  
+- /CSV/03 - Main/foodSecurity_clean.csv  
+
+## Background
+
+The organization of the data in the Subsistence Data System (SDS) developed to support layout and simplicity for data entry tools does not produce a data organization that can be used directly to produce estimates of food insecurity. This file reorganizes the file such that it can be used for analysis.
+
+## Checklist
+  
+- Update 'Author' to your name  
+- Update the project information in 'title' to the current project  
+- Update the development log with any changes you've made to the template file, including your name  
+
+## Additional information
+
+### Functions used/dependencies
+
+### Required libraries (adjust as needed)
+  
+- tidyVerse  
+- rio  
+- knitr
+- adfgSubs
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+
+# Load required libraries.
+library(knitr)
+library(adfgSubs)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+```
+
+## Load data
+
+```{r load data}
+
+# ##############################################################################
+# Load data from intermediate files.
+# ##############################################################################
+
+# This for each file opened.
+fsData <- read.csv('../../CSV/01 - Database Extract/REC201_raw.csv',
+                   na = '', 
+                   header = TRUE, 
+                   strip.white = TRUE)
+
+count <- nrow(fsData)
+cat(formatSummaryBlock(paste("Opening file: REC201_raw.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+
+```
+
+## Lists for automation
+```{r lists for automation}
+
+# List of various columns that are recoded at various points. These are repeated
+#   enough that it simplifies things to leave them here. Also, the occList
+#   is used to sum across.
+occList <- c('occJan', 'occFeb', 'occMar', 'occApr', 'occMay', 'occJun', 'occJul', 'occAug', 'occSep', 'occOct', 'occNov', 'occDec')
+othColsList <- c('stmt1to3Value', 'eatLess', 'hungryNotEat','loseWeight','trueForHH','getFood','notEatWholeDay', 'filterq')
+fullRecodeList <- c(occList, othColsList)
+
+```
+
+## Initial recoding
+
+Note that if statements were incorrectly coded, this is where they will be fixed. Further, the first 'statement' actually contains the first 3 USDA statements in 1 question Go ahead and recode this to 0 for consistency with the SPSS Syntax originally developed by Magdanz and Kostick.
+
+```{r initial recoding}
+
+# displayGroup numbering.
+expectDisplayGroups <- c(20101, 20102, 20103, 20104, 20105, 20106, 20107, 20108)
+expectDisplayGroups = as.integer(expectDisplayGroups)
+displayGroups <- fsData %>% distinct(displayGroup) %>% arrange(displayGroup)
+displayGroups <- as.integer(displayGroups$displayGroup)
+
+if(identical(displayGroups, expectDisplayGroups)) {
+  cat(greenMessage("All display groups match template."))
+}  else { 
+
+    cat(errorMessage(str_interp("Display groups do not match template, expected ${expectDisplayGroups} found ${displayGroups} instead. Recode displayGroup to match the template!"))) 
+}
+
+# Correct statement number code for 'Cut or Skip' meals.
+fsData$stmtNum[fsData$displayGroup == 20107] = 9
+
+# The first 'statement' actually contains the first 3 USDA statements in 
+#       1 question Go ahead and recode this to 0 for consistency with the SPSS 
+#       Syntax originally developed by Magdanz and Kostick.
+fsData$stmtNum[fsData$displayGroup == 20101] = 0
+fsData <- recode_variables(fsData, c('filterq'), -1, 1) %>%
+  recode_variables(c('filterq'), NA, 0)
+
+```
+
+## Month recode
+
+Months conditions occurred were not asked for each statement. As a result some of these need to be recoded to 'did not ask' for clarity. Additionally, MS Access, by default, records check-box style inputs as -1 and 0. For the code to work properly, these -1 codes are recoded to a 1. Note that displayGroup is used extensively for reformatting. Please verify correct display groups.
+
+```{r split record type for selective recoding}
+
+# Split
+stmt0Data <- filter(fsData, displayGroup == 20101)
+fsData <- filter(fsData, displayGroup != 20101)
+
+# These questions not asked for statements 1-3 (recode)
+stmt0Data <- assign_value_variables(stmt0Data, occList, -6)
+count = nrow(stmt0Data)
+cCount = length(stmt0Data)
+
+cat(formatSummaryBlock(
+  str_interp('${cCount} columns in ${count} rows with display group 2010 have been recoded to -6.')))
+
+# recombine.
+fsData <- dplyr::bind_rows(fsData, stmt0Data)
+
+# 4.1 - Recode month occurrence values currently coded to -1, set to 1 and
+#       make all NA values 0.
+fsData <- recode_variables(fsData, occList, -1, 1) %>%
+  recode_variables(occList, NA, 0)
+
+rm(stmt0Data)
+
+```
+
+# Reorganize file
+
+Expand rows of data so we have one row per USDA equivalent statement. this also takes care of some core data cleaning.
+
+```{r}
+
+# 4.3 -- (10) adults ate less than we felt we should.
+eatLessData <- filter(fsData, displayGroup == 20108)  %>%
+  assign_value_variables(occList, -6)
+eatLessData$stmtNum = 10
+eatLessData$trueForHH = eatLessData$eatLess
+
+count = nrow(eatLessData)
+cat(formatSummaryBlock(
+  str_interp('${count} rows created for statement 10 "adults eat less than we feel we should".')))
+
+knitr::kable(eatLessData[1:10,],
+             caption=formatTableHeader("first 10 rows of statement 10 data"),
+             align="l")
+
+# 4.4 -- (11) adults hungry but did not eat
+hungryNotEatData <- filter(fsData, displayGroup == 20108) %>%
+  assign_value_variables(occList, -6) 
+hungryNotEatData$stmtNum = 11
+hungryNotEatData$trueForHH = hungryNotEatData$hungryNotEat
+
+count = nrow(hungryNotEatData)
+cat(formatSummaryBlock(
+  str_interp('${count} rows created for statement 11 "adults hungry but did not eat".')))
+
+knitr::kable(hungryNotEatData[1:10,],
+             caption=formatTableHeader("first 10 rows of statement 11 data"),
+             align="l")
+
+
+# 4.5 - (12) adults lose weight because of lack of food
+loseWeightData <- filter(fsData, displayGroup == 20108) %>%
+  assign_value_variables(occList, -6)
+loseWeightData$stmtNum = 12
+loseWeightData$trueForHH = loseWeightData$loseWeight
+
+count = nrow(loseWeightData)
+cat(formatSummaryBlock(
+  str_interp('${count} rows created for statement 12 "adults lose weight because of lack of food".')))
+
+knitr::kable(loseWeightData[1:10,],
+             caption=formatTableHeader("first 10 rows of statement 12 data"),
+             align="l")
+
+
+# 4.6 - (13) adults not eat for a whole day because lack of food
+notEatDayData <- filter(fsData, displayGroup == 20108)
+notEatDayData$stmtNum = 13
+notEatDayData$trueForHH = notEatDayData$notEatWholeDay
+
+count = nrow(notEatDayData)
+cat(formatSummaryBlock(
+  str_interp('${count} rows created for statement 13 "adults not eat for a whole day because lack of food.".')))
+
+knitr::kable(notEatDayData[1:10,],
+             caption=formatTableHeader("first 10 rows of statement 13 data"),
+             align="l")
+
+# 4.7 - remove row containing display group 2017, those have been broken into
+#       statements 10 - 13 above.
+count = nrow(fsData)
+fsData <- filter(fsData, displayGroup != 20108)
+cat(formatSummaryBlock(
+  str_interp('${count} rows removed to prevent duplication of statements 10, 11, 12, and 13".')))
+
+# 4.8 - Combine the datasets .
+fsData <- dplyr::bind_rows(
+  fsData,
+  eatLessData,
+  hungryNotEatData,
+  loseWeightData,
+  notEatDayData
+)
+count <- nrow(fsData)
+cat(formatSummaryBlock(
+  str_interp('Statements 10, 11, 12, and 13 added as individual rows REC201 now has ${count} rows.')))
+
+# Remove unecessary data frames.
+
+rm(eatLessData, hungryNotEatData, loseWeightData, notEatDayData)
+
+```
+
+## Missing data
+
+Per USDA guidelines and Division practices, data that are not designated 'missing' (unk/refused) is a 0/'No'.
+
+```{r missing data}
+
+fsData <- recode_variables(fsData, fullRecodeList, NA, 0)
+
+# 4.11 - Set flags for refusals; 1 for each statement that was refused.
+fsData <- fsData %>% 
+  mutate(refusedIndex = (trueForHH < 0) + (getFood < 0))
+                                  
+fsData <- group_by(fsData, projID, studyear, communty, strata, HHID) %>%
+  mutate(refusedIndex = sum(refusedIndex, na.rm=TRUE))
+
+# 4.11 - further coding standardization
+fsData <- fsData %>% 
+  mutate(across(all_of(othColsList),
+                ~ case_when(. %in% c(-6,-7,-9) ~ -8,
+                                 TRUE ~ .)))
+
+
+# 4.13 - Change to true for 'some months, but unknown' to just true for HH. 
+fsData$trueForHH[(fsData$stmtNum %in% c(4,5,6,7,8,9,13)) & fsData$trueForHH == 2] = 1
+
+fsData$tempFreq1= -6.
+
+```
+
+## Set up True for HH vars
+
+For the sake of consistency when comparing to USDA methods, each statement is given a True for HH column for each statement. The code below develops that. Further, statements 7 and 8 on the survey form are specific to Alaska and allows us to evaluate whether or not foods that they could not get were largely store bought, wild, or both. These are recoded into statements 6.1 and 6.2.
+
+```{r set up true for HH vars}
+
+
+# 4.14 - statement 7 and 8 are just the broken-out set of q6.
+fsData$question = fsData$stmtNum * 1.0
+fsData$question[fsData$stmtNum == 7] = 6.1
+fsData$question[fsData$stmtNum == 8] = 6.2
+
+# Create the total 'True' number of months by summing across the list of
+#   months. This statement takes FS data, tells it to do the mutate by individual 
+#   rows (rather than a group by), and then add across using sum and across.
+fsData <- rowwise(fsData) %>% 
+  mutate(TrueNumMos = sum(across(all_of(occList)), na.rm=TRUE))
+
+# Since we just ran across adding without paying attention to - codes
+#        we now need to make the correction for that (if num months was not asked, 
+#        correction is a matter of replacing -72 with -6.
+fsData$TrueNumMos[fsData$TrueNumMos == -72] = -6
+
+# Populate new trueForHH columns (one for each question) with values from trueForHH
+
+# Create a vector of question numbers
+question_nums <- c(4, 5, 6, 6.1, 6.2, 9, 10, 11, 12, 13)
+
+# Use reduce to sequentially apply transformations
+fsData <- question_nums %>%
+  reduce(function(data, q_num) {
+    col_name <- paste0("trueForHH_", gsub("\\.", "_", q_num))
+    data %>%
+      mutate(!!sym(col_name) := if_else(question == q_num, trueForHH, 0))
+  }, .init = fsData)
+
+```
+
+
+# Write CSV files
+
+```{r write csv files}
+
+# ##############################################################################
+# Write out CSV files.
+# ##############################################################################
+
+# Write out clean food security file
+  fName = str_interp('../../CSV/03 - Main/foodSecurity_clean.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(fsData), ' records to be written', sep='')))
+
+  rio::export(fsData, fName)
+
+```
+
+<p class="h1footer"> End of prep food security script. </p>

@@ -1,0 +1,1104 @@
+---
+title: "F02_ASSESSMENTS - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-15"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">F02_ASSESSMENTS - (316) NPS Ambler Comprehensive</div>
+</div>
+
+# Assessments REC66 
+
+Purpose: Produce files to populate tables and figures for the Less/Same/More, Get enough/Impact, and Resources needed household survey assessment questions.
+
+## Change log
+
+### Change 1
+Programmer: D. Koster
+Date: 09/2023
+Change Description: Updated code to dynamically use codesets to pivot reasons, enough, and LSM into wide tables that only incorporate information printed on the form or offered by respondents. This update also included HH-level frequencies for better comparison and evaluation of responses.
+Template Update: Yes - this should be applied to all projects moving forward.
+
+### Change 2
+- Programmer: D.S.Koster  
+- Date: 05/21/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output. Corrected sorting order  
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates 
+
+### Change 3
+- Programmer: Jesse Coleman
+- Date: 03/18/2025
+- Change Description: Removed source() calls; all functions are included in the library adfgSubs.
+- Template Update [Y|N]: Y
+- One-Off: No-include in all future comprehensive templates 
+
+### Change 4
+- Programmer: Jesse Coleman
+- Date: 07/15/2025
+- Change Description: Refactor using tidyverse language and DRY ("don't repeat 
+yourself") principles.
+- Template Update [Y|N]: Y
+- One-Off: No - include in all future comprehensive templates
+
+## Input data
+  
+- /CSV/01 - Database Extract/REC66_raw.csv  
+- /CSV/03 - Main/sample.csv  
+- /CSV/00 - Lookup Codes/fullResList_raw.csv  
+
+## Output data
+  
+- /CSV/05 - Final Analysis Output/LSM_summary_raw.csv  
+- /CSV/05 - Final Analysis Output/enough_impact_raw.csv  
+- /CSV/05 - Final Analysis Output/enough_needRes_raw.csv  
+
+## Checklist
+  
+- Update 'Author' to your name  
+- Update the project information in 'title' to the current project  
+- Update the development log with any changes you've made to the template file, including your name  
+- Update template tables and figures and verify contents against this markdown file  
+
+## Additional information
+
+### Functions used/dependencies
+
+### Required libraries
+
+- tidyVerse  
+- odbc  
+- rio  
+- haven (for SPSS Sav)  
+- knitr
+- kableExtra
+- RColorBrewer
+- adfgSubs
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+
+# Additional libraries
+library(knitr)
+library(kableExtra)
+library(RColorBrewer)
+library(adfgSubs)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+```
+
+## Load data
+
+For this file, we are loading the raw data extract for record type 66 - Assessments, the sample, and the full resource list. 
+
+```{r load data}
+
+REC66Data <- read.csv('../../CSV/01 - Database Extract/REC66_raw.csv',
+                   na = '', 
+                   header = TRUE, 
+                   strip.white = TRUE)
+
+count <- nrow(REC66Data)
+cat(formatSummaryBlock(paste("Opening file: REC66_raw.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+# ##############################################################################
+# Load data from intermediate files.
+# ##############################################################################
+
+sampleData <- read.csv(str_interp('../../CSV/03 - Main/sample.csv'),
+                       na = "", 
+                       header = TRUE, 
+                       strip.white = TRUE)
+
+count <- nrow(sampleData)
+cat(formatSummaryBlock(paste("Opening file: sample_raw.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+
+resNameData <- read.csv(str_interp('../../CSV/00 - Lookup Codes/fullResList_raw.csv'),
+                        na = "", 
+                        header = TRUE, 
+                        strip.white = TRUE)
+
+count <- nrow(resNameData)
+cat(formatSummaryBlock(paste("Opening file: fullResList_raw.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+codeSetData <- read.csv(str_interp('../../CSV/00 - Lookup Codes/fullCodesetList.csv'),
+                        na = "", 
+                        header = TRUE, 
+                        strip.white = TRUE)
+
+count <- nrow(resNameData)
+cat(formatSummaryBlock(paste("Opening file: fullCodesetList.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+```
+## Prepare data
+
+In the chunk below, prepare the codeset lists and the dataframe so that we can transform and summarize. The standard codes and names of columns have been brought in. If these do not match, you will need to correct. Please check A02_GET_SDS_DATA.html for verification on which codesets were applied for this project.
+
+```{r prep codeset lists}
+
+REC66Data <- REC66Data %>% 
+# COVID-related reasons won't be used for 'more' codes, these will be recoded to 
+# 'other' this was a major factor during a few years, but is less important now.
+mutate(across(all_of(c("whyDiffCD1","whyDiffCD2")),
+              ~ if_else(histUse == 3 & . == 19, 10, .)),
+      # Code 2 and 17 for more are effectively identical, always use '17'
+       across(all_of(c("whyDiffCD1","whyDiffCD2")),
+              ~ if_else(histUse == 2 & . == 19, 17, .))) %>% 
+  
+  # Join sampling data
+  left_join(sampleData, by=c('projID', 'studyear', 'communty', 'strata')) %>% 
+  
+  # Join resource names
+  left_join(resNameData, by=c('resource'))
+
+
+# May require adjustment according to the data collected for this survey or if display
+#   groups weren't properly assigned.
+lsmDisplayGroups <- c('6604', '6606', '6608', '6610', '6612', 
+                      '6614', '6615', '6617', '6618')
+
+lsmCodeList <- codeSetData %>% 
+  filter(codeSetID == 6) %>%
+  select(code, codeDescription) %>% 
+  # Make codeDescription as a factor so that we can control the order.
+  mutate(codeDescription = factor(codeDescription, 
+                                  levels = c('Less', 'Same', 'More', 'Did not use'),
+                                  ordered = TRUE)) %>%
+  rename('histUse' = 'code',
+         'histUseDesc' = 'codeDescription')
+
+
+# Enough impact codes
+impactCodeList <- codeSetData %>% 
+  filter(codeSetID == 109) %>%
+  select(code, codeDescription) %>%
+  arrange(code) %>% 
+  # Change the label of 'Did not ask' to 'Do not use', this is the only
+  #  instance where -6 should be used for this question
+  mutate(codeDescription = if_else(code == -6, "Do not use", codeDescription)) %>% 
+  bind_rows(tibble(code = -10,
+                   codeDescription = "Do Not Use")) %>% 
+  rename('impact'='code',
+         'impactDesc'='codeDescription') %>% 
+  mutate(impactDesc = factor(impactDesc, ordered = TRUE))
+
+
+# Reason codes - Because we do 'double duty' on codes thanks to the way
+#   the data entry screen operates, two lists need to be generated, one for
+#   more and one for less.
+
+# Note that these are sorted in order of most frequently occurring; these 
+#   should be periodically evaluated.
+lsmReasonLessList <- tibble(
+  reasonCD = c(-9, 3, 7, 6, 11, 1, 8, 9, 5, 15, 12,
+               14, 4, 13, 18, 16, 2, 20, 19, 10),
+  lessReason = c('Missing / unknown',
+                 'Resource availability',
+                 'Not enough effort',
+                 'Did not receive',
+                 'No time / working',
+                 'Personal',
+                 'Unsuccessful',
+                 'Weather / environment',
+                 'Equipment',
+                 'Needed less',
+                 'Regulations',
+                 'Fuel too expensive',
+                 'Resource too far',
+                 'Resource too small / diseased',
+                 'No help',
+                 'Competition',
+                 'Used other resources',
+                 'Access restrictions',
+                 'COVID-related',
+                 'Other / unspecified')) %>% 
+  
+  # set up the reasons as factors so that they sort properly.
+  mutate(lessReason = factor(lessReason, ordered = TRUE))
+
+# List for 'more' reasons.
+lsmReasonMoreList <- tibble(
+  reasonCD = c(-9, 6, 7, 8, 3, 1, 15, 12, 9,
+               11, 5, 17, 14, 18, 4, 13, 10),
+  moreReason = c('Missing / unknown',
+                'Received more',
+                'Increased effort',
+                'More successful',
+                'Resource availability',
+                'Personal',
+                'Needed more',
+                'Regulations',
+                'Weather / environment',
+                'More time',
+                'Equipment',
+                'Substituted for unavailable resource',
+                'Store bought too expensive',
+                'Had more help',
+                'Travelled further to harvest',
+                'Resource larger/healthier',
+                'Other / unspecified')) %>% 
+  mutate(moreReason = factor(moreReason, ordered = TRUE))
+  
+
+```
+
+## Less Same More
+
+This portion of the assessment section addresses the historical use question. Households are asked if their use for each resource category during the survey year was less, the same, or more than in recent years in order to ascertain if the survey year is a 'typical' subsistence year. The resource categories are salmon, nonsalmon fishes, marine invertebrates, large land mammals, small land mammals, marine mammals, birds and eggs, vegetation, seaweeds and kelp, and all (meaning resources overall). Projects do not always include all the resources categories. If one or more resource category is missing check to see if the missing category was included on the survey. If the subsistence year was 'atypical' for any resource category (less or more) a follow up question is asked to determine the reason the household got less or more of the particular resource category. The following code creates lists from coded responses to the historical use, reasons for less, and reasons for more questions. Column names and resource categories should be reviewed to ensure all columns and resource categories used in the data entry screen are present. Column names and codes may need to be added if not present. An additional category (any) is added in this assessment section to create results for households using any one resource category. 
+
+Multiple resource may have been offered as being 'needed', aggregate just the Less Same More questions to the household level. As a second step, recode all resources to -1 and 'Any Resource' and summarize to the response for 'any resource'
+
+
+```{r LSM data}
+
+# Recode (-) codes for LSM so that they're only -9 for 'missing'.
+REC66Data <- REC66Data %>% 
+  mutate(histUse = if_else(histUse < 0 | is.na(histUse) , -9, histUse)) 
+
+# Merge in histUse codes for pivoting later on.
+REC66LSMData <- REC66Data %>% left_join(lsmCodeList, by = c("histUse")) %>% 
+  mutate(hhRept = 1)
+
+lsmCols <- unique(REC66LSMData$histUseDesc)
+
+# Develop 'any resource' code using -1 as the rescode so that we get proper sorting.
+REC66LSMAnyData <- REC66LSMData %>% 
+  mutate(resource = -1,
+         resName = 'Any resource')
+
+# We need to get a count of 'valid responses' - this would be easy except that
+#   'any' is also summarized.
+validLSMData <- bind_rows(REC66LSMData, REC66LSMAnyData) %>% 
+  mutate(usesRes = if_else(histUse %in% c(1,2,3), 1, 0)) %>%
+  filter(histUse >= 0) %>%
+  group_by(projID, studyear, communty, 
+           commname, samphh, resource, resName, 
+           HHID, histUseDesc) %>%
+  summarize(valid = max(hhRept),
+            usesRes = max(usesRes)) %>%
+  summarize(valid = max(valid),
+            usesRes = max(usesRes)) %>%
+  summarize(valid = sum(valid),
+            usesRes = sum(usesRes)) %>%
+  ungroup()
+
+# Multiple resource may have been offered as being 'needed', remove those and then
+#   aggregate to the community level; note that additional work will need to be 
+#   done for future stratified samples.
+lsmTableData <- REC66LSMData %>% 
+  group_by(projID, studyear, communty, 
+           commname, samphh, resource, resName, 
+           histUseDesc, HHID) %>%
+  summarize(hhRept = max(hhRept, na.rm=TRUE)) %>%
+  summarize(number = sum(hhRept, na.rm=TRUE)) %>%
+  ungroup() %>%
+  pivot_wider(names_from = histUseDesc, 
+              values_from = number,
+              names_sort = TRUE)
+
+lsmFrequencyData <- REC66LSMData %>% 
+  group_by(projID, studyear, communty, 
+           commname, samphh, 
+           histUseDesc, HHID, resource) %>%
+  filter(resource > 0) %>%
+  summarize(hhRept = max(hhRept, na.rm=TRUE)) %>%
+  summarize(number = sum(hhRept, na.rm=TRUE)) %>%
+  ungroup() %>%
+  pivot_wider(names_from = histUseDesc, 
+              values_from = number,
+              names_sort = TRUE)
+
+
+REC66LSMAnyData <- REC66LSMAnyData %>% 
+  group_by(projID, studyear, communty, 
+           commname, samphh, resource, resName, 
+           histUseDesc, HHID) %>%
+  summarize(hhRept = max(hhRept, na.rm=TRUE)) %>%
+  summarize(number = sum(hhRept, na.rm=TRUE)) %>%
+  ungroup() %>%
+  pivot_wider(names_from=histUseDesc, 
+              values_from=number,
+              names_sort=TRUE)
+
+lsmTableData <- bind_rows(REC66LSMAnyData, lsmTableData) %>%
+  arrange(projID, studyear, communty, communty, resource) %>% 
+  left_join(validLSMData,
+            by = c('projID', 'studyear', 'communty', 
+                   'commname', 'samphh', 'resource', 
+                   'resName'))
+
+# Clean up the table a little for readability.
+tableOutData <- select(lsmTableData, -projID, -studyear, -communty,
+                       -resource)
+
+tableOut <- kable(tableOutData,
+                  )
+
+print(tableOut)
+
+
+```
+
+## Reasons for less or more
+
+```{r LSM reasons}
+
+# Remove split 'More' and 'Less' into separate data frames for processing of 
+#   reasons.
+
+# If histUse is less or more, then we will ensure that the first
+#  reason is at least -9; rows for reason code 2 will be removed
+#  after files are stacked in a later step.
+
+REC66Data$whyDiffCD1[which(REC66Data$histUse == 1 & is.na(REC66Data$whyDiffCD1))] = -9
+REC66Data$whyDiffCD1[which(REC66Data$histUse == 3 & is.na(REC66Data$whyDiffCD1))] = -9
+
+REC66Data$whyDiffCD1[which(REC66Data$histUse == 1 & REC66Data$whyDiffCD1 < 0)] = -9
+REC66Data$whyDiffCD1[which(REC66Data$histUse == 3 & REC66Data$whyDiffCD1 < 0)] = -9
+
+# 'Missing' cannot be a second reason code; also if a 0 worked it's way in, let's 
+#   also make sure that's handled properly.
+REC66Data$whyDiffCD2[which(REC66Data$histUse == 1 & REC66Data$whyDiffCD2 < 1)] = NA
+REC66Data$whyDiffCD2[which(REC66Data$histUse == 3 & REC66Data$whyDiffCD2 < 1)] = NA
+
+# Make an 'any resource'
+REC66AnyData <- REC66Data
+REC66AnyData$resource = -1
+REC66AnyData$resName = 'Any resource'
+
+REC66ReasonData <- dplyr::bind_rows(REC66AnyData, REC66Data)
+
+# Ensure that all resource categories asked about pop-up on the output data.
+keyData <- distinct(REC66ReasonData, projID, studyear, communty, 
+                             commname, samphh, resource, resName) %>%
+  arrange(projID, studyear, communty, 
+                             commname, samphh, resource, resName)
+
+REC66LessData <- filter(REC66ReasonData, histUse == 1)
+REC66LessData$lessUse = 1
+REC66LessData$validReason = 1
+
+REC66LessData$validReason[which(REC66LessData$whyDiffCD1 == -9)] = 0
+
+# Get to HH level first to avoid duplicate rows from 'resources needed'
+validLessReasonData <- group_by(REC66LessData, projID, studyear, communty, 
+                         commname, resource, resName, HHID) %>%
+                       summarize(lessUse = max(lessUse),
+                                 validReason = max(validReason)) %>%
+                       summarize(lessUse = sum(lessUse),
+                                 validReason = sum(validReason)) %>%
+                       ungroup()
+
+lessReason1Data <- select(REC66LessData, projID, studyear, communty, 
+                         commname, samphh, resource, resName, HHID, lessUse,
+                         whyDiffCD1) %>%
+               ungroup() %>%
+               rename(reasonCD = whyDiffCD1)
+lessReason2Data <- select(REC66LessData, projID, studyear, communty, 
+                         commname, resource, resName, HHID, lessUse,
+                         whyDiffCD2) %>%
+               ungroup() %>%
+               rename(reasonCD = whyDiffCD2) %>%
+               filter(!is.na(reasonCD))
+
+# Combine and ensure there aren't duplicate reason codes, then
+#    merge and pivot.
+lessReasonsData <- dplyr::bind_rows(lessReason1Data, lessReason2Data) %>%
+               left_join(lsmReasonLessList, by=c("reasonCD")) %>%  
+               group_by(projID, studyear, communty, 
+                         commname, resource, resName, lessReason, HHID) %>%
+               summarize(lessUse = max(lessUse)) %>%
+               summarize(lessUse = sum(lessUse)) %>%
+                ungroup() %>%
+                pivot_wider(names_from=lessReason, 
+                               values_from=lessUse,
+                               names_sort=TRUE)
+
+lessReasonsData <- left_join(validLessReasonData, lessReasonsData, 
+                             by=c('projID', 'studyear', 'communty', 
+                                  'commname', 'resource', 'resName'))
+lessReasonsData <- left_join(keyData, lessReasonsData, by=c('projID', 'studyear', 'communty', 
+                                  'commname', 'resource', 'resName'))
+
+
+  tableOut <- kbl(lessReasonsData,
+      caption=formatTableHeader(str_interp("Reasons for less harvest, ${studyear}."))) %>%
+    kable_styling(full_width = F)
+
+  print(tableOut)
+               
+REC66MoreData <- filter(REC66ReasonData, histUse == 3)
+REC66MoreData$moreUse = 1
+REC66MoreData$validReason = 1
+
+REC66MoreData$validReason[which(REC66MoreData$whyDiffCD1 == -9)] = 0
+
+# Get to HH level first to avoid duplicate rows from 'resources needed'
+validMoreReasonData <- group_by(REC66MoreData, projID, studyear, communty, 
+                         commname, resource, resName, HHID) %>%
+                       summarize(moreUse = max(moreUse),
+                                 validReason = max(validReason)) %>%
+                       summarize(moreUse = sum(moreUse),
+                                 validReason = sum(validReason)) %>%
+                       ungroup()
+
+moreReason1Data <- select(REC66MoreData, projID, studyear, communty, 
+                         commname, resource, resName, HHID, moreUse,
+                         whyDiffCD1) %>%
+               ungroup() %>%
+               rename(reasonCD = whyDiffCD1)
+moreReason2Data <- select(REC66MoreData, projID, studyear, communty, 
+                         commname, resource, resName, HHID, moreUse,
+                         whyDiffCD2) %>%
+               ungroup() %>%
+               rename(reasonCD = whyDiffCD2) %>%
+               filter(!is.na(reasonCD))
+
+# Combine and ensure there aren't duplicate reason codes, then
+#    merge and pivot.
+moreReasonsData <- dplyr::bind_rows(moreReason1Data, moreReason2Data) %>%
+               left_join(lsmReasonMoreList, by=c("reasonCD")) %>%  
+               group_by(projID, studyear, communty, 
+                         commname, resource, resName, moreReason, HHID) %>%
+               summarize(moreUse = max(moreUse)) %>%
+               summarize(moreUse = sum(moreUse)) %>%
+                ungroup() %>%
+                pivot_wider(names_from=moreReason, 
+                               values_from=moreUse,
+                               names_sort=TRUE)
+
+moreReasonsData <- left_join(validMoreReasonData, moreReasonsData, 
+                             by=c('projID', 'studyear', 'communty', 
+                                  'commname', 'resource', 'resName'))
+moreReasonsData <- left_join(keyData, moreReasonsData, by=c('projID', 'studyear', 'communty', 
+                                  'commname', 'resource', 'resName'))
+
+  tableOut <- kbl(moreReasonsData,
+      caption=formatTableHeader(str_interp("Reasons for more use, ${studyear}."))) %>%
+    kable_styling(full_width = F)
+
+print(tableOut)
+
+```
+
+## LSM Table and Figure Review
+In this step, please review each table for obvious errors or issues. When re-running this data with updates, you can visually compare this output to the previous version in excel before pasting the output file into the excel template. 
+
+<div class="todoBlock">Re-enable the code below and reorganize to work with the new table and data layouts produced above. Temporary tables have been produced above.</div>
+
+```{r LSM table review, eval=FALSE}
+# Here you can display summary information regarding the analysis that will help. 
+# One community at a time and only necessary outputs, we'll simplify further
+#   in the next step.
+
+commnameList <- ungroup(lsmOutputData) %>% select(commname) %>% distinct(commname)
+LSMtempData <- lsmOutputData
+
+# Calculate percentages and ensure NA gets turned to 0.
+LSMtempData$anyUse_pct = LSMtempData$anyUse/LSMtempData$validLSM
+LSMtempData$less_pct = LSMtempData$less/LSMtempData$validLSM
+LSMtempData$same_pct = LSMtempData$same/LSMtempData$validLSM
+LSMtempData$more_pct = LSMtempData$more/LSMtempData$validLSM
+LSMtempData$DontUse_pct = LSMtempData$DontUse/LSMtempData$validLSM
+LSMtempData <- recode_variables(LSMtempData, c('less_pct', 'same_pct', 'more_pct', 'DontUse_pct'),NA,0)
+
+for(comm in commnameList$commname)
+{
+LSMtempTblData <- filter (LSMtempData, commname == comm) %>% ungroup() %>%
+               select(resName, sample, validLSM, anyUse, anyUse_pct, 
+                      less, less_pct, same, same_pct, more, more_pct, DontUse, DontUse_pct) 
+
+# Create formatted percentages for table.
+LSMtempTblData$anyUse_pct = paste(as.character(round(LSMtempTblData$anyUse_pct * 100,1)), '%',sep='')
+LSMtempTblData$less_pct = paste(as.character(round(LSMtempTblData$less_pct * 100,1)), '%',sep='')
+LSMtempTblData$same_pct = paste(as.character(round(LSMtempTblData$same_pct * 100,1)), '%',sep='')
+LSMtempTblData$more_pct = paste(as.character(round(LSMtempTblData$more_pct * 100,1)), '%',sep='')
+LSMtempTblData$DontUse_pct = paste(as.character(round(LSMtempTblData$DontUse_pct * 100,1)), '%',sep='')
+
+LSMtblOut <- kbl(LSMtempTblData,
+             caption=formatTableHeader(str_interp("LSM summary data: ${comm}, ${studyear}")),
+             col.names = c("Resource category", 
+                           "Sampled households", 
+                           "Valid responses", 
+                           "Number", 
+                           "Percentage", 
+                           "Number", 
+                           "Percentage", 
+                           "Number", 
+                           "Percentage", 
+                           "Number",
+                           "Percentage",
+                           "Number",
+                           "Percentage"),                         
+               align="l")%>%
+    kable_styling(full_width = F) %>%
+    add_header_above(c("  " = 3, "Total households" = 2, 
+                       "Less" = 2, 
+                       "Same" = 2,
+                       "More  " = 2,
+                       "Households not using" = 2))
+
+print(LSMtblOut)
+}
+
+#LSM figure
+
+tmpFigData <- select(LSMtempData, commname, resource, resName,
+                     less_pct, same_pct, more_pct, DontUse_pct) %>%
+              filter(resName != 'Any resource' & resName != 'All resources')
+
+# Pivot to make the percent columns into factors.
+plotTempFigData <- pivot_longer(tmpFigData, cols=ends_with("_pct"), names_to="use", values_to="Percent")
+
+#Simplify legend names.
+plotTempFigData$use[plotTempFigData$use == "less_pct"] = "Less"
+plotTempFigData$use[plotTempFigData$use == "same_pct"] = "Same"
+plotTempFigData$use[plotTempFigData$use == "more_pct"] = "More"
+plotTempFigData$use[plotTempFigData$use == "DontUse_pct"] = "Dont Use"
+
+plotTempFigData$use = factor(plotTempFigData$use, levels = rev(unique(plotTempFigData$use)))
+plotTempFigData$resName = factor(plotTempFigData$resName, levels = rev(unique(plotTempFigData$resName)))
+
+colrs = getColors(nColors=4)
+for(comm in commnameList$commname)
+{
+  tmpFigData <- filter(plotTempFigData, commname == comm)
+  
+  plotOut <- ggplot(tmpFigData, aes(fill=use, 
+                                    x=resName, 
+                                    y=Percent,
+                                    label = scales::percent(Percent,
+                                                            accuracy=.1))) +
+    ggtitle(str_interp("Less/Same/More Comparisons Figure ${comm}, ${studyear}")) +
+    geom_bar(position = "fill", stat="identity") +
+     scale_fill_manual(values = colrs) +
+    geom_text(aes(label=ifelse(Percent >= 0.05, paste0(sprintf("%.0f", Percent*100),"%"),"")),
+                position=position_stack(vjust=0.5), colour="white") +
+    scale_y_continuous(labels = scales::percent, limits = c(0,1)) +
+    coord_flip() +
+    ylab("Percentage of sampled households ") +
+    xlab(" ") +
+    theme(text=element_text(family="serif")) +
+    theme(legend.title = element_blank()) +
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+    panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+    theme(legend.position="bottom") +
+    theme(plot.margin = margin(t=1,r=0,b=1,l=1, "cm"))
+  
+  print(plotOut)
+  
+}
+
+## Error Checking
+
+# Less/Same/More/Don't use = valid responses
+
+LSMtempData$useTtl = 0
+LSMtempData$useTtl = (LSMtempData$less + LSMtempData$same + LSMtempData$more + LSMtempData$DontUse)
+
+for(comm in commnameList$commname)
+{
+tempLSMData <- filter(LSMtempData, commname == comm & 
+                       validLSM != useTtl) %>% ungroup %>%
+             select(resName, validLSM, all_of(lsmList), useTtl) 
+  
+  if(nrow(tempLSMData) > 0) 
+{
+    tblOut <- kbl(tempLSMData,
+          caption=formatTableHeader(str_interp("LSM responses unequal to valid responses: ${comm}, ${studyear}")),
+          col.names = c("Resource category",
+                        "Valid responses",
+                        "Less",
+                        "Same",
+                        "More",
+                        "Don't use",
+                        "Total responses"),
+                        align= "l") %>% 
+          kable_styling(full_width = F)
+        
+      print(tblOut)
+  } else {
+  
+    cat(greenMessage(str_interp("LSM responses equal to valid responses for ${comm}")))
+  }
+}
+
+```
+
+## Reasons for Less Table Review
+In this step, please review each table for obvious errors or issues. When re-running this data with updates, you can visually compare this output to the previous version in excel before pasting the output file into the excel template.
+
+<div class="todoBlock">Re-enable the code below and reorganize to work with the new table and data layouts produced above. Temporary tables have been produced above.</div>
+
+```{r Reasons for less logic checking, eval=FALSE}
+
+## Error Checking
+
+# Reasons for less >=  valid responses
+
+lessTempData <- filter (LSMtempData, resName != 'Any resource')
+
+lessTempData$lessReasonsTtl = 0
+lessTempData$lessReasonsTtl = (lessTempData$Less_FamPers + lessTempData$Less_UsedOtherResources + lessTempData$Less_Availability + lessTempData$Less_TooFar + lessTempData$Less_NoEquip + lessTempData$Less_notReceive + lessTempData$Less_EffortNoTry + lessTempData$Less_Unsuccessful + lessTempData$Less_WeatherEnv + lessTempData$Less_WorkingNoTime + lessTempData$Less_Regulations + lessTempData$Less_smallORdiseasedRes + lessTempData$Less_Expense + lessTempData$Less_NotNeed + lessTempData$Less_Competition + lessTempData$Less_NoHelp + lessTempData$Less_CovidRelated + lessTempData$Less_AccessRestrictions + lessTempData$Less_Other + lessTempData$Less_NR)
+
+for(comm in commnameList$commname)
+{
+tempLessData <- filter(lessTempData, commname == comm & 
+                       lessReasonsTtl < validLessReason) %>% ungroup %>%
+                select(resName, validLessReason, all_of(lessReasonList), lessReasonsTtl) 
+  
+  if(nrow(tempLessData) > 0) {
+    tblOut <- kbl(tempLessData,
+          caption=formatTableHeader(str_interp("Reasons for less < valid responses: ${comm}, ${studyear}")),
+          col.names= c("Resource category",
+                       "Valid responses",
+                       "Family/personal",
+                       "Used other resources",
+                       "Resources less available",
+                       "Too far to travel",
+                       "Lack of equipment",
+                       "Less sharing",
+                       "Lack of effort",
+                       "Unsuccessful",
+                       "Weather/environment",
+                       "Working/no time",
+                       "Regulations",
+                       "Small/diseased animals",
+                       "Equipment/fuel expenses",
+                       "Did not need",
+                       "Competition",
+                       "No help",
+                       "Covid related",
+                       "Access restrictions",
+                       "Other reasons",
+                       "Missing",
+                       "Total responses")) %>%
+        kable_styling(full_width = F) 
+        
+      
+      print(tblOut)
+  } else
+  {
+    cat(greenMessage(str_interp("Total reasons for less are greater than or equal to valid responses for ${comm}")))
+  }
+}
+```
+
+## Reasons for More Table Review
+In this step, please review each table for obvious errors or issues. When re-running this data with updates, you can visually compare this output to the previous version in excel before pasting the output file into the excel template.
+
+<div class="todoBlock">Re-enable the code below and reorganize to work with the new table.</div>
+
+```{r Reasons for more error Checking, eval=FALSE}
+
+## Error Checking
+
+# Reasons for more >=  valid responses
+
+moreTempData <- filter (LSMtempData, resName != 'Any resource')
+
+moreTempData$moreReasonsTtl = 0
+moreTempData$moreReasonsTtl = (moreTempData$More_FamPers + moreTempData$More_UsedOtherResources + moreTempData$More_Available + moreTempData$More_WentFurther + moreTempData$More_Equipment + moreTempData$More_Received + moreTempData$More_IncreasedEffort + moreTempData$More_Successful + moreTempData$More_Weather + moreTempData$More_Time + moreTempData$More_Regulations + moreTempData$More_StoreBoughtExpense + moreTempData$More_Needed + moreTempData$More_noSubstitute + moreTempData$More_Help + moreTempData$More_CovidRelated + moreTempData$More_Other + moreTempData$More_NR)
+
+for(comm in commnameList$commname)
+{
+tempMoreData <- filter(moreTempData, commname == comm & 
+                       moreReasonsTtl < validMoreReason) %>% ungroup %>%
+                select(resName, validMoreReason, all_of(moreReasonList), moreReasonsTtl) 
+  
+  if(nrow(tempMoreData) > 0) {
+    tblOut <- kbl(tempMoreData,
+          caption=formatTableHeader(str_interp("Reasons for more < valid responses: ${comm},${studyear}")),
+          col.names= c("Resource category",
+                       "Valid responses",
+                       "Family/personal",
+                       "Used other resources",
+                       "Increased availability", 
+                       "Traveled further",
+                       "Got/fixed equipment",
+                       "Received more",
+                       "Increased effort",
+                       "More success",
+                       "Favorable weather",
+                       "Had more time",
+                       "Regulations",
+                       "Store bought expense",
+                       "Needed more",
+                       "Substitute for unavailable resource(s)",
+                       "More help",
+                       "Covid-related",
+                       "Other reasons",
+                       "Missing",
+                       "Total responses")) %>%
+        kable_styling(full_width = F) 
+   
+          print(tblOut)
+  } else
+  {
+    cat(greenMessage(str_interp("Total reasons for more are greater than or equal to valid responses for ${comm}")))
+  }
+}
+
+
+```
+
+### Get enough/ Impact
+
+This portion of the assessment section addresses if households got enough of a resource category and the impact to the household if they did not. The same resource categories listed under the Less/Same/More section are also asked about in this section. If the household responds 'No' to the get enough question for any resource category, a follow up question is asked regarding the impact to the household of not getting enough. The impact question responses are on a scale from 'not noticeable' to 'severe'. Historically a 4 point scale was used, but recently an additional point (moderate) was added. Ascertain which scale was used in the data entry screen. You may need to remove 'moderate' from the column list. 
+
+```{r get enough and impact data}
+
+REC66Data$validEnough = 0
+
+REC66Data$validEnough[which(REC66Data$histUse == 0)] = 1
+REC66Data$validEnough[which(REC66Data$getEnough %in% c(0,1))] = 1
+# Provide an additional impact code to distingush between 'no use' and missing.
+REC66Data$impact[which(REC66Data$histUse == 0)] = -10
+
+
+# Develop 'any resource' code using -1 as the rescode so that we get proper sorting.
+REC66EnoughAnyData <- REC66Data
+REC66EnoughAnyData$resource = -1
+REC66EnoughAnyData$resName = 'Any resource'
+
+REC66EnoughData <- dplyr::bind_rows(REC66Data, REC66EnoughAnyData)
+
+REC66EnoughData$notEnough = 0
+# Differentiate between not enough and do not use. Depending on how the data entry 
+#   screen was set up this may or not may be necessary.
+REC66EnoughData$notEnough[which(REC66EnoughData$getEnough == 0 & REC66EnoughData$histUse > 0)] = 1
+
+# Now we've established the response for got enough, recode 'getEnough' to 0 for all
+#   instances where it might be missing to ensure proper aggregation.
+REC66EnoughData$getEnough[which(is.na(REC66EnoughData$getEnough) | REC66EnoughData$getEnough < 0)] = 0
+
+# Set instances of NA for impact to -9 if enough has been marked as 0.
+REC66EnoughData$impact[which(REC66EnoughData$notEnough == 1 & is.na(REC66EnoughData$impact))] = -9
+
+# Get enough has to be tabulated separately from impact to simplify the pivot.
+REC66ImpactData <- select(REC66EnoughData, projID, studyear, communty, 
+                         commname, resource, resName, 
+                         impact, HHID)
+
+# Impacts for 'not enough' only, and also omit 'any' and 'overall' - these are not particularly insightful.
+REC66ImpactFrequencyData <- select(REC66EnoughData, projID, studyear, communty, 
+                                   commname, resource, resName, 
+                                   notEnough, impact, HHID) %>%
+                            filter(resource > 0 & notEnough == 1)
+
+# Add in no-use for frequency summaries.
+REC66EnoughData$noUse = 0
+REC66EnoughData$noUse[which(REC66Data$histUse == 0)] = 1
+REC66EnoughData <- select(REC66EnoughData, projID, studyear, communty, 
+                         commname, resource, resName, noUse, validEnough, getEnough,
+                         notEnough, HHID)
+REC66EnoughFrequencyData <- filter(REC66EnoughData, resource > 0)
+
+REC66EnoughData <- group_by(REC66EnoughData, projID, studyear, communty,
+                            commname, resource, resName, HHID) %>%
+                   summarize(validEnough = max(validEnough, na.rm=TRUE),
+                             getEnough = max(getEnough, na.rm=TRUE),
+                             notEnough = max(notEnough, na.rm=TRUE)) %>%
+                   summarize(validEnough = sum(validEnough, na.rm=TRUE),
+                             getEnough = sum(getEnough, na.rm=TRUE),
+                             notEnough = sum(notEnough, na.rm=TRUE)) %>%
+                   ungroup()
+
+REC66ImpactData$number = 1
+REC66ImpactData <- left_join(REC66ImpactData, impactCodeList,
+                            by=c("impact"))
+REC66ImpactData <- group_by(REC66ImpactData,  projID, studyear, communty,
+                            commname, resource, resName, impactDesc, HHID) %>%
+                   summarize(number = max(number, na.rm=TRUE)) %>%
+                   summarize(number = sum(number, na.rm=TRUE)) %>%
+                   ungroup() %>%
+                   filter(!is.na(impactDesc)) %>%
+                   pivot_wider(names_from="impactDesc", values_from="number",
+                               names_sort=TRUE)
+
+getEnoughTableData <- left_join(keyData, REC66EnoughData, by=c('projID', 'studyear', 'communty', 
+                                  'commname', 'resource', 'resName')) %>% 
+                      left_join(REC66ImpactData, by=c('projID', 'studyear', 'communty', 
+                                  'commname', 'resource', 'resName'))
+
+# ##############################################################
+# Calculate frequencies - Number of categories reported per HH
+# ##############################################################
+
+# Get to HHID/Resource (one row per), then sum # resources per HH. This will
+#   stay at the HH level in order to produce box and whisker plots.
+REC66EnoughFrequencyData <- group_by(REC66EnoughFrequencyData, projID, studyear, communty,
+                            commname, HHID, resource) %>%
+                   summarize(getEnough = max(getEnough, na.rm=TRUE),
+                             noUse = max(noUse, na.rm=TRUE),
+                             notEnough = max(notEnough, na.rm=TRUE)) %>%
+                   summarize(getEnough = sum(getEnough, na.rm=TRUE),
+                             noUse = sum(noUse, na.rm=TRUE),
+                             notEnough = sum(notEnough, na.rm=TRUE)) %>%
+                   ungroup()
+
+REC66ImpactFrequencyData$number = 1
+REC66ImpactFrequencyData <- left_join(REC66ImpactFrequencyData, impactCodeList,
+                            by=c("impact"))
+REC66ImpactFrequencyData <- group_by(REC66ImpactFrequencyData,  projID, studyear, communty,
+                            commname, impactDesc, HHID, resource) %>%
+                   summarize(number = max(number, na.rm=TRUE)) %>%
+                   summarize(number = sum(number, na.rm=TRUE)) %>%
+                   ungroup() %>%
+                   filter(!is.na(impactDesc)) %>%
+                   pivot_wider(names_from="impactDesc", 
+                                values_from="number",
+                                names_sort = TRUE)
+
+# Enforce 0-values in the pivoted data; because we know what the first 5 values ought
+#   to be we can just skip those - they shouldn't be blank at this point.
+for(ii in 5:length(REC66ImpactFrequencyData))
+{
+  REC66ImpactFrequencyData[which(is.na(REC66ImpactFrequencyData[,ii])),ii] = 0
+}
+
+# Don't combine files.
+
+  tableOut <- kbl(getEnoughTableData,
+      caption=formatTableHeader(str_interp("Households reporting not getting enough and impacts, ${studyear}."))) %>%
+    kable_styling(full_width = F)
+
+print(tableOut)
+
+```
+## Get Enough Table Review
+In this step, please review each table for obvious errors or issues. When re-running this data with updates, you can visually compare this output to the previous version in excel before pasting the output file into the excel template.
+
+<div class="todoBlock">Modify the next segment of code to work with the new table layout.</div>
+
+```{r enough table review, eval=FALSE}
+
+## Error Checking
+
+# Did not get enough = Impact responses
+
+tempEnoughData <- ungroup(enoughOutputData) %>%
+                   select(commname, resName, notEnough, notNoticable, minor, moderate, major, severe,                                 noRespImpact)
+
+tempEnoughData$impactTtl = (tempEnoughData$notNoticable + tempEnoughData$minor + tempEnoughData$moderate + tempEnoughData$major + tempEnoughData$severe + tempEnoughData$noRespImpact)
+
+for(comm in commnameList$commname)
+{
+tmpEnoughData <- filter(tempEnoughData, commname == comm & 
+                       impactTtl != notEnough) %>% 
+             select(resName, notEnough, notNoticable, minor, moderate, major, severe, noRespImpact, impactTtl) 
+  
+  if(nrow(tmpEnoughData) > 0) 
+{
+    tblOut <- kbl(tmpEnoughData,
+          caption=formatTableHeader(str_interp("Impact responses unequal to did not get enough responses: ${comm}, ${studyear}")),
+          col.names = c("Resource category",
+                        "Did not get enough",
+                        "Not noticable",
+                        "Minor",
+                        "Moderate",
+                        "Major",
+                        "Severe",
+                        "No impact response",
+                        "Total impacts responses"),
+                        align= "l") %>%
+          kable_styling(full_width = F) 
+        
+      print(tblOut)
+  } else {
+  
+    cat(greenMessage(str_interp("Impact responses equal to did not get enough responses for ${comm}, ${studyear}")))
+  }
+}
+
+```
+
+### Resources Needed
+
+Households responding 'No' to the get enough question were asked an additional follow up question: What kind of resource(s) did the household need? This assessment section provides a list of resources households needed.
+
+```{r resources needed prep}
+
+neededData <- select(REC66Data, projID, studyear, communty, commname, strata, samphh, resourceNeeded)
+
+neededData <- left_join(neededData, resNameData, by=c("resourceNeeded" = "resource"))
+
+neededData <- group_by(neededData, projID, studyear, communty, commname, resourceNeeded, resName, strata) %>%
+  summarize(samphh = max(samphh),
+            count = n()) %>%
+  summarize(samphh = sum(samphh),
+            count = sum(count))
+
+neededData$resName = trimws(neededData$resName, which="both") 
+
+neededData <- neededData%>%
+  arrange(projID, studyear, communty, desc(count))
+
+```
+
+## Resources Needed Table Review
+In this step, please review each table for obvious errors or issues. When re-running this data with updates, you can visually compare this output to the previous version in excel before pasting the output file into the excel template.
+
+```{r resources needed table review}
+# Here you can display summary information regarding the analysis that will help 
+#  in interpretation or evaluation.
+
+# This is an example of a table, you can remove the col.names option here
+#  and use only the data frame column headers, depending..
+
+for(comm in sampleData$commname)
+{
+neededTempData <- filter (neededData, commname == comm) %>% ungroup() %>%
+               select(resName, samphh, count) 
+
+# Calculate percentages for table.
+
+neededTempData$count_pct = neededTempData$count/neededTempData$samphh
+
+# Round percentages for table.
+
+neededTempData$count_pct = round(neededTempData$count_pct * 100,1)
+
+#Select columns for table.
+neededTempData <- select(neededTempData, resName, count, count_pct)
+
+#Select to eliminate NA vaules.
+neededTempData <- filter(neededTempData, !is.na(resName))
+
+
+neededTblOut <- kbl(neededTempData,
+             caption=formatTableHeader(str_interp("Resources Needed ${comm}, ${studyear}")),
+             col.names = c("Resource",
+                           "Households needing",
+                           "Percentage of households needing"),                         
+              align="l")%>%
+    kable_styling(full_width = F) %>%
+    
+print(resNeededTblOut)
+}
+
+# This is a summary information block regarding the table above. It can be used 
+#  for basic summary statistics, including basic summaries or hypothesis tests.
+#cat(formatSummaryBlock(paste("Community codes extracted: ", count, " codes found. Results will be written to: /CSV/01 - Database Extract/fullCommunityList.csv", sep="")))
+
+```
+
+# Write out CSV files
+
+```{r write csv files}
+
+# ##############################################################################
+# Write out CSV files.
+# ##############################################################################
+
+# Sample code for writing out a file.
+  fName = str_interp('../../CSV/05 - Final Analysis Output/LSMTable_raw.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(lsmTableData), ' records to be written', sep='')))
+  
+  # For 2023; we are, by default, working exclusively with R code..
+  rio::export(lsmTableData, fName)
+
+# Sample code for writing out a file.
+  fName = str_interp('../../CSV/05 - Final Analysis Output/LSMFrequency_raw.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(lsmFrequencyData), ' records to be written', sep='')))
+  
+  # For 2023; we are, by default, working exclusively with R code..
+  rio::export(lsmFrequencyData, fName)
+
+    fName = str_interp('../../CSV/05 - Final Analysis Output/LSM_Less_Reasons_raw.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(lessReasonsData), ' records to be written', sep='')))
+  
+  # For 2023; we are, by default, working exclusively with R code..
+  rio::export(lessReasonsData, fName)
+  
+  
+  fName = str_interp('../../CSV/05 - Final Analysis Output/LSM_More_Reasons_raw.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(moreReasonsData), ' records to be written', sep='')))
+  
+  # For 2023; we are, by default, working exclusively with R code..
+  rio::export(moreReasonsData, fName)
+  
+  fName = str_interp('../../CSV/05 - Final Analysis Output/enough_impact_raw.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(getEnoughTableData), ' records to be written', sep='')))
+  
+  # For 2023; we are, by default, working exclusively with R code..
+  rio::export(getEnoughTableData, fName)
+
+     fName = str_interp('../../CSV/05 - Final Analysis Output/impact_frequency_raw.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(REC66ImpactFrequencyData), ' records to be written', sep='')))
+  
+  # For 2023; we are, by default, working exclusively with R code..
+  rio::export(REC66ImpactFrequencyData, fName) 
+  
+    
+    fName = str_interp('../../CSV/05 - Final Analysis Output/enough_frequency_raw.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(REC66EnoughFrequencyData), ' records to be written', sep='')))
+  
+  # For 2023; we are, by default, working exclusively with R code..
+  rio::export(REC66EnoughFrequencyData, fName)
+  
+  fName = str_interp('../../CSV/05 - Final Analysis Output/enough_needRes_raw.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(neededData), ' records to be written', sep=''))) 
+  
+# For 2023; we are, by default, working exclusively with R code..
+  rio::export(neededData, fName)
+  
+```
+
+<p class="h1footer"> End of ASSESSMENTS script. </p>

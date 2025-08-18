@@ -1,0 +1,284 @@
+---
+title: "E11_FOOD_AND_FUR - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-15"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">E11_FOOD_AND_FUR - (316) NPS Ambler Comprehensive</div>
+</div>
+
+# Food and fur
+Produce data for a table that provides a comparison of resources harvested for food and fur or for fur only. 
+
+## Change log
+
+### Change 1
+- Programmer: D.S.Koster  
+- Date: 05/21/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output. Corrected a few issues with outputs.  
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates 
+
+### Change 2
+- Programmer: Jesse Coleman
+- Date: 03/18/2025
+- Change Description: Removed source() calls; all functions are included in the library adfgSubs.
+- Template Update [Y|N]: Y
+- One-Off: No-include in all future comprehensive templates 
+
+### Change 3
+- Programmer: Jesse Coleman
+- Date: 07/15/2025
+- Change Description: Refactor using tidyverse language and DRY ("don't repeat 
+yourself") principles.
+- Template Update [Y|N]: Y
+- One-Off: No - include in all future comprehensive templates 
+
+
+## Input data 
+
+- /CSV/03 - main/harvData_HH_finalPrepped.csv  
+
+## Output data:
+
+- /CSV/05 - Final Analysis Output/Food and Fur.csv  
+
+## Background
+
+For resources where there is no requirement to salvage meat, but are frequently eaten, we need to show a break-down of the total harvested, and the number of those that were used exclusively for the use of hide/fur only.
+
+## Checklist
+
+- Update 'Author' to your name, 
+- Update the project information in 'title' to the current project.
+- Update the development log with any changes you've made to the template file, including your name.
+- Add check-list items here.
+
+## Additional information
+Uses the final prepped HH harvest file for analysis, assumes that resources with no conversion factor are typically not eaten and therefore assigns all harvest to 'amtFurOnly', regardless of how the data was recorded. 
+
+### Required libraries:  
+- tidyVerse (dplyr)  
+- rio  
+- knitr  
+- kableExtra
+- adfgSubs
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+
+# Additional libraries
+library(knitr)
+library(kableExtra)
+library(adfgSubs)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+```
+
+## Load data
+
+```{r load data}
+
+# ##############################################################################
+# Load data from intermediate files.
+# ##############################################################################
+
+# This for each file opened.
+harvData <- read.csv('../../CSV/03 - main/harvData_HH_finalPrepped.csv',
+                   na = '', 
+                   header = TRUE, 
+                   strip.white = TRUE)
+
+count <- nrow(harvData)
+cat(formatSummaryBlock(paste("Opening file: harvData_HH_finalPrepped.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+
+```
+
+## Filter and summarize
+
+This chunk of code does the filtering and summarization of fur only for comparison.
+
+```{r}
+
+harvData <- harvData %>%
+  filter(specList == 1 & between(resource, 220000000, 229999999)) %>%
+  select(projID, studyear, communty, commname, strata, strataWt, NHouseholds, NPopulation,
+         HHID, resource, resName, mRepl, units, convFact, harvestAmt_MR, reptHarvestAmt,
+         harvestLbs_MR, reptHarvestLbs, estHarvestAmt, estHarvestLbs, amtFurOnly)
+
+# Estimate fur only.
+harvData$estAmtFurOnly = 0
+harvData$estAmtFurOnly = harvData$amtFurOnly * harvData$strataWt
+
+# We did not enforce logic with 'non-eaten' resource originally so go ahead
+#  and enforce that logic now.
+harvData$amtFurOnly[which(harvData$convFact == 0)] = harvData$harvestAmt_MR[which(harvData$convFact == 0)]
+harvData$estAmtFurOnly[which(harvData$convFact == 0)] = harvData$estHarvestAmt[which(harvData$convFact == 0)]
+
+estFurData <- harvData %>%
+  group_by(projID, studyear, communty, commname, strata, strataWt, NHouseholds, NPopulation,
+            resource, resName, units, convFact) %>%
+  summarize(harvestAmt_MR = sum(harvestAmt_MR, na.rm=TRUE), 
+           reptHarvestAmt = sum(reptHarvestAmt, na.rm=TRUE), 
+           harvestLbs_MR = sum(harvestLbs_MR, na.rm=TRUE), 
+           reptHarvestLbs = sum(reptHarvestLbs, na.rm=TRUE), 
+           estHarvestAmt = sum(estHarvestAmt, na.rm=TRUE), 
+           estHarvestLbs = sum(estHarvestLbs, na.rm=TRUE), 
+           amtFurOnly = sum(amtFurOnly, na.rm=TRUE),
+           estAmtFurOnly = sum(estAmtFurOnly, na.rm=TRUE)) %>%
+  ungroup()
+
+# Summarize to total for incorporation on the table.
+estFurTotalData <- estFurData
+estFurTotalData$resource = 220000000
+estFurTotalData$resName = "Small land mammals"
+estFurTotalData$units = 1
+estFurTotalData$convFact = NA
+
+estFurTotalData <- estFurTotalData %>%
+  group_by(projID, studyear, communty, commname, strata, strataWt, NHouseholds, NPopulation,
+            resource, resName, units, convFact) %>%
+  summarize(harvestAmt_MR = sum(harvestAmt_MR, na.rm=TRUE), 
+           reptHarvestAmt = sum(reptHarvestAmt, na.rm=TRUE), 
+           harvestLbs_MR = sum(harvestLbs_MR, na.rm=TRUE), 
+           reptHarvestLbs = sum(reptHarvestLbs, na.rm=TRUE), 
+           estHarvestAmt = sum(estHarvestAmt, na.rm=TRUE), 
+           estHarvestLbs = sum(estHarvestLbs, na.rm=TRUE), 
+           amtFurOnly = sum(amtFurOnly, na.rm=TRUE),
+           estAmtFurOnly = sum(estAmtFurOnly, na.rm=TRUE)) %>%
+  ungroup() 
+
+# We don't truly need this as it duplicates, but will be necessary for
+#  computation of percentages overall.
+estFurTotalData$estTotHarv = estFurTotalData$estHarvestAmt
+
+# Get total column, merge in total row and reorganize.
+estFurData <- estFurData %>%
+  group_by(projID, studyear, communty) %>%
+  mutate(estTotHarv = sum(estHarvestAmt, na.rm=TRUE)) %>%
+  ungroup() %>%
+  dplyr::bind_rows(estFurTotalData) %>%
+  arrange(projID, studyear, communty, resource)
+
+estFurData$pctFurResource = 0
+estFurData$pctFurOverall = 0
+
+estFurData$pctFurResource = estFurData$estAmtFurOnly / estFurData$estHarvestAmt
+estFurData$pctFurOverall = estFurData$estAmtFurOnly / estFurData$estTotHarv
+
+# Reorganize columns for easier table output.
+estFurData <- estFurData %>% select(projID, studyear, communty, commname, resource, resName, units, 
+                     harvestAmt_MR, reptHarvestAmt, 
+                     harvestLbs_MR, reptHarvestLbs, 
+                     amtFurOnly,
+                     estHarvestAmt, estHarvestLbs, 
+                     estAmtFurOnly, pctFurResource, pctFurOverall)
+
+
+
+```
+
+## Output table
+
+Because the data for food/fur is often sparse, including both the number and diversity of resources harvested a simple table should be adequate to support narrative on this topic comparative figures will only be necessary if in comparison to previous data or if communities are being compared.
+
+
+```{r}
+
+commnameList <- select(estFurData, commname) %>% distinct(commname)
+for(comm in commnameList$commname)
+{
+  # One community at a time and only necessary outputs, we'll simplify further
+  #   in the next step.
+  tempData <- filter(estFurData, commname == comm) %>%
+    select(resName, estHarvestAmt, estHarvestLbs, 
+                     estAmtFurOnly, pctFurResource, pctFurOverall) %>% 
+    mutate(pctFurResource_c = paste(round(pctFurResource * 100,1), "%", sep=""),
+         pctFurOverall_c = paste(round(pctFurOverall * 100,1), "%", sep=""),
+         estHarvestAmt = round(estHarvestAmt, 1),
+         estHarvestLbs = round(estHarvestLbs, 1),
+         estAmtFurOnly = round(estAmtFurOnly, 1)
+  ) %>% 
+    mutate(pctFurResource_c = if_else(pctFurResource_c == "NaN%", "", pctFurResource_c),
+           pctFurOverall_c = if_else(pctFurOverall_c == "NaN%", "", pctFurOverall_c)) %>% 
+    select(-pctFurResource, -pctFurOverall)
+  
+  indentList <- which(tempData$resName != "Small land mammals")
+  boldList <- which(tempData$resName == "Small land mammals")
+  
+  tblOut <- kbl(tempData,
+      caption=formatTableHeader(str_interp("Harvest and use table for: ${comm}, ${studyear}")),
+      escape=F,
+      col.names=c("<br /><br />Resource",
+                 "<br /><br />Amount",
+                 "<br /><br />Pounds",
+                 "<br />Fur<br />only",
+                 "<br /><br />Resource",
+                 "Small<br />land<br />mammals"),
+      align=c('lrrrrr')) %>%
+    kable_styling(full_width = F) %>%
+    add_indent(indentList) %>%
+    row_spec(boldList, bold=T, hline_after = F) %>%
+    add_header_above(c("  " = 1, "Estimated" = 3, 
+                       "Percent of" = 2))
+  
+  print(tblOut)
+  
+}
+
+
+```
+
+# Write out CSV files
+
+```{r write csv files}
+
+# ##############################################################################
+# Write out CSV files.
+# ##############################################################################
+
+# Export and echo message to screen.
+  fName = str_interp('../../CSV/05 - Final Analysis Output/Food and Fur.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(estFurData), ' records to be written', sep='')))
+
+  rio::export(estFurData, fName)
+
+```
+
+<p class="h1footer"> End of food fur script. </p>

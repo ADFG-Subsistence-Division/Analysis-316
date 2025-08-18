@@ -1,0 +1,1318 @@
+---
+title: "D04_EST_INCOME_BY_CATEGORY - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-15"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">D04_EST_INCOME_BY_CATEGORY - (316) NPS Ambler Comprehensive</div>
+</div>
+
+# Estimated income by category
+  
+Use bootstrapping to develop final estimates and confidence intervals for median HH income, income by source, households earning income by source, employed adults by SOC/SIC, number of jobs by SOC/SIC. 
+
+## Change log
+
+Change 1
+- Programmer: D.S.Koster  
+- Date: 05/21/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output.  
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates 
+
+Change 2
+- Programmer: Jesse Coleman
+- Date: 03/18/2025
+- Change Description: Removed source() calls; all functions are included in the library adfgSubs.
+- Template Update [Y|N]: Y
+- One-Off: No-include in all future comprehensive templates 
+
+Change 3
+- Programmer: Jesse Coleman
+- Date: 05/30/2025
+- Change Description: Refactor using tidyverse language and DRY ("don't repeat yourself") principles.
+- Template Update [Y|N]: Y
+- One-Off: No - include in all future comprehensive templates
+
+## Input data
+  
+- {bootSampPath}/REC24_FULL_CLEAN_BOOT.csv  
+- {bootSampPath}/REC23_FULL_CLEAN_BOOT.csv  
+- /CSV/03 - Main/sample.csv  
+- /CSV/00 - Lookup Codes/fullCodesetList.csv  
+- {bootSampPath}/bootSamp_HH.csv  
+
+## Output data
+  
+- /CSV/04 - Employment Processing/income_estimates.csv  
+- /CSV/05 - Final Analysis Output/jobSchedules_raw.csv  
+
+## Checklist
+
+- Update 'Author' to your name, 
+- Update the project information in 'title' to the current project.
+- Update the development log with any changes you've made to the template file, including your name.
+
+## Additional information
+
+These files are stored in a local file path (C:/R-Subist-Data-Local/Bootstrapping Data/${projID} - ${studyear}/) and will need to be created by running:  
+- D01_ECON_BOOTSTRAP_SAMPLE.Rmd  
+- D02_PREP_EMPLOY.Rmd  
+- D03_PREP_OTHER_INCOME.Rmd  
+
+### Functions used/dependencies
+
+### Required libraries (adjust as needed)
+  
+- tidyVerse  
+- rio  
+- data.table  
+- knitr 
+- adfgSubs
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE,
+                      include = TRUE,
+                      results='asis')
+
+# Hide warnings and extra messages returned by code execution.
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+
+options(knitr.kable.NA = '')
+
+```
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+
+# Additional libraries
+library(knitr)
+library(kableExtra)
+library(data.table)
+library(adfgSubs)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+```
+
+## Load data
+
+This file uses locally stored bootstrapping data. This information is stored in: C:/R-Subist-Data-Local/Bootstrapping Data/${projID} - ${studyear}/ and is automatically created in:  
+- D01_ECON_BOOTSTRAP_SAMPLE.Rmd  
+- D02_PREP_EMPLOY.Rmd  
+- D03_PREP_OTHER_INCOME.Rmd  
+
+If you have not run these files yourself, you will need to do that. If you notice modest changes in the estimate, this may be the result of the stochastic bootstrapping process (an artifact of the random number generator). 
+
+```{r load data}
+
+# Load data from intermediate files.
+REC24Data <- fread(str_interp('${bootSampPath}/REC24_FULL_CLEAN_BOOT.csv'), 
+                      na = '', 
+                      header = TRUE, 
+                      strip.white = TRUE)
+count <- nrow(REC24Data)
+cat(formatSummaryBlock(paste("Opening file: REC24_FULL_CLEAN_BOOT.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+REC23Data <- fread(str_interp('${bootSampPath}/REC23_FULL_CLEAN_BOOT.csv'), 
+                      na = '', 
+                      header = TRUE, 
+                      strip.white = TRUE)
+count <- nrow(REC23Data)
+cat(formatSummaryBlock(paste("Opening file: REC23_FULL_CLEAN_BOOT.csv', ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+# 1.2 - Tidy up column names for consistency later on.
+REC23Data$estIncome = REC23Data$imputedEarnings
+
+
+# 1.3 - sample data.
+sampData <- fread('../../CSV/03 - Main/sample.csv', 
+                     na = '', 
+                     header = TRUE, 
+                     strip.white = TRUE)
+count <- nrow(sampData)
+cat(formatSummaryBlock(paste("Opening file: sample.csv', ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+# 1.4 codes.
+codeData <- fread('../../CSV/00 - Lookup Codes/fullCodesetList.csv', 
+                     na = '', 
+                     header = TRUE, 
+                     strip.white = TRUE)
+count <- nrow(codeData)
+cat(formatSummaryBlock(paste("Opening file: sample.csv', ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+# 1.5 Create a lookup table for strata by household.
+hhStrataLookupData <- fread(str_interp('${bootSampPath}/bootSamp_HH.csv'), 
+                               na = '', 
+                               header = TRUE, 
+                               strip.white = TRUE) %>%
+  group_by(uHHID) %>% summarize(strata = max(strata, na.rm=TRUE))
+count <- nrow(hhStrataLookupData)
+cat(formatSummaryBlock(paste("Opening file: bootSamp_HH.csv summarized to', ", 
+                             count, 
+                             " records.", sep="")))
+
+```
+
+# Subtotals and summaries for employment
+
+This section develops basic summary statistics at various levels of detail and saves at the household level in order to produce final summary statistics. Be sure that each count of records produced along the way makes sense for the action taken as described.
+
+```{r subtotals and summaries for employment}
+
+# Create a place-holder to simplify the HH income information. We will need
+#   non-imputed values for calculating median income.
+REC23Data <- REC23Data %>% 
+  mutate(incomeAmount_MR = earnings_MR,
+         # Need year-round employment estimates.
+         yrRoundEmpl = as.numeric(monthsWorked == 12) * strataWt)
+
+# Get to person/SOC/SIC level (i.e., if a person has 2 jobs in the same 
+#     industry and occupation, combine those.) Do this for each re-sample.
+employEstData <- group_by(REC23Data, samp, projID, studyear, communty, commname,
+                      strata, estJobs, employStrataWt, 
+                      uHHID, person, CSISCatCodes, SIC, SOC) %>%
+  summarize(estHHCount = max(employStrataWt, na.rm=TRUE),
+            estPersonCount = max(employStrataWt, na.rm=TRUE),
+            estJobCount = sum(employStrataWt, na.rm=TRUE),
+            estIncome = sum(estIncome, na.rm=TRUE),
+            incomeAmount_MR = sum(incomeAmount_MR, na.rm=TRUE),
+            reptHHCount = max(1, na.rm=TRUE),
+            reptPersonCount = max(1, na.rm=TRUE),
+            reptJobCount = sum(1, na.rm=TRUE),
+            reptIncome = sum(earnings, na.rm=TRUE),
+            .groups = "drop") 
+
+count = nrow(employEstData) / (econBoot_k + 1)
+cat(formatSummaryBlock(str_interp("Summarized employment information to the occupation and industry level by person resulting in ${count} records per resample.")))
+
+# 2.2 Summarize to person / industry level (ie: If the a person has more than 
+#     one job in a single industry, combine those.)
+SICSummaryData <- group_by(REC23Data, samp, projID, studyear, communty, commname,
+                           strata, estJobs, employStrataWt, 
+                           uHHID, person, CSISCatCodes, SIC) %>%
+  summarize(estHHCount = max(employStrataWt, na.rm=TRUE),
+            estPersonCount = max(employStrataWt, na.rm=TRUE),
+            estJobCount = sum(employStrataWt, na.rm=TRUE),
+            estIncome = sum(estIncome, na.rm=TRUE),
+            incomeAmount_MR = sum(incomeAmount_MR, na.rm=TRUE),
+            reptHHCount = max(1, na.rm=TRUE),
+            reptPersonCount = max(1, na.rm=TRUE),
+            reptJobCount = sum(1, na.rm=TRUE),
+            reptIncome = sum(earnings, na.rm=TRUE),
+            .groups = "drop")
+
+count= nrow(SICSummaryData) / (econBoot_k + 1)
+cat(formatSummaryBlock(str_interp("Summarized employment information to the industry level by person resulting in ${count} records per resample.")))
+
+
+# 2.3 Summarize to person level (ie: If a person has multiple jobs, summarize to
+#    the person level.)
+anyJobData <- group_by(SICSummaryData, samp, projID, studyear, communty, commname,
+                          strata, estJobs, employStrataWt, 
+                          uHHID, person) %>%
+  summarize(estHHCount = max(estHHCount),
+            estPersonCount = max(estPersonCount),
+            estJobCount = sum(estJobCount),
+            estIncome = sum(estIncome, na.rm=TRUE),
+            incomeAmount_MR = sum(incomeAmount_MR, na.rm=TRUE),
+            reptHHCount = max(reptHHCount),
+            reptPersonCount = max(reptPersonCount),
+            reptJobCount = sum(reptJobCount),
+            reptIncome = sum(reptIncome, na.rm=TRUE),
+            .groups = "drop")
+                             
+count= nrow(anyJobData) / (econBoot_k + 1)
+cat(formatSummaryBlock(str_interp("Summarized employment information to the person level resulting in ${count} records per resample.")))
+
+# 2.4 combine all summarized data into a single dataset for analysis.
+employEstData <- bind_rows(employEstData, SICSummaryData, anyJobData)
+
+count= nrow(employEstData) / (econBoot_k+1)
+cat(formatSummaryBlock(str_interp("Combined 3 levels of person-related employment summary data for final analysis steps resulting in ${count} records per resample.")))
+
+# 2.5 Now summarize to the HH level; we need to keep it at this level until
+#     this and total income has been computed.
+employEstData <- employEstData %>% group_by(samp, projID, studyear, communty, commname,
+           SIC, SOC, strata, uHHID) %>%
+  summarize(estHHCount = max(estHHCount, na.rm=TRUE),
+            estPersonCount = sum(estPersonCount, na.rm=TRUE),
+            estJobCount = sum(estJobCount, na.rm=TRUE),
+            estIncome = sum(estIncome, na.rm=TRUE),
+            incomeAmount_MR = sum(incomeAmount_MR, na.rm=TRUE),
+            reptHHCount = max(reptHHCount, na.rm=TRUE),
+            reptPersonCount = sum(reptPersonCount, na.rm=TRUE),
+            reptJobCount = sum(reptJobCount, na.rm=TRUE),
+            reptIncome = sum(reptIncome, na.rm=TRUE),
+            .groups = "drop")
+
+count= nrow(employEstData) / (econBoot_k + 1)
+cat(formatSummaryBlock(str_interp("Aggregated the 3 levels of person-related employment summary data to the household level for final analysis steps resulting in ${count} records per resample.")))
+
+# 2.6 Recode any 'missing' SOC/SIC information to 0 so that these items are 
+#     sorted first per the standard convention.
+employEstData <- employEstData %>%
+  mutate(
+    SOC = replace_na(SOC, 0),
+    SIC = replace_na(SIC, 0)
+  )
+
+# 2.7 Clean-up intermediate datasets.
+rm(anyJobData)
+
+```
+
+# Set up coding for table display
+
+In order to simplify the organization of tables & figures, specialized coding is added here. This differs from the default coding.
+
+```{r labelling}
+
+# 3.0 - Set up labeling and specialized codes for EMPLOYMENT
+# Create income source labels (occupation/SOC)
+SOCCodeData <- codeData %>%
+  filter(codeSetID == 96) %>%
+  transmute(SOC = code, SOCDesc = codeDescription)
+
+employEstData <- employEstData %>%
+  left_join(SOCCodeData, by = "SOC") %>%
+  mutate(incsrceDesc = SOCDesc) %>%
+  select(-SOCDesc)
+
+# Create income category labels (industry/SIC)
+SICCodeData <- codeData %>%
+  filter(codeSetID == 97) %>%
+  transmute(SIC = code, SICDesc = codeDescription)
+
+employEstData <- employEstData %>%
+  left_join(SICCodeData, by = "SIC") %>%
+  mutate(incCategoryDesc = SICDesc) %>%
+  select(-SICDesc)
+
+# Set income type code and description for employment
+employEstData <- employEstData %>%
+  mutate(
+    incTypeCD = 1,
+    incTypeDesc = "Employment",
+    incCategory = SIC + 1000,  # distinguish employment codes from other-income codes
+    incsrce = SOC + 1000       # distinguish employment codes from other-income codes
+  )
+
+# Clean up: remove SOC, SIC columns and any codes used for join
+employEstData <- employEstData %>%
+  select(-SOC, -SIC)
+
+```
+
+# Subtotals and summaries for other income sources
+
+Impute other income estimates, produce total and subtotal rows at the household level (in order to develop CIs later on).
+
+```{r sub tots and summaries}
+
+# Bring in sampling data to impute estimates
+otherEstData <- REC24Data %>%
+  left_join(sampData, by = c("projID", "studyear", "communty", "strata")) %>%
+  mutate(
+    estIncome   = incomeAmount_MR * strataWt,
+    estHHCount  = incReceived * strataWt,
+    reptIncome  = amount,
+    reptHHCount = incReceived
+  ) %>%
+  select(
+    samp, projID, studyear, communty, commname, strata, uHHID,
+    incCategory, incsrce, incReceived, estHHCount, incomeAmount_MR, estIncome,
+    reptHHCount, reptIncome
+  )
+
+# Get total 'other income' by category/HHID
+incByCatData <- otherEstData %>%
+  group_by(samp, projID, studyear, communty, commname, strata, uHHID, incCategory) %>%
+  summarize(
+    incReceived      = max(incReceived, na.rm = TRUE),
+    estHHCount       = max(estHHCount, na.rm = TRUE),
+    estIncome        = sum(estIncome, na.rm = TRUE),
+    incomeAmount_MR  = sum(incomeAmount_MR, na.rm = TRUE),
+    reptHHCount      = max(reptHHCount, na.rm = TRUE),
+    reptIncome       = sum(reptIncome, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(incsrce = 0)
+
+# Get total 'other income' by HHID (all categories)
+allOthIncData <- otherEstData %>%
+  group_by(samp, projID, studyear, communty, commname, strata, uHHID) %>%
+  summarize(
+    incReceived      = max(incReceived, na.rm = TRUE),
+    estHHCount       = max(estHHCount, na.rm = TRUE),
+    estIncome        = sum(estIncome, na.rm = TRUE),
+    incomeAmount_MR  = sum(incomeAmount_MR, na.rm = TRUE),
+    reptHHCount      = max(reptHHCount, na.rm = TRUE),
+    reptIncome       = sum(reptIncome, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    incCategory = -1,
+    incsrce     = 0
+  )
+
+# Recombine all income per HH total: original, HH total, and category total
+otherEstData <- bind_rows(otherEstData, allOthIncData, incByCatData)
+
+# Clean up
+rm(allOthIncData, incByCatData)
+
+```
+
+
+# Other income labels
+
+Recode and re-label data so that output tables have readable and understandable information sorted in the order that will be used for presentation.
+
+```{r other income labels}
+
+# Create income source labels for "other" income
+othIncomeCodeData <- codeData %>%
+  filter(codeSetID == 21) %>%
+  transmute(incsrce = code, incsrceDesc = codeDescription)
+
+otherEstData <- otherEstData %>%
+  left_join(othIncomeCodeData, by = "incsrce")
+
+# Create income category labels for "other" income
+othCatData <- codeData %>%
+  filter(codeSetID == 95) %>%
+  transmute(incCategory = code, incCategoryDesc = codeDescription)
+
+otherEstData <- otherEstData %>%
+  left_join(othCatData, by = "incCategory")
+
+# Set income type code and description for other income
+otherEstData <- otherEstData %>%
+  mutate(
+    incTypeCD   = 2,
+    incTypeDesc = "Other sources of income",
+    estPersonCount = 0,
+    estJobCount = 0,
+    incsrceDesc = replace_na(incsrceDesc, "All other sources of income")
+  )
+
+# Clean up join columns if still present
+otherEstData <- otherEstData %>%
+  select(-matches("^code$|^codeDescription$"), everything())
+
+```
+
+# Combine employment and other income
+
+Combine employment and other income data into a single file and produce totals for all income together. This will also be at the household level so that confidence intervals can be produced for overall income.
+
+*Methods note* When combining 'other income' and 'employment income' it is necessary to cap the estimated number of households at the value of 'commHH'. This is done because each category may have different missing elements. To simplify the process of estimating those households missing employment income, for each re-sample, the strataWt is adjusted. As a result, an imputed version of 'household received this kind of income' will have incompatible imputed values, potentially resulting in an over-estimate of income earning households taking the max() of an imputed value when combining these incompatible imputations will result in this over-estimate when data is missing for employment, but all or virtually all households earned other income. In this case, only the 'other income' needs to be considered when imputing and the small additional expansion used to estimate unknown status for earned income. When this situation is NOT true, and some substantial number of households did not earn other income, the extra imputation is still necessary.
+
+```{r combine income types}
+
+# 6.0 - Combine employment and other income & total it
+
+# Combine employment and other income data
+allIncomeData <- bind_rows(otherEstData, employEstData)
+
+# Extract overall totals for each type of income (all employment and all other income)
+overallTotalData <- allIncomeData %>%
+  filter(incCategory == -1 | incCategory == 1000) %>%
+  group_by(samp, projID, studyear, communty, commname, strata, uHHID) %>%
+  summarize(
+    estHHCount = max(estHHCount, na.rm = TRUE),
+    estPersonCount = sum(estPersonCount, na.rm = TRUE),
+    estJobCount = sum(estJobCount, na.rm = TRUE),
+    estIncome = sum(estIncome, na.rm = TRUE),
+    incomeAmount_MR = sum(incomeAmount_MR, na.rm = TRUE),
+    reptHHCount = max(reptHHCount, na.rm = TRUE),
+    reptPersonCount = sum(reptPersonCount, na.rm = TRUE),
+    reptJobCount = sum(reptJobCount, na.rm = TRUE),
+    reptIncome = sum(reptIncome, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    incCategory = -2,
+    incCategoryDesc = "All income sources",
+    incsrce = 0,
+    incsrceDesc = "All income sources",
+    incTypeCD = 0,
+    incTypeDesc = "All income types"
+  )
+
+# Add overall totals back into the all income file
+# Summarize to household-level estimates by category/source/type labels
+allIncomeData <- bind_rows(overallTotalData, allIncomeData) %>%
+  group_by(samp, projID, studyear, communty, commname, strata, 
+           incCategory, incCategoryDesc, incsrce, incsrceDesc, 
+           incTypeCD, incTypeDesc) %>%
+  summarize(
+    medIncome =       median(incomeAmount_MR, na.rm = TRUE),
+    estHHCount =      sum(estHHCount, na.rm = TRUE),
+    estPersonCount =  sum(estPersonCount, na.rm = TRUE),
+    estJobCount =     sum(estJobCount, na.rm = TRUE),
+    estIncome =       sum(estIncome, na.rm = TRUE),
+    reptHHCount =     sum(reptHHCount, na.rm = TRUE),
+    reptPersonCount = sum(reptPersonCount, na.rm = TRUE),
+    reptJobCount =    sum(reptJobCount, na.rm = TRUE),
+    reptIncome =      sum(reptIncome, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# Cap estimated households at the actual community household count
+sampAdjData <- sampData %>%
+  select(projID, studyear, communty, strata, commhh)
+
+allIncomeData <- allIncomeData %>%
+  left_join(sampAdjData, by = c('projID', 'studyear', 'communty', 'strata')) %>%
+  mutate(
+    estHHCount = if_else(estHHCount > commhh, commhh, estHHCount)
+  )
+
+# Save strata-level estimates for comparison (stratified sample only)
+estByStrataData <- allIncomeData %>% filter(samp == 0)
+
+# Summarize to community-level estimates
+allIncomeData <- allIncomeData %>%
+  group_by(samp, projID, studyear, communty, commname, 
+           incCategory, incCategoryDesc, incsrce, incsrceDesc, 
+           incTypeCD, incTypeDesc) %>%
+  summarize(
+    medIncome =       median(medIncome, na.rm = TRUE),
+    estHHCount =      sum(estHHCount, na.rm = TRUE),
+    estPersonCount =  sum(estPersonCount, na.rm = TRUE),
+    estJobCount =     sum(estJobCount, na.rm = TRUE),
+    estIncome =       sum(estIncome, na.rm = TRUE),
+    reptHHCount =     sum(reptHHCount, na.rm = TRUE),
+    reptPersonCount = sum(reptPersonCount, na.rm = TRUE),
+    reptJobCount =    sum(reptJobCount, na.rm = TRUE),
+    reptIncome =      sum(reptIncome, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# Prepare outputs for reporting and confidence interval estimation
+estOutputData <- allIncomeData %>% filter(samp == 0)
+allIncomeData <- allIncomeData %>% filter(samp > 0)
+
+# Separate reported data for CI augmentation
+reptOutputData <- estOutputData %>%
+  select(projID, studyear, communty, incCategory, incsrce,
+         reptHHCount, reptPersonCount, reptJobCount, reptIncome)
+```
+
+# Standardize re-samples 
+
+At this point, we need to make sure that all SOC/SIC values present in the actual sample are also present for each sub-sample. The estimation approach used assumes only present SOC/SIC codes are present. The strategy used for mean replacements and estimation assumes that the sample is a full, representative list. The same assumption is applied to each of the sub-samples. Not doing so would impose the assumption of the presence of a type of job or industry upon each of the sub-samples. This is a direct contradiction to the core method being employed here. However, in order to properly estimate the confidence intervals in a later step, it's necessary to impose a value of 0 for each SOC/SIC that was not present. These are effectively implied 0-values in context.
+  
+The strategy here is to just create a full empty dummy file  (because it's faster) and then summarize to the final processing file.
+
+```{r standardize resamples}
+
+# Standardize output rows for all resamples to ensure valid CIs
+# Get unique combinations needed for each resample (structure of all income types/categories)
+detailData <- allIncomeData %>%
+  distinct(projID, studyear, communty, commname, 
+           incCategory, incCategoryDesc, incsrce, incsrceDesc, 
+           incTypeCD, incTypeDesc)
+
+# Generate all expected combinations with sample (samp) values
+sampDataSeq <- tibble(samp = seq_len(econBoot_k))
+detailFullGrid <- tidyr::crossing(sampDataSeq, detailData)
+
+# Join actual data to the full grid to ensure every expected row is present
+finalIncomeData <- detailFullGrid %>%
+  left_join(allIncomeData, by = c('samp', 'projID', 'studyear', 'communty', 'commname', 
+                                  'incCategory', 'incCategoryDesc', 'incsrce', 'incsrceDesc', 
+                                  'incTypeCD', 'incTypeDesc'))
+
+# Set missing values to 0 for all relevant columns
+toZero <- c('medIncome', 'estHHCount', 'estPersonCount', 'estJobCount',
+            'estIncome', 'reptHHCount', 'reptPersonCount', 'reptJobCount', 'reptIncome')
+finalIncomeData <- finalIncomeData %>%
+  mutate(across(all_of(toZero), ~replace_na(., 0)))
+
+# Report numbers of rows for each community and ensure consistency
+# for(comm in sampData$commname) {
+#   countData <- finalIncomeData %>%
+#     filter(commname == comm) %>%
+#     group_by(samp, commname) %>%
+#     summarize(nRow = n(), .groups = "drop") %>%
+#     summarize(
+#       minRow = min(nRow),
+#       maxRow = max(nRow),
+#       meanRow = mean(nRow)
+#     )
+#   if(countData$minRow[1] != countData$maxRow[1]) {
+#     cat(errorMessage(str_interp("Standardizing of output rows for ${comm} failed. Min record count ${countData$minRow[1]}, max record count ${countData$maxRow[1]}")))
+#   } else {
+#     cat(greenMessage(str_interp("Standardized output rows for ${comm}, ${countData$meanRow[1]} records per resample, all re-samples are equal; confidence intervals will be valid.")))
+#   }
+# }
+
+walk(sampData$commname, function(comm) {
+  countData <- finalIncomeData %>%
+    filter(commname == comm) %>%
+    group_by(samp, commname) %>%
+    summarize(nRow = n(), .groups = "drop") %>%
+    summarize(
+      minRow = min(nRow),
+      maxRow = max(nRow),
+      meanRow = mean(nRow)
+    )
+  if(countData$minRow[1] != countData$maxRow[1]) {
+    cat(errorMessage(str_interp("Standardizing of output rows for ${comm} failed. Min record count ${countData$minRow[1]}, max record count ${countData$maxRow[1]}")))
+  } else {
+    cat(greenMessage(str_interp("Standardized output rows for ${comm}, ${countData$meanRow[1]} records per resample, all re-samples are equal; confidence intervals will be valid.")))
+  }
+})
+
+# Clean up
+rm(detailData, sampDataSeq, detailFullGrid)
+
+
+```
+# Compute resample means and medians
+
+In order to calculate CIs using bootstrapping, we need the means. Here both means and medians are calculated for comparative purposes. In a good bootstrapping sample, these should be essentially the same. If something has gone wrong, or we need to improve the number of boot samples, these should not be substantially different.
+
+```{r resample means medians}
+
+# Compute means and medians for all relevant columns by income type/category/source
+ciEstData <- finalIncomeData %>%
+  group_by(projID, studyear, communty, commname, 
+           incCategory, incCategoryDesc, incsrce, incsrceDesc, 
+           incTypeCD, incTypeDesc) %>%
+  mutate(
+    estIncome_median      = median(medIncome, na.rm = TRUE),
+    estHHCount_median     = median(estHHCount, na.rm = TRUE),
+    estPersonCount_median = median(estPersonCount, na.rm = TRUE),
+    estJobCount_median    = median(estJobCount, na.rm = TRUE),
+    estIncome_mean        = mean(estIncome, na.rm = TRUE),            
+    estHHCount_mean       = mean(estHHCount, na.rm = TRUE),
+    estPersonCount_mean   = mean(estPersonCount, na.rm = TRUE),
+    estJobCount_mean      = mean(estJobCount, na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+# Extract sample 1 for reporting
+ciTmpData <- ciEstData %>% filter(samp == 1)
+
+dataCols <- c(
+  'estIncome_median', 'estHHCount_median', 'estPersonCount_median', 'estJobCount_median',
+  'estIncome_mean', 'estHHCount_mean', 'estPersonCount_mean', 'estJobCount_mean'
+)
+
+# Prepare summary table for all communities at once, rounded
+tblOut <- ciTmpData %>%
+  select(commname, incCategoryDesc, incsrceDesc, all_of(dataCols)) %>%
+  mutate(across(all_of(dataCols), ~ round(., 1))) %>%
+  arrange(commname, incCategoryDesc, incsrceDesc) %>%
+  group_by(commname) %>%
+  group_map(~ kbl(.x %>% select(-commname),
+                  caption = formatTableHeader(
+                    str_interp("Estimates by income category, {.y$commname[1]}, {studyear}")
+                  ),
+                  col.names = c(
+                    'Income \n category',
+                    'Income Source',
+                    'Income (per HH)',
+                    'HHs',
+                    'Adults',
+                    'Jobs',
+                    'Income \n (Estimated total)',
+                    'HHs',
+                    'Adults',
+                    'Jobs'
+                  )) %>%
+                kable_styling(full_width = FALSE) %>%
+                add_header_above(c(' ' = 2, 'Median estimated' = 4, ' ' = 1, 'Mean estimated' = 3)),
+            .keep = TRUE
+  ) %>%
+  flatten()
+
+# Print all tables
+walk(tblOut, print)
+
+```
+
+# CI for bootsamp median income
+
+```{r CI for bootsamp median income}
+# 8.0 - Calculate CI for median income using the bootsample.
+
+# 8.1 - the first few steps here identify the resampled 'observations' above
+#       and below the estimate of interest. Those are summed, and subsequently
+#       used to identify the appropriate quantiles for the 95% CI.
+
+ciEstData$l = 0
+ciEstData$l[(ciEstData$medIncome - ciEstData$estIncome_median) < 0] = 1
+
+ciEstData <- group_by(ciEstData, projID, studyear, communty, commname, 
+                      incCategory, incCategoryDesc, incsrce, incsrceDesc, 
+                      incTypeCD, incTypeDesc) %>%
+  mutate(L = sum(l, na.rm=TRUE)) %>%
+  arrange(projID, studyear, communty, commname, 
+          incCategory, incCategoryDesc, incsrce, incsrceDesc, 
+          incTypeCD, incTypeDesc, medIncome) %>%
+  ungroup()
+
+ciEstData$z0 = ciEstData$L / econBoot_k
+ciEstData$z0Hat = qnorm(ciEstData$z0, 0, 1)
+
+ciEstData$tTb2 = (ciEstData$medIncome - ciEstData$estIncome_median)^2
+ciEstData$tTb3 = (ciEstData$medIncome - ciEstData$estIncome_median)^3
+
+ciEstData <- group_by(ciEstData, projID, studyear, communty, commname, 
+                      incCategory, incCategoryDesc, incsrce, incsrceDesc, 
+                      incTypeCD, incTypeDesc) %>%
+  mutate(t2 = sum(tTb2, na.rm=TRUE),
+         t3 = sum(tTb3, na.rm=TRUE))
+
+ciEstData$alphaHat = ciEstData$t3 / ((6 * ciEstData$t2)^1.5)
+
+ciEstData$alpha1 = pnorm(ciEstData$z0Hat + ((ciEstData$z0Hat - 1.96) / (1 - ciEstData$alphaHat*(ciEstData$z0Hat - 1.96))), 0, 1)
+ciEstData$alpha2 = pnorm(ciEstData$z0Hat + ((ciEstData$z0Hat + 1.96) / (1 - ciEstData$alphaHat*(ciEstData$z0Hat + 1.96))), 0, 1)
+
+ciEstData$alpha1 = round(ciEstData$alpha1*econBoot_k, 0)
+ciEstData$alpha2 = round(ciEstData$alpha2*econBoot_k, 0)
+
+# force alpha values to econBoot_k/2 if NA.
+ciEstData$alpha1[is.na(ciEstData$alpha1)] = round(econBoot_k/2, 0)
+ciEstData$alpha2[is.na(ciEstData$alpha2)] = round(econBoot_k/2, 0)
+
+# Create an index.
+ciEstData$idx = rep(1:econBoot_k, times = nrow(ciEstData)/econBoot_k)
+
+ciEstData$lower_medIncome = 0
+ciEstData$upper_medIncome = 0
+
+ciEstData$lower_medIncome[ciEstData$alpha1 == ciEstData$idx] = ciEstData$medIncome[ciEstData$alpha1 == ciEstData$idx]
+ciEstData$upper_medIncome[ciEstData$alpha2 == ciEstData$idx] = ciEstData$medIncome[ciEstData$alpha2 == ciEstData$idx]
+
+ciEstData <- ungroup(ciEstData)
+
+#
+#  Make output table for review.
+# 
+
+dataCols = c('estIncome_median', 'lower_medIncome', 'upper_medIncome')
+ciTmpData <- ciEstData
+
+# Need to summarize to incSource first
+ciTmpData <- group_by(ciTmpData, commname, incCategory, incsrce, incCategoryDesc, incsrceDesc) %>%
+             summarize(estIncome_median = max(estIncome_median),
+                       lower_medIncome = max(lower_medIncome),
+                       upper_medIncome = max(upper_medIncome)) %>% 
+             ungroup() %>%
+  select(-incCategory, -incsrce)
+
+for(comm in sampData$commname)
+{
+  tmpTblData <- filter(ciTmpData, commname==comm) %>%
+    select(-commname)
+  
+  tmpTblData <- mutate(tmpTblData, across(all_of(dataCols), ~ round(., 1)))
+
+  tblOut <- kbl(tmpTblData,
+                caption=formatTableHeader(str_interp("Confidence intervals for HH median income, ${comm}, ${studyear}")),
+                col.names=c('Income\ncategory',
+                            'Income source',
+                            'Median income (per HH)',
+                            'Lower CI',
+                            'Upper CI')) %>%
+        kable_styling(full_width = F)
+  
+  print(tblOut)
+    
+}
+
+```
+
+# CI for total income based on mean
+
+This is not used; rather it's intended as a check to see how close the use of mean and median are. Typically, income is based on medians to manage true outliers and develop estimates that are closer to income levels that are typical for residents.
+
+```{r est income from mean}
+
+# 9.0 - Calculate CI for estimated income using the bootsample.
+
+# 9.1 - the first few steps here identify the resampled 'observations' above
+#       and below the estimate of interest. Those are summed, and subsequently
+#       used to identify the appropriate quantiles for the 95% CI.
+
+ciEstData$l = 0
+
+ciEstData$l[(ciEstData$estIncome - ciEstData$estIncome_mean) < 0] = 1
+
+ciEstData <- group_by(ciEstData, projID, studyear, communty, commname, 
+                      incCategory, incCategoryDesc, incsrce, incsrceDesc, 
+                      incTypeCD, incTypeDesc) %>%
+  mutate(L = sum(l, na.rm=TRUE)) %>%
+  arrange(projID, studyear, communty, commname, 
+          incCategory, incCategoryDesc, incsrce, incsrceDesc, 
+          incTypeCD, incTypeDesc, estIncome)
+
+ciEstData$z0 = ciEstData$L / econBoot_k
+ciEstData$z0Hat = qnorm(ciEstData$z0, 0, 1)
+
+ciEstData$tTb2 = (ciEstData$estIncome - ciEstData$estIncome_mean)^2
+ciEstData$tTb3 = (ciEstData$estIncome - ciEstData$estIncome_mean)^3
+
+ciEstData <- group_by(ciEstData, projID, studyear, communty, commname, 
+                      incCategory, incCategoryDesc, incsrce, incsrceDesc, 
+                      incTypeCD, incTypeDesc) %>%
+  mutate(t2 = sum(tTb2, na.rm=TRUE),
+         t3 = sum(tTb3, na.rm=TRUE))
+
+ciEstData$alphaHat = ciEstData$t3 / ((6 * ciEstData$t2)^1.5)
+
+ciEstData$alpha1 = pnorm(ciEstData$z0Hat + ((ciEstData$z0Hat - 1.96) / (1 - ciEstData$alphaHat*(ciEstData$z0Hat - 1.96))), 0, 1)
+ciEstData$alpha2 = pnorm(ciEstData$z0Hat + ((ciEstData$z0Hat + 1.96) / (1 - ciEstData$alphaHat*(ciEstData$z0Hat + 1.96))), 0, 1)
+
+ciEstData$alpha1 = round(ciEstData$alpha1*econBoot_k, 0)
+ciEstData$alpha2 = round(ciEstData$alpha2*econBoot_k, 0)
+
+# force alpha values to econBoot_k/2 if NA.
+ciEstData$alpha1[is.na(ciEstData$alpha1)] = round(econBoot_k/2, 0)
+ciEstData$alpha2[is.na(ciEstData$alpha2)] = round(econBoot_k/2, 0)
+
+# Create an index.
+ciEstData$idx = rep(1:econBoot_k, times = nrow(ciEstData)/econBoot_k)
+
+ciEstData$lower_estIncome = 0
+ciEstData$upper_estIncome = 0
+
+ciEstData$lower_estIncome[ciEstData$alpha1 == ciEstData$idx] = ciEstData$estIncome[ciEstData$alpha1 == ciEstData$idx]
+ciEstData$upper_estIncome[ciEstData$alpha2 == ciEstData$idx] = ciEstData$estIncome[ciEstData$alpha2 == ciEstData$idx]
+
+#
+#  Make output table for review.
+# 
+
+dataCols = c('estIncome_mean', 'lower_estIncome', 'upper_estIncome')
+ciTmpData <- ciEstData
+
+# Need to summarize to incSource
+ciTmpData <- group_by(ciTmpData, commname, incCategory, incsrce, incCategoryDesc, incsrceDesc) %>%
+             summarize(estIncome_mean = max(estIncome_mean),
+                       lower_estIncome = max(lower_estIncome),
+                       upper_estIncome = max(upper_estIncome)) %>% 
+             ungroup() %>%
+             select(-incCategory, -incsrce)
+
+for(comm in sampData$commname)
+{
+  tmpTblData <- filter(ciTmpData, commname==comm) %>%
+    select(-commname)
+  
+  tmpTblData <- mutate(tmpTblData, across(all_of(dataCols), ~ round(., 1)))
+
+  tblOut <- kbl(tmpTblData,
+                caption=formatTableHeader(str_interp("Confidence intervals for community income based on the mean, ${comm}, ${studyear}")),
+                col.names=c('Income\ncategory',
+                            'Income source',
+                            'Estimated income\n(total community)',
+                            'Lower CI',
+                            'Upper CI')) %>%
+        kable_styling(full_width = F)
+  
+  print(tblOut)
+    
+}
+
+
+```
+
+# CI for number of households
+
+This metric is also not typically used in the reporting. It should be evaluated to ensure the data is consistent with expectations. These should not have wide confidence intervals.
+
+```{r }
+
+# 10.0 - Calculate CI for number of households using the bootsample.
+
+# 10.1 - the first few steps here identify the resampled 'observations' above
+#       and below the estimate of interest. Those are summed, and subsequently
+#       used to identify the appropriate quantiles for the 95% CI.
+
+ciEstData$l = 0
+
+ciEstData$l[(ciEstData$estHHCount - ciEstData$estHHCount_mean) < 0] = 1
+
+ciEstData <- group_by(ciEstData, projID, studyear, communty, commname, 
+                      incCategory, incCategoryDesc, incsrce, incsrceDesc, 
+                      incTypeCD, incTypeDesc) %>%
+  mutate(L = sum(l, na.rm=TRUE)) %>%
+  arrange(projID, studyear, communty, commname, 
+          incCategory, incCategoryDesc, incsrce, incsrceDesc, 
+          incTypeCD, incTypeDesc, estHHCount)
+
+ciEstData$z0 = ciEstData$L / econBoot_k
+ciEstData$z0Hat = qnorm(ciEstData$z0, 0, 1)
+
+ciEstData$tTb2 = (ciEstData$estHHCount - ciEstData$estHHCount_mean)^2
+ciEstData$tTb3 = (ciEstData$estHHCount - ciEstData$estHHCount_mean)^3
+
+ciEstData <- group_by(ciEstData, projID, studyear, communty, commname, 
+                      incCategory, incCategoryDesc, incsrce, incsrceDesc, 
+                      incTypeCD, incTypeDesc) %>%
+  mutate(t2 = sum(tTb2, na.rm=TRUE),
+         t3 = sum(tTb3, na.rm=TRUE))
+
+ciEstData$alphaHat = ciEstData$t3 / ((6 * ciEstData$t2)^1.5)
+
+ciEstData$alpha1 = pnorm(ciEstData$z0Hat + ((ciEstData$z0Hat - 1.96) / (1 - ciEstData$alphaHat*(ciEstData$z0Hat - 1.96))), 0, 1)
+ciEstData$alpha2 = pnorm(ciEstData$z0Hat + ((ciEstData$z0Hat + 1.96) / (1 - ciEstData$alphaHat*(ciEstData$z0Hat + 1.96))), 0, 1)
+
+ciEstData$alpha1 = round(ciEstData$alpha1*econBoot_k, 0)
+ciEstData$alpha2 = round(ciEstData$alpha2*econBoot_k, 0)
+
+# force alpha values to econBoot_k/2 if NA.
+ciEstData$alpha1[is.na(ciEstData$alpha1)] = round(econBoot_k/2, 0)
+ciEstData$alpha2[is.na(ciEstData$alpha2)] = round(econBoot_k/2, 0)
+
+# Create an index.
+ciEstData$idx = rep(1:econBoot_k, times = nrow(ciEstData)/econBoot_k)
+
+ciEstData$lower_estHHCount = 0
+ciEstData$upper_estHHCount = 0
+
+ciEstData$lower_estHHCount[ciEstData$alpha1 == ciEstData$idx] = ciEstData$estHHCount[ciEstData$alpha1 == ciEstData$idx]
+ciEstData$upper_estHHCount[ciEstData$alpha2 == ciEstData$idx] = ciEstData$estHHCount[ciEstData$alpha2 == ciEstData$idx]
+
+#
+#  Make output table for review.
+# 
+
+dataCols = c('estHHCount_mean', 'lower_estHHCount', 'upper_estHHCount')
+ciTmpData <- ciEstData
+
+# Need to summarize to incSource.
+ciTmpData <- group_by(ciTmpData, commname, incCategory, incsrce, incCategoryDesc, incsrceDesc) %>%
+             summarize(estHHCount_mean = max(estHHCount_mean),
+                       lower_estHHCount = max(lower_estHHCount),
+                       upper_estHHCount = max(upper_estHHCount)) %>% 
+             ungroup() %>%
+             select(-incCategory, -incsrce)
+
+for(comm in sampData$commname)
+{
+  tmpTblData <- filter(ciTmpData, commname==comm) %>%
+    select(-commname)
+  
+  tmpTblData <- mutate(tmpTblData, across(all_of(dataCols), ~ round(., 1)))
+
+  tblOut <- kbl(tmpTblData,
+                caption=formatTableHeader(str_interp("Confidence intervals for estimated hosueholds earning by source, ${comm}, ${studyear}")),
+                col.names=c('Income\ncategory',
+                            'Income source',
+                            'Estimated households',
+                            'Lower CI',
+                            'Upper CI')) %>%
+        kable_styling(full_width = F)
+  
+  print(tblOut)
+    
+}
+
+```
+
+# CI for number of people employed
+
+This metric is not reported on technical papers, please evaluate for errors and ensure that data appears to meet expectations. The CIs may be fairly wide on some of these, but should not be terrible.
+
+```{r CI for people employed}
+
+# 11.0 - Calculate CI for number of employed people using the bootsample.
+
+# 11.1 - the first few steps here identify the resampled 'observations' above
+#       and below the estimate of interest. Those are summed, and subsequently
+#       used to identify the appropriate quantiles for the 95% CI.
+
+ciEstData$l = 0
+
+ciEstData$l[(ciEstData$estPersonCount - ciEstData$estPersonCount_mean) < 0] = 1
+
+ciEstData <- group_by(ciEstData, projID, studyear, communty, commname, 
+                      incCategory, incCategoryDesc, incsrce, incsrceDesc, 
+                      incTypeCD, incTypeDesc) %>%
+  mutate(L = sum(l, na.rm=TRUE)) %>%
+  arrange(projID, studyear, communty, commname, 
+          incCategory, incCategoryDesc, incsrce, incsrceDesc, 
+          incTypeCD, incTypeDesc, estPersonCount)
+
+ciEstData$z0 = ciEstData$L / econBoot_k
+ciEstData$z0Hat = qnorm(ciEstData$z0, 0, 1)
+
+ciEstData$tTb2 = (ciEstData$estPersonCount - ciEstData$estPersonCount_mean)^2
+ciEstData$tTb3 = (ciEstData$estPersonCount - ciEstData$estPersonCount_mean)^3
+
+ciEstData <- group_by(ciEstData, projID, studyear, communty, commname, 
+                      incCategory, incCategoryDesc, incsrce, incsrceDesc, 
+                      incTypeCD, incTypeDesc) %>%
+  mutate(t2 = sum(tTb2, na.rm=TRUE),
+         t3 = sum(tTb3, na.rm=TRUE))
+
+ciEstData$alphaHat = ciEstData$t3 / ((6 * ciEstData$t2)^1.5)
+
+ciEstData$alpha1 = pnorm(ciEstData$z0Hat + ((ciEstData$z0Hat - 1.96) / (1 - ciEstData$alphaHat*(ciEstData$z0Hat - 1.96))), 0, 1)
+ciEstData$alpha2 = pnorm(ciEstData$z0Hat + ((ciEstData$z0Hat + 1.96) / (1 - ciEstData$alphaHat*(ciEstData$z0Hat + 1.96))), 0, 1)
+
+ciEstData$alpha1 = round(ciEstData$alpha1*econBoot_k, 0)
+ciEstData$alpha2 = round(ciEstData$alpha2*econBoot_k, 0)
+
+# force alpha values to econBoot_k/2 if NA.
+ciEstData$alpha1[is.na(ciEstData$alpha1)] = round(econBoot_k/2, 0)
+ciEstData$alpha2[is.na(ciEstData$alpha2)] = round(econBoot_k/2, 0)
+
+# Create an index.
+ciEstData$idx = rep(1:econBoot_k, times = nrow(ciEstData)/econBoot_k)
+
+ciEstData$lower_estPersonCount = 0
+ciEstData$upper_estPersonCount = 0
+
+ciEstData$lower_estPersonCount[ciEstData$alpha1 == ciEstData$idx] = ciEstData$estPersonCount[ciEstData$alpha1 == ciEstData$idx]
+ciEstData$upper_estPersonCount[ciEstData$alpha2 == ciEstData$idx] = ciEstData$estPersonCount[ciEstData$alpha2 == ciEstData$idx]
+
+#
+#  Make output table for review.
+# 
+
+dataCols = c('estPersonCount_mean', 'lower_estPersonCount', 'upper_estPersonCount')
+ciTmpData <- ciEstData
+
+# Need to summarize to incSource
+ciTmpData <- group_by(ciTmpData, commname, incCategory, incsrce, incCategoryDesc, incsrceDesc) %>%
+             summarize(estPersonCount_mean = max(estPersonCount_mean),
+                       lower_estPersonCount = max(lower_estPersonCount),
+                       upper_estPersonCount = max(upper_estPersonCount)) %>% 
+             ungroup() %>%
+             select(-incCategory, -incsrce)
+
+for(comm in sampData$commname)
+{
+  tmpTblData <- filter(ciTmpData, commname==comm) %>%
+    select(-commname)
+  
+  tmpTblData <- mutate(tmpTblData, across(all_of(dataCols), ~ round(., 1)))
+
+  tblOut <- kbl(tmpTblData,
+                caption=formatTableHeader(str_interp("Confidence intervals for estimated adults earning by source, ${comm}, ${studyear}")),
+                col.names=c('Income\ncategory',
+                            'Income source',
+                            'Estimated adults',
+                            'Lower CI',
+                            'Upper CI')) %>%
+        kable_styling(full_width = F)
+  
+  print(tblOut)
+    
+}
+
+```
+
+# CI For number of jobs
+
+This metric is not reported on technical papers, please evaluate for errors and ensure that data appears to meet expectations. The CIs may be fairly wide on some of these, but should not be terrible.
+
+```{r CI for number jobs}
+
+# 12.0 - Calculate CI for number of jobs using the bootsample.
+
+# 12.1 - the first few steps here identify the resampled 'observations' above
+#       and below the estimate of interest. Those are summed, and subsequently
+#       used to identify the appropriate quantiles for the 95% CI.
+
+ciEstData$l = 0
+
+ciEstData$l[(ciEstData$estJobCount - ciEstData$estJobCount_mean) < 0] = 1
+
+ciEstData <- group_by(ciEstData, projID, studyear, communty, commname, 
+                      incCategory, incCategoryDesc, incsrce, incsrceDesc, 
+                      incTypeCD, incTypeDesc) %>%
+  mutate(L = sum(l, na.rm=TRUE)) %>%
+  arrange(projID, studyear, communty, commname, 
+          incCategory, incCategoryDesc, incsrce, incsrceDesc, 
+          incTypeCD, incTypeDesc, estJobCount)
+
+ciEstData$z0 = ciEstData$L / econBoot_k
+ciEstData$z0Hat = qnorm(ciEstData$z0, 0, 1)
+
+ciEstData$tTb2 = (ciEstData$estJobCount - ciEstData$estJobCount_mean)^2
+ciEstData$tTb3 = (ciEstData$estJobCount - ciEstData$estJobCount_mean)^3
+
+ciEstData <- group_by(ciEstData, projID, studyear, communty, commname, 
+                      incCategory, incCategoryDesc, incsrce, incsrceDesc, 
+                      incTypeCD, incTypeDesc) %>%
+  mutate(t2 = sum(tTb2, na.rm=TRUE),
+         t3 = sum(tTb3, na.rm=TRUE))
+
+ciEstData$alphaHat = ciEstData$t3 / ((6 * ciEstData$t2)^1.5)
+
+ciEstData$alpha1 = pnorm(ciEstData$z0Hat + ((ciEstData$z0Hat - 1.96) / (1 - ciEstData$alphaHat*(ciEstData$z0Hat - 1.96))), 0, 1)
+ciEstData$alpha2 = pnorm(ciEstData$z0Hat + ((ciEstData$z0Hat + 1.96) / (1 - ciEstData$alphaHat*(ciEstData$z0Hat + 1.96))), 0, 1)
+
+ciEstData$alpha1 = round(ciEstData$alpha1*econBoot_k, 0)
+ciEstData$alpha2 = round(ciEstData$alpha2*econBoot_k, 0)
+
+# force alpha values to econBoot_k/2 if NA.
+ciEstData$alpha1[is.na(ciEstData$alpha1)] = round(econBoot_k/2, 0)
+ciEstData$alpha2[is.na(ciEstData$alpha2)] = round(econBoot_k/2, 0)
+
+# Create an index.
+ciEstData$idx = rep(1:econBoot_k, times = nrow(ciEstData)/econBoot_k)
+
+ciEstData$lower_estJobCount = 0
+ciEstData$upper_estJobCount = 0
+
+ciEstData$lower_estJobCount[ciEstData$alpha1 == ciEstData$idx] = ciEstData$estJobCount[ciEstData$alpha1 == ciEstData$idx]
+ciEstData$upper_estJobCount[ciEstData$alpha2 == ciEstData$idx] = ciEstData$estJobCount[ciEstData$alpha2 == ciEstData$idx]
+
+#
+#  Make output table for review.
+# 
+
+dataCols = c('estJobCount_mean', 'lower_estJobCount', 'upper_estJobCount')
+ciTmpData <- ciEstData
+
+# Need to summarize to incSource
+ciTmpData <- group_by(ciTmpData, commname, incCategory, incsrce, incCategoryDesc, incsrceDesc) %>%
+             summarize(estJobCount_mean = max(estJobCount_mean),
+                       lower_estJobCount = max(lower_estJobCount),
+                       upper_estJobCount = max(upper_estJobCount)) %>% 
+             ungroup() %>%
+             select(-incCategory, -incsrce)
+
+for(comm in sampData$commname)
+{
+  tmpTblData <- filter(ciTmpData, commname==comm) %>%
+    select(-commname)
+  
+  tmpTblData <- mutate(tmpTblData, across(all_of(dataCols), ~ round(., 1)))
+
+  tblOut <- kbl(tmpTblData,
+                caption=formatTableHeader(str_interp("Confidence intervals for estimated jobs by source, ${comm}, ${studyear}")),
+                col.names=c('Income\ncategory',
+                            'Income source',
+                            'Estimated jobs',
+                            'Lower CI',
+                            'Upper CI')) %>%
+        kable_styling(full_width = F)
+  
+  print(tblOut)
+    
+}
+
+```
+
+# Organize final raw data file
+
+```{r organize final raw data file}
+
+# 13.0 - Aggregate to Final output & add some essential sampling information.
+
+# Capitalization issue.
+sampData$Nhouseholds = sampData$NHouseholds
+
+# 13.1 - get simplified sampling information for final means in tables/figures
+basicSampData <- group_by(sampData, projID, studyear, communty, Nhouseholds, NPopulation) %>%
+  summarize(sCount = n()) %>%
+  select(projID, studyear, communty, Nhouseholds, NPopulation)
+
+# 13.2 - Develop estimates with CIs using the bootstrapping method. THis
+#        provides what I would describe as a better estimate than the 
+#        straight imputations developed from the sample.
+finalIncomeData <- group_by(ciEstData, projID, studyear, communty, commname,
+                      incTypeCD, incTypeDesc,
+                      incCategory, incCategoryDesc, incsrce, incsrceDesc) %>%
+  summarize(estIncome_median     = median(medIncome, na.rm=TRUE),
+            lower_medIncome      = max(lower_medIncome, na.rm=TRUE),
+            upper_medIncome      = max(upper_medIncome, na.rm=TRUE),
+            estIncome_mean       = mean(estIncome, na.rm=TRUE),
+            lower_estIncome      = max(lower_estIncome, na.rm=TRUE),
+            upper_estIncome      = max(upper_estIncome, narm=TRUE),
+            estHHCount_mean      = mean(estHHCount, na.rm=TRUE),
+            lower_estHHCount     = max(lower_estHHCount, na.rm=TRUE),
+            upper_estHHCount     = max(upper_estHHCount, na.rm=TRUE),
+            estPersonCount_mean  = mean(estPersonCount, na.rm=TRUE),
+            lower_estPersonCount = max(lower_estPersonCount, na.rm=TRUE),
+            upper_estPersonCount = max(upper_estPersonCount, na.rm=TRUE),
+            estJobCount_mean     = mean(estJobCount, na.rm=TRUE),
+            lower_estJobCount    = max(lower_estJobCount, na.rm=TRUE),
+            upper_estJobCount    = max(upper_estJobCount, na.rm=TRUE)) %>%
+  left_join(basicSampData, by = c("projID", "studyear","communty"))
+
+count = nrow(finalIncomeData)
+cat(formatSummaryBlock(str_interp("Final income summary data frame created ${count} rows remain.")))
+
+```
+
+# Job schedules
+
+NOTE: Because of the way the bootstrapping works, the estimates overall will differ by some percentage. This should be evaluated for each project to ensure the difference isn't more than .1%
+  
+<div class="todoBlock"> TO DO: The estimates produced below may diverge substantially from the totals calculated above. The method below may not be adequate, but may also be a product of how boostrapping works. This needs to estimate the values by job schedule, but use an apportionment approach to properly estimate by schedule. </div>
+
+```{r job schedules}
+
+# 15.0 - ESTIMATE By Schedule type.
+#        NOTE: Because of the way the bootstrapping works, the estimates
+#              overall will differ by some percentage. This should be 
+#              evaluated for each project to ensure the difference isn't 
+#              more than .1%
+
+
+jobTypeData <- filter(REC23Data, samp > 0) %>%
+  group_by(projID, studyear, communty, commname,
+           schedule, strata, samp, uHHID, person) %>%
+  summarize(estHHCount     = max(employStrataWt, na.rm=TRUE),
+            estPersonCount = max(employStrataWt, na.rm=TRUE),
+            estJobCount    = sum(employStrataWt, na.rm=TRUE),
+            estIncome      = sum(estIncome, na.rm=TRUE)) %>%
+  summarize(estHHCount     = max(estHHCount, na.rm=TRUE),
+            estPersonCount = sum(estPersonCount, na.rm=TRUE),
+            estJobCount    = sum(estJobCount, na.rm=TRUE),
+            estIncome      = sum(estIncome, na.rm=TRUE)) %>%
+  summarize(estHHCount     = sum(estHHCount, na.rm=TRUE),
+            estPersonCount = sum(estPersonCount, na.rm=TRUE),
+            estJobCount    = sum(estJobCount, na.rm=TRUE),
+            estIncome      = sum(estIncome, na.rm=TRUE)) %>%
+  summarize(estHHCount     = mean(estHHCount, na.rm=TRUE),
+            estPersonCount = mean(estPersonCount, na.rm=TRUE),
+            estJobCount    = mean(estJobCount, na.rm=TRUE),
+            estIncome      = mean(estIncome, na.rm=TRUE))  %>%
+  summarize(estHHCount     = sum(estHHCount, na.rm=TRUE),
+            estPersonCount = sum(estPersonCount, na.rm=TRUE),
+            estJobCount    = sum(estJobCount, na.rm=TRUE),
+            estIncome      = sum(estIncome, na.rm=TRUE))  
+
+# The extra group-by here should prevent unwanted columns from being readded.
+allEmployData <-  filter(finalIncomeData, incCategory == 1000 & incsrce == 1000) %>% 
+                  group_by(projID, studyear, communty) %>%
+                  select(projID, studyear, communty, 
+                          estIncome_mean, estHHCount_mean, estPersonCount_mean,
+                          estJobCount_mean)
+ 
+
+jobTypeData <- left_join(jobTypeData, allEmployData, by=c("projID", "studyear", "communty"))
+
+jobTypeData$pctHHCount <- jobTypeData$estHHCount / jobTypeData$estHHCount_mean
+jobTypeData$pctPersonCount <- jobTypeData$estPersonCount / jobTypeData$estPersonCount_mean
+jobTypeData$pctJobCount <- jobTypeData$estJobCount / jobTypeData$estJobCount_mean
+jobTypeData$pctIncome <- jobTypeData$estIncome / jobTypeData$estIncome_mean
+
+jobTypeData$scheduleDesc = "Schedule not reported"
+jobTypeData$scheduleDesc[jobTypeData$schedule == 1] = "Full time"
+jobTypeData$scheduleDesc[jobTypeData$schedule == 2] = "Part time"
+jobTypeData$scheduleDesc[jobTypeData$schedule == 3] = "Shift - full time"
+jobTypeData$scheduleDesc[jobTypeData$schedule == 4] = "On-call, varies"
+jobTypeData$scheduleDesc[jobTypeData$schedule == 5] = "Shift - part time"
+
+# Reduce the file and organize to support the required output table.
+jobTypeData <- select(jobTypeData, projID, studyear, communty, commname, 
+                      scheduleDesc, estJobCount, pctJobCount,
+                      estPersonCount, pctPersonCount,
+                      estHHCount, pctHHCount,
+                      estJobCount_mean, estPersonCount_mean, estHHCount_mean)
+
+#
+#  Make output table for review.
+# 
+
+dataCols = c('estJobCount', 'pctJobCount', 'estPersonCount', 'pctPersonCount', 'estHHCount', 'pctHHCount', 
+             'estJobCount_mean', 'estPersonCount_mean', 'estHHCount_mean')
+jobTmpData <- jobTypeData
+
+for(comm in sampData$commname)
+{
+  tmpTblData <- ungroup(jobTmpData) %>%
+    filter(commname==comm) %>%
+    select(scheduleDesc, !!!syms(dataCols))
+
+  tmpTblData <- mutate(tmpTblData, across(starts_with('pct'), ~ . * 100))
+  tmpTblData <- mutate(tmpTblData, across(all_of(dataCols), ~ round(., 1)))
+
+  tblOut <- kbl(tmpTblData,
+                caption=formatTableHeader(str_interp("Jobs and income by job schedule, ${comm}, ${studyear}")),
+                col.names=c('Schedule',
+                            'est',
+                            'pct',
+                            'est',
+                            'pct',
+                            'est',
+                            'pct',
+                            'Jobs',
+                            'Adults',
+                            'Households')) %>%
+        kable_styling(full_width = F) %>%
+    add_header_above(c('  ' = 1, 'Jobs'=2, 'Adults'=2,'Households'=2,
+                       'Total estimated' = 3))
+
+  print(tblOut)
+    
+}
+
+```
+
+
+# Write CSV files
+
+```{r write csv files}
+
+# Write out CSV files.
+
+# Total income estimates file; requires further processing.
+  fName = '../../CSV/04 - Employment Processing/income_estimates.csv'
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(finalIncomeData), ' records to be written', sep='')))
+
+  rio::export(finalIncomeData, fName)
+  
+  # Job schedules; this is 'done'.
+  fName = '../../CSV/05 - Final Analysis Output/jobSchedules_raw.csv'
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(jobTypeData), ' records to be written', sep='')))
+
+  rio::export(jobTypeData, fName)
+
+```
+
+# CI Lower bound adjustment
+
+In previous analysis, there would be a step setting the lower CI bound to the reported amount. This is not a valid for reporting because a CI falling below reported amounts can be used to describe limitations with statistical power and significance. This step will no longer be repeated.
+
+
+<p class="h1footer"> End of Estimate income by category script. </p>
+

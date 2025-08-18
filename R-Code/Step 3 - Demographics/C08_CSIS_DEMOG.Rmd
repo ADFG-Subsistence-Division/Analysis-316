@@ -1,0 +1,627 @@
+---
+title: "C08_CSIS_DEMOG - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-15"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">C08_CSIS_DEMOG - (316) NPS Ambler Comprehensive</div>
+</div>
+
+# CSIS dat_demography
+produce final output file for incorporation into the CSIS. You will need to review this output BEFORE this is inserted into the CSIS.
+
+## Change log
+
+### Change 1
+- Programmer: D.S.Koster  
+- Date: 05/21/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output.  
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates  
+
+### Change 2
+- Programmer: Jesse Coleman
+- Date: 03/18/2025
+- Change Description: Removed source() calls; all functions are included in the library adfgSubs.
+- Template Update [Y|N]: Y
+- One-Off: No-include in all future comprehensive templates 
+
+## Input data
+
+- ../../CSV/03 - Main/REC01_clean.csv  
+- ../../CSV/05 - Final Analysis Output/demogCharacteristics(T)_raw.csv  
+- ../../CSV/05 - Final Analysis Output/popProfile(T)_raw.csv  
+- ../../CSV/03 - Main/sample.csv  
+
+## Output data
+
+- ../../CSV/07 - CSIS Uploads/dat_demog.csv
+- ../../SQLite/csisDB.db [dat_demog]
+
+## Checklist
+
+- Update 'Author' to your name   
+- Update the project information in 'title' to the current project  
+- Update the development log with any changes you've made to the template file, including your name  
+- Verify that the csisDB.db file has been created and that the relevant data has been inserted    
+
+## Additional Information
+
+This incorporates sample and methods and organizes information for upload. Note that you MUST make adjustments to all data fields in this markdown file. This data will be incorporated into a SQLite database.
+
+
+### Required libraries (adjust as needed):  
+- tidyVerse  
+- odbc  
+- rio  
+- knitr  
+- DBI (SQLite)
+- adfgSubs
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+
+# Additional libraries
+library(knitr)
+library(DBI)
+library(adfgSubs)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+# source('../Functions/f_RMD_HTML_FORMATTING_FUNCTIONS.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+```
+
+## Project information
+
+```{r set CSIS project info}
+
+cat("<br>If you need to hard-code data, do this here; normally, comps won't require. <br>")
+
+```
+
+## Load data
+
+```{r load data}
+
+# ##############################################################################
+# Load data from intermediate files.
+# ##############################################################################
+
+# This for each file opened.
+personData <- read.csv('../../CSV/03 - Main/REC01_clean.csv',
+                   na = '', 
+                   header = TRUE, 
+                   strip.white = TRUE)
+
+count <- nrow(personData)
+cat(formatSummaryBlock(paste("Opening file: REC01_clean.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+# Summarized person data (so we don't have to do it again)
+# This for each file opened.
+demogCharData <- read.csv('../../CSV/05 - Final Analysis Output/demogCharacteristics(T)_raw.csv',
+                   na = '', 
+                   header = TRUE, 
+                   strip.white = TRUE)
+
+count <- nrow(demogCharData)
+cat(formatSummaryBlock(paste("Opening file: demogCharacteristics(T)_raw.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+# Population profile(so we don't have to do it again)
+popProfileData <- read.csv('../../CSV/05 - Final Analysis Output/popProfile(T)_raw.csv',
+                   na = '', 
+                   header = TRUE, 
+                   strip.white = TRUE)
+
+count <- nrow(popProfileData)
+cat(formatSummaryBlock(paste("Opening file: popProfile(T)_raw.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+# Sampling info
+sampleData <- read.csv('../../CSV/03 - Main/sample.csv',
+                   na = '', 
+                   header = TRUE, 
+                   strip.white = TRUE)
+
+count <- nrow(sampleData)
+cat(formatSummaryBlock(paste("Opening file: sample.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+
+```
+
+## Rename and organize data.
+
+Organize the information and add what is needed.
+
+```{r reorg rename data}
+
+# Metrics already calculated, leave the key columns as the standard names
+#    until after additional data is calculated.
+demogData <- demogCharData %>%
+  rename("hhsize" = "hSize_mean",
+         "nathh" = "pctEthnic_HH_sum",
+         "natpop" = "pctNativePerson_sum",
+         "localdef" = "commname",
+         "avgres" = "yrcomcat_mean")
+
+# Calculated fields.
+demogData$nonnathh = 1 - demogData$nathh
+demogData$nonatpop = 1 - demogData$natpop
+demogData$females = demogData$female_sum / demogData$NPopulation
+demogData$males = demogData$male_sum / demogData$NPopulation
+demogData$estnhhhd = demogData$NHouseholds / demogData$samphh
+
+demogData <- demogData %>%
+  select(projID, studyear, communty, hhsize,
+         nathh, natpop, localdef, avgres, 
+         nonnathh, nonatpop, females, males, estnhhhd, male_sum, female_sum)
+
+# Convert calculated population profile information into CSIS format
+#   (from lustrum increments to decadal increments by gender.)
+
+tmpMaleData <- popProfileData %>% 
+  filter(sex == 'male')
+
+# Init male columns to 0.
+tmpMaleData$m0_9yr = 0
+tmpMaleData$m10_19yr = 0
+tmpMaleData$m20_29yr = 0
+tmpMaleData$m30_39yr = 0
+tmpMaleData$m40_49yr = 0
+tmpMaleData$m50_59yr = 0
+tmpMaleData$m60_69yr = 0
+tmpMaleData$m70_79yr = 0
+tmpMaleData$m80_89yr = 0
+tmpMaleData$m90_99yr = 0
+tmpMaleData$mgt100yr = 0
+tmpMaleData$mmissyr = 0
+
+# Combine columns.
+tmpMaleData$m0_9yr = tmpMaleData$age0to4 + tmpMaleData$age5to9
+tmpMaleData$m10_19yr = tmpMaleData$age10to14 + tmpMaleData$age15to19
+tmpMaleData$m20_29yr = tmpMaleData$age20to24 + tmpMaleData$age25to29
+tmpMaleData$m30_39yr = tmpMaleData$age30to34 + tmpMaleData$age35to39
+tmpMaleData$m40_49yr = tmpMaleData$age40to44 + tmpMaleData$age45to49
+tmpMaleData$m50_59yr = tmpMaleData$age50to54 + tmpMaleData$age55to59
+tmpMaleData$m60_69yr = tmpMaleData$age60to64 + tmpMaleData$age65to69
+tmpMaleData$m70_79yr = tmpMaleData$age70to74 + tmpMaleData$age75to79
+tmpMaleData$m80_89yr = tmpMaleData$age80to84 + tmpMaleData$age85to89
+tmpMaleData$m90_99yr = tmpMaleData$age90to94 + tmpMaleData$age95to99
+tmpMaleData$mgt100yr = tmpMaleData$age100to104
+tmpMaleData$mmissyr = tmpMaleData$ageMiss
+
+tmpMaleData <- tmpMaleData %>% 
+  select(projID, studyear, communty, m0_9yr,
+                                      m10_19yr,
+                                      m20_29yr,
+                                      m30_39yr,
+                                      m40_49yr,
+                                      m50_59yr,
+                                      m60_69yr,
+                                      m70_79yr,
+                                      m80_89yr,
+                                      m90_99yr,
+                                      mgt100yr,
+                                      mmissyr)
+
+tmpFemaleData <- popProfileData %>% 
+  filter(sex == 'female')
+
+# Init male columns to 0.
+tmpFemaleData$f0_9yr = 0
+tmpFemaleData$f10_19yr = 0
+tmpFemaleData$f20_29yr = 0
+tmpFemaleData$f30_39yr = 0
+tmpFemaleData$f40_49yr = 0
+tmpFemaleData$f50_59yr = 0
+tmpFemaleData$f60_69yr = 0
+tmpFemaleData$f70_79yr = 0
+tmpFemaleData$f80_89yr = 0
+tmpFemaleData$f90_99yr = 0
+tmpFemaleData$fgt100yr = 0
+tmpFemaleData$fmissyr = 0
+
+# Combine columns.
+tmpFemaleData$f0_9yr = tmpFemaleData$age0to4 + tmpFemaleData$age5to9
+tmpFemaleData$f10_19yr = tmpFemaleData$age10to14 + tmpFemaleData$age15to19
+tmpFemaleData$f20_29yr = tmpFemaleData$age20to24 + tmpFemaleData$age25to29
+tmpFemaleData$f30_39yr = tmpFemaleData$age30to34 + tmpFemaleData$age35to39
+tmpFemaleData$f40_49yr = tmpFemaleData$age40to44 + tmpFemaleData$age45to49
+tmpFemaleData$f50_59yr = tmpFemaleData$age50to54 + tmpFemaleData$age55to59
+tmpFemaleData$f60_69yr = tmpFemaleData$age60to64 + tmpFemaleData$age65to69
+tmpFemaleData$f70_79yr = tmpFemaleData$age70to74 + tmpFemaleData$age75to79
+tmpFemaleData$f80_89yr = tmpFemaleData$age80to84 + tmpFemaleData$age85to89
+tmpFemaleData$f90_99yr = tmpFemaleData$age90to94 + tmpFemaleData$age95to99
+tmpFemaleData$fgt100yr = tmpFemaleData$age100to104
+tmpFemaleData$fmissyr = tmpFemaleData$ageMiss
+
+tmpFemaleData <- tmpFemaleData %>% 
+  select(projID, studyear, communty, f0_9yr,
+                                      f10_19yr,
+                                      f20_29yr,
+                                      f30_39yr,
+                                      f40_49yr,
+                                      f50_59yr,
+                                      f60_69yr,
+                                      f70_79yr,
+                                      f80_89yr,
+                                      f90_99yr,
+                                      fgt100yr,
+                                      fmissyr)
+
+popProfileData <- left_join(tmpMaleData, 
+                            tmpFemaleData, 
+                            by=c("projID", "studyear","communty"))
+
+demogData <- left_join(demogData, popProfileData,
+                       c("projID", "studyear", "communty"))
+
+# Create percentages of male / female population by age category.
+demogData$f0_9yr = (demogData$f0_9yr / demogData$female_sum) * 100
+demogData$f10_19yr = (demogData$f10_19yr / demogData$female_sum) * 100
+demogData$f20_29yr = (demogData$f20_29yr / demogData$female_sum) * 100
+demogData$f30_39yr = (demogData$f30_39yr / demogData$female_sum) * 100
+demogData$f40_49yr = (demogData$f40_49yr / demogData$female_sum) * 100
+demogData$f50_59yr = (demogData$f50_59yr / demogData$female_sum) * 100
+demogData$f60_69yr = (demogData$f60_69yr / demogData$female_sum) * 100
+demogData$f70_79yr = (demogData$f70_79yr / demogData$female_sum) * 100
+demogData$f80_89yr = (demogData$f80_89yr / demogData$female_sum) * 100
+demogData$f90_99yr = (demogData$f90_99yr / demogData$female_sum) * 100
+demogData$fgt100yr = (demogData$fgt100yr / demogData$female_sum) * 100
+demogData$fmissyr = (demogData$fmissyr / demogData$female_sum) * 100
+
+demogData$m0_9yr = (demogData$m0_9yr / demogData$male_sum) * 100
+demogData$m10_19yr = (demogData$m10_19yr / demogData$male_sum) * 100
+demogData$m20_29yr = (demogData$m20_29yr / demogData$male_sum) * 100
+demogData$m30_39yr = (demogData$m30_39yr / demogData$male_sum) * 100
+demogData$m40_49yr = (demogData$m40_49yr / demogData$male_sum) * 100
+demogData$m50_59yr = (demogData$m50_59yr / demogData$male_sum) * 100
+demogData$m60_69yr = (demogData$m60_69yr / demogData$male_sum) * 100
+demogData$m70_79yr = (demogData$m70_79yr / demogData$male_sum) * 100
+demogData$m80_89yr = (demogData$m80_89yr / demogData$male_sum) * 100
+demogData$m90_99yr = (demogData$m90_99yr / demogData$male_sum) * 100
+demogData$mgt100yr = (demogData$mgt100yr / demogData$male_sum) * 100
+demogData$mmissyr = (demogData$mmissyr / demogData$male_sum) * 100
+
+demogData <- demogData %>%
+  select(-male_sum, -female_sum)
+
+# Length of residency; init bins.
+personData$yrcomcat[which(personData$yrcomcat < 0)] = NA
+personData$r0_9yr = 0
+personData$r10_19yr = 0
+personData$r20_29yr = 0
+personData$r30_39yr = 0
+personData$r40_49yr = 0
+personData$r50_59yr = 0
+personData$r60_69yr = 0
+personData$r70_79yr = 0
+personData$r80_89yr = 0
+personData$r90_99yr = 0
+personData$rgt100yr = 0
+
+# Mean replacement for bins. Start by computing the means for 
+#   length of residency.
+personData <- personData %>%
+  group_by(projID, studyear, communty) %>%
+  mutate(yrcomcat_mean = mean(yrcomcat, na.rm=TRUE)) %>%
+  ungroup()
+
+# Make person Age NA where unknown.
+personData$personAge[which(personData$yrcomcat < 0)] = NA
+
+# Do the mean replacement using length of residency or age, 
+#   whichever is smaller.
+personData$yrcomcat[which(is.na(personData$yrcomcat) &
+                            (is.na(personData$personAge) |
+                               personData$yrcomcat > personData$personAge))] = personData$yrcomcat_mean[which(is.na(personData$yrcomcat) &
+                            (is.na(personData$personAge) |
+                               personData$yrcomcat > personData$personAge))]
+
+personData$yrcomcat[which(is.na(personData$yrcomcat) &
+                            (!is.na(personData$personAge) &
+                               personData$yrcomcat > personData$personAge))] = personData$personAge[which(is.na(personData$yrcomcat) &
+                            (!is.na(personData$personAge) &
+                               personData$yrcomcat > personData$personAge))]
+
+personData$r0_9yr[between(personData$yrcomcat, 0, 9)] = 1
+personData$r10_19yr[between(personData$yrcomcat, 10, 19)] = 1
+personData$r20_29yr[between(personData$yrcomcat, 20, 29)] = 1
+personData$r30_39yr[between(personData$yrcomcat, 30, 39)] = 1
+personData$r40_49yr[between(personData$yrcomcat, 40, 49)] = 1
+personData$r50_59yr[between(personData$yrcomcat, 50, 59)] = 1
+personData$r60_69yr[between(personData$yrcomcat, 60, 69)] = 1
+personData$r70_79yr[between(personData$yrcomcat, 70, 79)] = 1
+personData$r80_89yr[between(personData$yrcomcat, 80, 89)] = 1
+personData$r90_99yr[between(personData$yrcomcat, 90, 99)] = 1
+personData$rgt100yr[personData$yrcomcat >= 100] = 1
+
+personData$bornlocal = 0
+personData$bornlocal[personData$residpar == personData$communty] = 1
+
+personData <- personData %>%
+  group_by(projID, studyear, communty) %>%
+  summarize(bornlocal = mean(bornlocal, na.rm=TRUE),
+            r0_9yr = mean(r0_9yr, na.rm=TRUE),
+            r10_19yr = mean(r10_19yr, na.rm=TRUE),
+            r20_29yr = mean(r20_29yr, na.rm=TRUE),
+            r30_39yr = mean(r30_39yr, na.rm=TRUE),
+            r40_49yr = mean(r40_49yr, na.rm=TRUE),
+            r50_59yr = mean(r50_59yr, na.rm=TRUE),
+            r60_69yr = mean(r60_69yr, na.rm=TRUE),
+            r70_79yr = mean(r70_79yr, na.rm=TRUE),
+            r80_89yr = mean(r80_89yr, na.rm=TRUE),
+            r90_99yr = mean(r90_99yr, na.rm=TRUE),
+            rgt100yr = mean(rgt100yr, na.rm=TRUE)) %>%
+  ungroup()
+  
+
+demogData <- left_join(demogData, personData,
+                       by=c("projID", "studyear", "communty"))
+
+# CSIS name conversions.
+demogData <- demogData %>%
+  rename("commcode" = "communty",
+         "year" = "studyear",
+         "projid" = "projID")
+
+
+# Turn percentages into 0 - 100 rather than 0 - 1.
+
+demogData$males = demogData$males * 100
+demogData$females = demogData$females * 100
+demogData$nathh = demogData$nathh * 100
+demogData$natpop = demogData$natpop * 100
+demogData$nonnathh = demogData$nonnathh * 100
+demogData$nonatpop = demogData$nonatpop * 100
+demogData$bornlocal = demogData$bornlocal * 100
+demogData$r0_9yr = demogData$r0_9yr * 100
+demogData$r10_19yr = demogData$r10_19yr * 100
+demogData$r20_29yr = demogData$r20_29yr * 100
+demogData$r30_39yr = demogData$r30_39yr * 100
+demogData$r40_49yr = demogData$r40_49yr * 100
+demogData$r50_59yr = demogData$r50_59yr * 100
+demogData$r60_69yr = demogData$r60_69yr * 100
+demogData$r70_79yr = demogData$r70_79yr * 100
+demogData$r80_89yr = demogData$r80_89yr * 100
+demogData$r90_99yr = demogData$r90_99yr * 100
+demogData$rgt100yr = demogData$rgt100yr * 100
+
+
+```
+
+## Prepare database items.
+Prepare SQLite database.
+
+```{r prep database}
+
+csisDB <- dbConnect(RSQLite::SQLite(), "../../SQLite/csisDB.db")
+
+delSQL = 'DROP TABLE IF EXISTS "dat_demog";'
+
+DBResult <- dbSendQuery(csisDB, delSQL)
+cat("<h4>Drop table:</h4>")
+print(DBResult)
+dbClearResult(DBResult)
+
+tblSQL = 'CREATE TABLE "dat_demog" (
+       "commcode" INTEGER NOT NULL
+      ,"year"  INTEGER NOT NULL
+      ,"projid"  INTEGER NOT NULL
+      ,"hhsize" REAL
+      ,"nathh" REAL
+      ,"nonnathh" REAL
+      ,"natpop" REAL
+      ,"nonatpop" REAL
+      ,"females" REAL
+      ,"males" REAL
+      ,"localdef" TEXT
+      ,"bornlocal" REAL
+      ,"avgres" REAL
+      ,"estnhhhd" REAL
+      ,"r0_9yr" REAL
+      ,"r10_19yr" REAL
+      ,"r20_29yr" REAL
+      ,"r30_39yr" REAL
+      ,"r40_49yr" REAL
+      ,"r50_59yr" REAL
+      ,"r60_69yr" REAL
+      ,"r70_79yr" REAL
+      ,"r80_89yr" REAL
+      ,"r90_99yr" REAL
+      ,"rgt100yr" REAL
+      ,"f0_9yr" REAL
+      ,"m0_9yr" REAL
+      ,"m10_19yr" REAL
+      ,"m20_29yr" REAL
+      ,"m30_39yr" REAL
+      ,"m40_49yr" REAL
+      ,"m50_59yr" REAL
+      ,"m60_69yr" REAL
+      ,"m70_79yr" REAL
+      ,"m80_89yr" REAL
+      ,"m90_99yr" REAL
+      ,"mgt100yr" REAL
+      ,"f10_19yr" REAL
+      ,"f20_29yr" REAL
+      ,"f30_39yr" REAL
+      ,"f40_49yr" REAL
+      ,"f50_59yr" REAL
+      ,"f60_69yr" REAL
+      ,"f70_79yr" REAL
+      ,"f80_89yr" REAL
+      ,"f90_99yr" REAL
+      ,"fgt100yr" REAL
+      ,"fmissyr" REAL
+      ,"mmissyr" REAL
+      ,"demogUID" INTEGER NOT NULL
+      , PRIMARY KEY ("demogUID" AUTOINCREMENT));'
+
+DBResult <- dbSendQuery(csisDB, tblSQL)
+cat("<h4>Create empty table:</h4>")
+print(DBResult)
+dbClearResult(DBResult)
+
+strSQL = 'INSERT INTO dat_demog (commcode
+      ,year
+      ,projid
+      ,hhsize 
+      ,nathh 
+      ,nonnathh 
+      ,natpop 
+      ,nonatpop 
+      ,females 
+      ,males 
+      ,localdef
+      ,bornlocal 
+      ,avgres 
+      ,estnhhhd 
+      ,r0_9yr 
+      ,r10_19yr 
+      ,r20_29yr 
+      ,r30_39yr 
+      ,r40_49yr 
+      ,r50_59yr 
+      ,r60_69yr 
+      ,r70_79yr 
+      ,r80_89yr 
+      ,r90_99yr 
+      ,rgt100yr 
+      ,f0_9yr 
+      ,m0_9yr 
+      ,m10_19yr 
+      ,m20_29yr 
+      ,m30_39yr 
+      ,m40_49yr 
+      ,m50_59yr 
+      ,m60_69yr 
+      ,m70_79yr 
+      ,m80_89yr 
+      ,m90_99yr 
+      ,mgt100yr 
+      ,f10_19yr 
+      ,f20_29yr 
+      ,f30_39yr 
+      ,f40_49yr 
+      ,f50_59yr 
+      ,f60_69yr 
+      ,f70_79yr 
+      ,f80_89yr 
+      ,f90_99yr 
+      ,fgt100yr 
+      ,fmissyr
+      ,mmissyr) VALUES (:commcode
+              ,:year
+              ,:projid
+              ,:hhsize 
+              ,:nathh 
+              ,:nonnathh 
+              ,:natpop 
+              ,:nonatpop 
+              ,:females 
+              ,:males 
+              ,:localdef
+              ,:bornlocal 
+              ,:avgres 
+              ,:estnhhhd 
+              ,:r0_9yr 
+              ,:r10_19yr 
+              ,:r20_29yr 
+              ,:r30_39yr 
+              ,:r40_49yr 
+              ,:r50_59yr 
+              ,:r60_69yr 
+              ,:r70_79yr 
+              ,:r80_89yr 
+              ,:r90_99yr 
+              ,:rgt100yr 
+              ,:f0_9yr 
+              ,:m0_9yr 
+              ,:m10_19yr 
+              ,:m20_29yr 
+              ,:m30_39yr 
+              ,:m40_49yr 
+              ,:m50_59yr 
+              ,:m60_69yr 
+              ,:m70_79yr 
+              ,:m80_89yr 
+              ,:m90_99yr 
+              ,:mgt100yr 
+              ,:f10_19yr 
+              ,:f20_29yr 
+              ,:f30_39yr 
+              ,:f40_49yr 
+              ,:f50_59yr 
+              ,:f60_69yr 
+              ,:f70_79yr 
+              ,:f80_89yr 
+              ,:f90_99yr 
+              ,:fgt100yr 
+              ,:fmissyr
+              ,:mmissyr);'
+
+DBResult <- dbSendQuery(csisDB, strSQL, demogData)
+cat("<h4>Insert data:</h4>")
+print(DBResult)
+dbClearResult(DBResult)
+
+dbDisconnect(csisDB)
+  
+```
+
+
+# Write CSV files
+
+```{r write csv files}
+
+# ##############################################################################
+# Write out CSV files.
+# ##############################################################################
+
+# Sample code for writing out a file.
+  fName = str_interp('../../CSV/07 - CSIS Uploads/dat_demog.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(demogData), ' records to be written', sep='')))
+
+  rio::export(demogData, fName)
+
+```
+
+<p class="h1footer"> End of Check SDS HH0 script. </p>

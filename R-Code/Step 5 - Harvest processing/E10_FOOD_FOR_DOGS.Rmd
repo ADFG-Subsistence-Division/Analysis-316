@@ -1,0 +1,204 @@
+---
+title: "E10_FOOD_FOR_DOGS - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-15"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">E10_FOOD_FOR_DOGS - (316) NPS Ambler Comprehensive</div>
+</div>
+
+# Food for dogs
+This file uses the Fish_By_Gear_Table_raw output file to create a table of the estimated harvest of fish consumption by dogs.
+
+## Change log
+
+### Change 1
+- Programmer: D.S.Koster  
+- Date: 05/21/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output. Corrected a few issues with outputs.  
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates
+
+### Change 2
+- Programmer: Jesse Coleman
+- Date: 03/18/2025
+- Change Description: Removed source() calls; all functions are included in the library adfgSubs.
+- Template Update [Y|N]: Y
+- One-Off: No-include in all future comprehensive templates 
+
+## Input data
+
+- CSV/05 - Final Analysis Output/Fish_By_Gear_Table_raw.csv  
+
+## Output data
+
+- /CSV/05 - Final Analysis Output/fishForDogs_raw.csv  
+
+## Background
+
+Food for dogs is included in the total subsistence harvest / edible weight. This used to be a key component of subsistence harvests and in some places contributes a substantial amount of harvest to the community total.
+
+## Checklist
+  
+- Update 'Author' to your name  
+- Update the project information in 'title' to the current project  
+- Update the development log with any changes you've made to the template file, including your name  
+- Update the table template  
+- Compare results presented here to those in the template 
+
+## Additional information
+
+### Required libraries:  
+- tidyverse  
+- rio  
+- knitr
+- kableExtra
+- adfgSubs
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+
+# Additional libraries
+library(knitr)
+library(kableExtra)
+library(adfgSubs)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+# source('../Functions/f_RMD_HTML_FORMATTING_FUNCTIONS.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+```
+
+## Load data
+
+```{r load data}
+
+# ##############################################################################
+# Load files.
+# ##############################################################################
+
+fishByGearData  <- read.csv('../../CSV/05 - Final Analysis Output/Fish_By_Gear_Table_raw.csv',
+                   na = '', 
+                   header = TRUE)
+```
+
+## Fish Consumption By Dogs
+
+This portion of the file creates a table of fish consumed by dogs estimates (number and pounds) for each study community. Please review each table carefully for any obvious errors or inconsistencies.
+
+```{r table review}
+
+# Just dog food here.
+fishForDogsData <- select(fishByGearData, projID, studyear, communty, commname, resource, resName,                                     estHarvestAmt, estHarvestLbs, eamtDogFood, elbs_amtDogFood) %>%
+                   filter(eamtDogFood > 0)
+
+commnameList <- ungroup(fishByGearData) %>% select(commname) %>% distinct(commname)
+
+for(comm in commnameList$commname)
+{ 
+  
+  tempTblData <- filter (fishForDogsData, commname == comm) %>% 
+    select(resName, estHarvestAmt, estHarvestLbs, eamtDogFood, elbs_amtDogFood)
+  
+  tblOut <- kbl(tempTblData,
+               caption=formatTableHeader(str_interp("Estimated Harvest of Fish for Dogs: ${comm}, ${studyear}")),
+               col.names = c("Resource", 
+                             "Amount harvested",
+                             "Pounds harvested",
+                             "Amount dog food",
+                             "Pounds dog food"),
+                 align="l")%>%
+      kable_styling(full_width = F)
+  
+  print(tblOut)
+}
+
+```
+
+## Error Checking 
+
+This portion of the file produces a table listing resources in which the amount or pounds of fish fed to dogs exceeds the total amount or pounds harvested. Any resource(s) listed below will need to reconciled before moving forward with the analysis.
+
+```{r salmon error checking}
+tempData <- select (fishByGearData, commname, resource, resName, estHarvestAmt, estHarvestLbs,
+                    eamtDogFood, elbs_amtDogFood) 
+
+for(comm in commnameList$commname)
+{
+    errorTblData <- filter(tempData, commname == comm & 
+                    eamtDogFood > estHarvestAmt | elbs_amtDogFood > estHarvestLbs) %>% ungroup %>%
+                    select(resource, resName, estHarvestAmt, eamtDogFood, estHarvestLbs, elbs_amtDogFood) 
+  
+  if(nrow(errorTblData) > 0) 
+{
+    tblOut <- kbl(errorTblData,
+          caption=formatTableHeader(str_interp("Amount/pounds for dog food exceeds total harvest: ${comm}, ${studyear}")),
+          col.names = c("Resource",
+                        "Resource Name",
+                        "Amount harvested",
+                        "Amount dog food",
+                        "Pounds harvested",
+                        "Pounds dog food"),
+                        align= "l") %>% 
+          kable_styling(full_width = F)
+        
+      print(tblOut)
+  } else {
+  
+    cat(greenMessage(str_interp("Dog food amounts and pounds are less than total harvested for ${comm}, ${studyear}")))
+  }
+}
+
+```
+
+## Write out CSV files
+
+```{r write csv files}
+
+# ##############################################################################
+# Write out CSV files.
+# ##############################################################################
+
+# Check with Dave to see if we need a separate output of if we want to use the Fish_By_Gear_Table_raw file?
+
+  fName = str_interp('../../CSV/05 - Final Analysis Output/fishForDogs_raw.csv')
+  cat(formatSummaryBlock(
+   paste('Writing file: ', fName,
+         ' ', nrow(fishForDogsData), ' records to be written', sep='')))
+
+# For 2023; we are, by default, working exclusively with R code..
+  rio::export(fishForDogsData, fName)
+
+```
+
+<p class="h1footer"> End of Check SDS HH0 script. </p>

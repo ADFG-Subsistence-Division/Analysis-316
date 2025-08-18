@@ -1,0 +1,385 @@
+---
+title: "C01_POPULATION_PROFILE - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-15"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">C01_POPULATION_PROFILE - (316) NPS Ambler Comprehensive</div>
+</div>
+
+# Population profile
+
+This file uses the population profile file to produce tables and figures for the technical report.
+
+## Change log
+
+### Change 1
+- Programmer: D.S.Koster  
+- Date: 05/21/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output.  
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates  
+
+### Change 2
+- Programmer: Jesse Coleman
+- Date: 03/18/2025
+- Change Description: Removed source() calls; all functions are included in the library adfgSubs.
+- Template Update [Y|N]: Y
+- One-Off: No-include in all future comprehensive templates
+
+### Change 3
+- Programmer: Jesse Coleman
+- Date: 05/07/2025
+- Change Description: Refactored code to use tidyverse and functional programming principles
+- Template Update [Y|N]: Y
+- One-Off: No-include in all future comprehensive templates
+
+## Input data
+  
+- /CSV/03 - Main/REC01_clean.csv   
+- /CSV/03 - Main/sample.csv  
+
+## Output data
+  
+- /CSV/05 - Final Analysis Output/popProfile(T)_raw.csv  
+
+*Note* popProfile(T)_raw should be copied and pasted, community by community using paste-special 'transpose' into the 'popProfile(T)_raw' tab of the 'Demographics.xlsx' template file.
+
+## Background
+
+## Checklist
+  
+- Update 'Author' to your name  
+- Update the project information in 'title' to the current project  
+- Update the development log with any changes you've made to the template file, including your name  
+- Verify percentages add to 100  
+- Create Excel table, copy/paste and ensure that results from this file match that output  
+
+## Additional information
+
+### External dependencies
+
+## Required libraries (adjust as needed)
+  
+- tidyVerse  
+- rio 
+- knitr  
+- kableExtr
+- adfgSubs
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+
+# Additional libraries
+library(knitr)
+library(kableExtra)
+library(adfgSubs)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+```
+
+## Load data
+
+This segment loads data, merges sampling information and produces automation lists for later.
+
+```{r load data}
+
+# ##############################################################################
+# Load data
+# ##############################################################################
+
+personData <- read.csv(str_interp('../../CSV/03 - Main/REC01_clean.csv'), 
+                       na = '', 
+                       header = TRUE, 
+                       strip.white = TRUE)
+count = nrow(personData)
+cat(formatSummaryBlock(paste('REC01_clean.csv, ', count, ' records loaded.', sep='')))
+
+personData <- select(personData, projID, communty, studyear, HHID, strata, person, answerQuestions, sex, birthyear, relation, yrcomcat, residpar, ethnic, birthPlace, birthPlaceName, personID, personAge)
+
+sampData <- read.csv(str_interp('../../CSV/03 - Main/sample.csv'), 
+                       na = '', 
+                       header = TRUE, 
+                       strip.white = TRUE)
+count = nrow(sampData)
+cat(formatSummaryBlock(paste('sample.csv, ', count, ' records loaded.', sep='')))
+
+sampData <- select(sampData, projID, communty, studyear, samphh, commhh, NHouseholds, NPopulation, commname, commPop, sampPop)
+
+personData <- left_join(personData, sampData, by=c ("projID", "studyear", "communty"))
+
+```
+
+```{r automation lists}
+# List of age categories to summarize to; this will make later steps
+#    a bit more straight forward.
+ageCatList <- c('age0to4', 'age5to9', 'age10to14', 'age15to19', 'age20to24', 
+                'age25to29', 'age30to34', 'age35to39', 'age40to44', 'age45to49', 'age50to54', 
+                'age55to59', 'age60to64', 'age65to69', 'age70to74', 'age75to79', 'age80to84', 
+                'age85to89', 'age90to94', 'age95to99', 'age100to104','ageMiss')
+
+# Age category definitions
+age_breaks <- seq(0, 105, by = 5)
+age_labels <- map2_chr(
+  head(age_breaks, -1),
+  tail(age_breaks, -1) - 1,
+  ~paste0("age", .x, "to", .y)
+) %>%
+  c(., "ageMiss")
+
+ageCatList <- age_labels
+
+# 1.3 - This is not strictly necessary, but it is here for later code enhancements,
+#  that will allow for pivoting and sorting of these columns for copy-paste
+#  into excel. Below, sexCD is used to ensure proper sorting.
+keyColList <- c('projID', 'studyear', 'communty', 'commname', 'NHouseholds', 
+                'NPopulation', 'sexCD', 'sex')
+
+commnameList <- unique(sampData$commname)
+
+# X.X TO DO:: Define a column sort order to ensure that when we pivot, 
+#             we can then merge in the sort order, arrange, and then we can spit 
+#             out to the output CSV.
+
+```
+
+## Organize data
+
+Add the age category columns.
+
+```{r Organize data}
+
+# Initialize person data with age category columns
+personData <- standardizeColumns(personData, ageCatList)
+
+# Calculate missing sex counts by group
+personData <- personData %>%
+  group_by(projID, studyear, communty) %>%
+  mutate(missing_sex = sum(sex <= 0, na.rm = TRUE)) %>%
+  ungroup()
+
+# Make a weight adjustment to account for persons where sex
+# was unknown or missing.
+personData <- personData %>%
+  mutate(popWgt = commPop / (sampPop - missing_sex))
+
+# Set 1 for yes person falls into age group, it is 0 by 
+# default.
+# Create age category flags using functional programming
+personData <- personData %>%
+  mutate(across(
+    all_of(age_labels[-length(age_labels)]),  # Exclude ageMiss
+    ~{
+      age_range <- as.numeric(str_extract(cur_column(), "\\d+"))
+      min_age <- age_range
+      max_age <- min_age + 4
+      as.numeric(personAge >= min_age & personAge <= max_age)
+    }
+  )) %>%
+  mutate(ageMiss = as.numeric(personAge == -8))
+
+# Weight all variables in the age category variable list by the population 
+# weight we calculated above.
+personData <- mutate(personData, across(all_of(ageCatList), ~ . * popWgt))
+
+# Filter out unknown sex records and convert sex codes to labels
+personData <- personData %>%
+  filter(sex > 0) %>%
+  rename(sexCD = sex) %>%
+  mutate(
+    sex = case_when(
+      sexCD == 1 ~ "male",
+      sexCD == 2 ~ "female",
+      TRUE ~ NA_character_
+    )
+  )
+
+# Aggregate data by key columns for reporting.
+personData <- personData %>%
+  group_by(across(all_of(keyColList))) %>%
+  summarize(across(all_of(ageCatList), sum), .groups = "drop") %>%
+  select(-sexCD)  # Remove sexCD now that we have the desired order
+
+```
+
+
+### Pop Profile Figure
+
+```{r pop profile figure}
+
+# Prepare data for visualization
+prepare_fig_data <- function(data) {
+  data %>%
+    pivot_longer(
+      cols = all_of(ageCatList), 
+      names_to = "agecategory", 
+      values_to = "population"
+    ) %>%
+    mutate(
+      agecategory = str_replace(agecategory, "to", " to "),
+      agecategory = str_replace(agecategory, "age", ""),
+      agecategory = factor(agecategory, ordered = TRUE, levels = unique(agecategory)),
+      # Make male values negative for population pyramid
+      population = if_else(sex == "male", -1 * population, population)
+    )
+}
+
+# Create population pyramid plots for each community
+tmpFigData <- prepare_fig_data(personData)
+
+map(commnameList, function(comm) {
+  tmpData <- filter(tmpFigData, commname == comm)
+  
+  popRange <- range(tmpData$population)
+  popRangeBreaks <- pretty(popRange, n = 5)
+  colrs <- getColors(nColors = 3)
+  
+  ggplot(tmpData, aes(x = population, y = agecategory, fill = sex)) + 
+    ggtitle(str_interp('Population profile for ${comm}, ${studyear}')) +
+    geom_col() +
+    scale_fill_manual(values = colrs) +
+    scale_x_continuous(
+      breaks = popRangeBreaks,
+      labels = abs(popRangeBreaks)
+    ) +
+    ylab('Age category') +
+    xlab('Population') +
+    theme_minimal() +
+    theme(
+      text = element_text(family = "serif"),
+      legend.title = element_blank(),
+      panel.grid.major = element_blank(), 
+      panel.grid.minor = element_blank(),
+      panel.background = element_blank(), 
+      axis.line = element_line(colour = "black")
+    )
+})
+```
+
+### Pop profile Table
+
+In this step, please review each table for obvious errors or issues. When re-running this data with updates, you can visually compare this output to the previous version in excel before pasting the output file into the excel template.
+
+```{r pop profile table}
+
+# Combine male and female data sets 
+totalData <- group_by(personData, projID, studyear, communty, commname, NHouseholds, NPopulation) %>%
+                    summarize(across(all_of(ageCatList), sum)) %>%
+                    ungroup()
+
+# Prepare data for tables
+prepare_table_data <- function(person_data, total_data) {
+  bind_rows(
+    person_data,
+    total_data %>% mutate(sex = "total")
+  ) %>%
+  pivot_longer(
+    cols = all_of(ageCatList),
+    names_to = "agecategory",
+    values_to = "population"
+  ) %>%
+  mutate(
+    agecategory = str_replace(agecategory, "to", " to "),
+    agecategory = str_replace(agecategory, "age", "")
+  ) %>%
+  group_by(commname, sex) %>%
+  mutate(
+    tgp = sum(population, na.rm = TRUE),
+    percentage = population / tgp,
+    cumulativepercent = cumsum(percentage)
+  ) %>%
+  ungroup()
+}
+
+tmpTableData <- prepare_table_data(personData, totalData)
+
+# Create tables for each community
+map(commnameList, function(comm) {
+  tmpTableData %>%
+    filter(commname == comm) %>%
+    select(sex, agecategory, population, percentage, cumulativepercent) %>%
+    mutate(
+      across(c("percentage", "cumulativepercent"), ~round(. * 100, 1)),
+      across(contains("population"), ~round(., 1)),
+      across(everything(), as.character),
+      across(c("percentage", "cumulativepercent"), ~paste0(., "%"))
+    ) %>%
+    pivot_wider(
+      id_cols = "agecategory",
+      names_from = sex,
+      values_from = c("population", "percentage", "cumulativepercent")
+    ) %>%
+    select(
+      agecategory, 
+      population_male, percentage_male, cumulativepercent_male,
+      population_female, percentage_female, cumulativepercent_female,
+      population_total, percentage_total, cumulativepercent_total
+    ) %>%
+    kbl(
+      caption = formatTableHeader(str_interp("Population profile: ${comm}, ${studyear}")),
+      col.names = c(
+        "Age", 
+        "Population", "Percentage", "Cumulative percent",
+        "Population", "Percent", "Cumulative percent",
+        "Population", "Percentage", "Cumulative percent"
+      )
+    ) %>%
+    kable_styling(full_width = F) %>%
+    kable_styling(latex_options = "striped") %>%
+    add_header_above(c(" " = 1, "Male" = 3, "Female" = 3, "Total" = 3))
+})
+
+```
+
+
+# Write CSV files
+
+```{r write csv files}
+
+# ##############################################################################
+# Write out CSV files.
+# ##############################################################################
+
+# Write population profile 
+  fName = '../../CSV/05 - Final Analysis Output/popProfile(T)_raw.csv'
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(personData), ' records to be written', sep='')))
+
+  rio::export(personData, fName)
+  
+```
+
+<p class="h1footer"> End of Population Profile script. </p>
+

@@ -1,0 +1,317 @@
+---
+title: "C07_CSIS_METHODS - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-15"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">C07_CSIS_METHODS - (316) NPS Ambler Comprehensive</div>
+</div>
+
+# CSIS dat_methods
+Purpose: produce final output file for incorporation into the CSIS. You will need to review this output BEFORE this is inserted into the CSIS.
+
+## Change log
+
+### Change 1
+- Programmer: D.S.Koster  
+- Date: 04/23/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output.  
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates
+
+### Change 2
+- Programmer: Jesse Coleman
+- Date: 03/18/2025
+- Change Description: Removed source() calls; all functions are included in the library adfgSubs.
+- Template Update [Y|N]: Y
+- One-Off: No-include in all future comprehensive templates 
+
+## Input data
+
+- '../../CSV/03 - Main/sample.csv  
+
+## Output data
+
+- ../../SQLite/csisDB.db [dat_methods]  
+- ../../CSV/07 - CSIS Uploads/dat_methods.csv  
+
+## Background
+
+## Checklist
+  
+- Update 'Author' to your name   
+- Update the project information in 'title' to the current project  
+- Update the development log with any changes you've made to the template file, including your name  
+- Verify that the csisDB.db file has been created and that the relevant data has been inserted   
+
+## Additional information
+
+This incorporates sample and methods and organizes information for upload. Note that you MUST make adjustments to all data fields in this markdown file. This data will be incorporated into a SQLite database.
+
+## Required libraries (adjust as needed):  
+- tidyVerse  
+- odbc  
+- rio  
+- knitr  
+- DBI
+- adfgSubs
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+
+# Additional libraries
+library(knitr)
+library(DBI)
+library(adfgSubs)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+```
+
+## Set project info
+
+```{r set CSIS project info}
+
+# For comps, this will not change; modify for special projects
+repyear = 1
+baseline = 1
+repcomment = "Most recent comprehensive"
+
+# Start and end date for the study period.
+strtdate ="01/01/2023"
+enddate = "12/31/2023"
+
+# Who was the PI or Lead for the project.
+reserchr = "Jacqueline Marie Keating"
+
+# Was this stratified? 0 = no, 1 = yes
+strtflag = 0
+
+# Set the memo, if this differs by community, edit later
+methmemo = "Attempted census of communities."
+
+# Set the code appropriately
+projTypeCD = 1
+
+```
+
+## Load data
+
+```{r load data}
+
+# ##############################################################################
+# Load data from intermediate files.
+# ##############################################################################
+
+# This for each file opened.
+sampleData <- read.csv('../../CSV/03 - Main/sample.csv',
+                   na = '', 
+                   header = TRUE, 
+                   strip.white = TRUE)
+
+count <- nrow(sampleData)
+cat(formatSummaryBlock(paste("Opening file: sample.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+
+```
+
+## Rename and organize data.
+
+Organize the information and add what is needed.
+
+```{r reorg rename data}
+
+sampleData <- sampleData %>%
+  rename("commcode" = "communty",
+         "year" = "studyear",
+         "projid" = "projID")
+
+# Add in columns for CSIS that have been set above.
+sampleData$repyear = repyear
+sampleData$baseline = baseline
+sampleData$repcomment = repcomment
+
+# Start and end date for the study period.
+sampleData$strtdate = strtdate
+sampleData$enddate = enddate
+
+# Who was the PI or Lead for the project.
+sampleData$reserchr = reserchr
+
+# Was this stratified? 0 = no, 1 = yes
+sampleData$strtflag = strtflag
+
+# Set the memo, if this differs by community, edit later
+sampleData$methmemo = methmemo
+
+# Set the code appropriately
+sampleData$projTypeCD = projTypeCD
+
+# ###################################################################
+# Set those new values to community-specific values.
+# ###################################################################
+# sampleData$projTypeCD[sampleData$commcode == ] = 0
+
+
+# Summarize from strata level into community level.
+
+methodsData <- sampleData %>%
+  group_by(commcode, year, projid, repyear, baseline, repcomment, strtdate, enddate,
+           reserchr, strtflag, methmemo, projTypeCD) %>%
+  summarize(commhh = sum(commhh, na.rm=TRUE),
+            samphh = sum(samphh, na.rm=TRUE),
+            commpop = sum(commPop, na.rm=TRUE),
+            samppop = sum(sampPop, na.rm=TRUE)) %>% 
+  ungroup()
+
+# Calculate the sample fraction.
+methodsData$sampfrac = 0
+methodsData$sampfrac = methodsData$samphh / methodsData$commhh
+
+# Add unused / deprecated columns of data. If these become necessary, this is where we put the data.
+#methodsData$level = 0
+#methodsData$overview = ""
+#methodsData$projstat = ""
+
+
+```
+
+## Prepare database items.
+Prepare SQLite database.
+
+```{r prep database}
+
+csisDB <- dbConnect(RSQLite::SQLite(), "../../SQLite/csisDB.db")
+
+delSQL = 'DROP TABLE IF EXISTS "dat_methods";'
+
+DBResult <- dbSendQuery(csisDB, delSQL)
+cat("<h4>Drop table:</h4>")
+print(DBResult)
+dbClearResult(DBResult)
+
+tblSQL = 'CREATE TABLE "dat_methods" (
+       "commcode" INTEGER NOT NULL
+      ,"year"  INTEGER NOT NULL
+      ,"projid"  INTEGER NOT NULL
+      ,"repyear" INTEGER
+      ,"baseline" INTEGER
+      ,"repcomment" TEXT
+      ,"strtdate" TEXT
+      ,"enddate" TEXT
+      ,"reserchr" TEXT
+      ,"commhh" INTEGER
+      ,"samphh" INTEGER
+      ,"sampfrac" REAL
+      ,"commpop" REAL
+      ,"samppop" INTEGER
+      ,"level" INTEGER
+      ,"strtflag" INTEGER
+      ,"methmemo" TEXT
+      ,"overview" TEXT
+      ,"projstat" TEXT
+      ,"projTypeCD" INTEGER
+      ,"methodUID" INTEGER NOT NULL
+      , PRIMARY KEY ("methodUID" AUTOINCREMENT));'
+
+DBResult <- dbSendQuery(csisDB, tblSQL)
+cat("<h4>Create empty table:</h4>")
+print(DBResult)
+dbClearResult(DBResult)
+
+strSQL = 'INSERT INTO dat_methods (commcode,
+                                     year,
+                                      projid,
+                                      repyear,
+                                      baseline,
+                                      repcomment,
+                                      strtdate,
+                                      enddate,
+                                      reserchr,
+                                      commhh,
+                                      samphh,
+                                      sampfrac,
+                                      commpop,
+                                      samppop,
+                                      strtflag,
+                                      methmemo,
+                                      projTypeCD) VALUES (:commcode,
+                                     :year,
+                                      :projid,
+                                      :repyear,
+                                      :baseline,
+                                      :repcomment,
+                                      :strtdate,
+                                      :enddate,
+                                      :reserchr,
+                                      :commhh,
+                                      :samphh,
+                                      :sampfrac,
+                                      :commpop,
+                                      :samppop,
+                                      :strtflag,
+                                      :methmemo,
+                                      :projTypeCD);'
+
+DBResult <- dbSendQuery(csisDB, strSQL, methodsData)
+cat("<h4>Insert data:</h4>")
+print(DBResult)
+dbClearResult(DBResult)
+
+dbDisconnect(csisDB)
+  
+```
+
+
+# Write out CSV files
+
+```{r write csv files}
+
+# ##############################################################################
+# Write out CSV files.
+# ##############################################################################
+
+# Sample code for writing out a file.
+  fName = str_interp('../../CSV/07 - CSIS Uploads/dat_methods.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(methodsData), ' records to be written', sep='')))
+
+# For 2023; we are, by default, working exclusively with R code.
+  rio::export(methodsData, fName)
+
+```
+
+<p class="h1footer"> End of Check make dat_methods file script. </p>

@@ -1,0 +1,858 @@
+---
+title: "F01_FOOD_SECURITY_SCORE - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-15"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">F01_FOOD_SECURITY_SCORE - (316) NPS Ambler Comprehensive</div>
+</div>
+
+# Food Security Processing
+
+Produce food security table and figure analysis. This analysis is based on the SPSS analysis produced by Jim Magdanz and Marylynne Kostick.
+
+## Change log
+
+### Change 1
+- Programmer: D.S.Koster  
+- Date: 05/21/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output. Cleaned up issues with deprecated tidyverse functions, and added text describing the method. This years code also exports the data for CSIS upload    
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates 
+
+### Change 2
+- Programmer: Jesse Coleman
+- Date: 03/18/2025
+- Change Description: Removed source() calls; all functions are included in the library adfgSubs.
+- Template Update [Y|N]: Y
+- One-Off: No-include in all future comprehensive templates 
+
+### Change 3
+- Programmer: Jesse Coleman
+- Date: 07/15/2025
+- Change Description: Refactor using tidyverse language and DRY ("don't repeat 
+yourself") principles.
+- Template Update [Y|N]: Y
+- One-Off: No - include in all future comprehensive templates 
+
+
+## Input data
+  
+- /CSV/03 - Main/foodSecurity_clean.csv  
+- /CSV/03 - Main/sample.csv  
+
+## Output data
+  
+- /CSV/05 - Final Analysis Output/AltFoodSecureFilter(T)_raw.csv  
+- /CSV/05 - Final Analysis Output/foodSecurityCategories_raw.csv  
+- /CSV/05 - Final Analysis Output/foodInsecureConditions_raw.csv  
+- /CSV/05 - Final Analysis Output/foodSecureTiming_raw.csv  
+- /CSV/05 - Final Analysis Output/foodSecureSubsStoreTime_raw.csv  
+- /CSV/05 - Final Analysis Output/AltFoodSecureFilter(T)_raw.csv  
+- ../../SQLite/csisDB.db [dat_foodsecurity]
+
+## Background
+
+Food security modules have been added to nearly all comprehensive surveys after 2010. The first set of food security questionnaires were deployed in the northwest arctic and finally in 2015 the method and collection tool have settled into the current iteration.
+
+### Checklist
+  
+- Update 'Author' to your name  
+- Update the project information in 'title' to the current project  
+- Update the development log with any changes you've made to the template file, including your name  
+- Update table templates and compare outputs from this file to ensure accuracy  
+
+## Additional information
+
+When calculating food security raw scores, we have the following statements: 
+
+- 1 = We had enough of the kinds of foods we wanted to eat  
+- 2 = We had enough food, but not always the KIND of food we wanted  
+- 3 = Sometimes, or often, we did NOT HAVE ENOUGH food to eat  
+- 4 =	*Worried about having enough food*  
+- 5	=	*Lacked resources to get food*  
+- 6	=	*Food did not last, could not get more*  
+- 6.1 =	Food (subsistence) did not last  
+- 6.2	= Food (store-bought) did not last  
+- 9	=	*Cut size of meals or skipped meals*  
+- 10 =	*Ate less than we felt we should*  
+- 11 = *Hungry but did not eat*  
+- 12 = *Lost weight, not enough food*  
+- 13 = *Did not eat for a whole day*  
+
+The statements in BOLD receive a raw score of 1 'point' if there is an indication of 'true for household' In cases where there is no positive indication of 'true for household', we assume NOT TRUE for household and do not assign a point. Additionally, one more point is added IF a respondent indicated that 9 or 13 were true for any number of months.  
+
+Those questions not highlighted in the list above are intended to help understand the food-security in the community. For instance, questions 6.1 and 6.2 are intended to distinguish between wild foods and store-bought foods only. This might indicate, for instance, that store-bought foods are the primary source of insecurity. Questions 1-3 help identify possible risks that may not directly indicate food security, but can help understand vulnerability.
+
+Once these raw scores are identified, they are summed for a household. The thresholds for food insecurity are as follows:
+
+- 0–2 points = 'High and marginal food security (Secure)'  
+- 3–5 points = 'Low food security (Insecure)'  
+- 6+ points = 'Very low food security (Very insecure)'  
+
+### Functions used/dependencies
+
+### Required libraries
+  
+- tidyVerse  
+- rio  
+- knitr  
+- kableExtra  
+- DBI
+- adfgSubs
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+
+# Additional libraries
+library(knitr)
+library(kableExtra)
+library(DBI)
+library(adfgSubs)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+
+```
+
+
+## Load files
+
+```{r load data}
+
+# ##############################################################################
+# Load data from intermediate files.
+# ##############################################################################
+
+# 1.1 - get  dataset & Sorte.
+fsData <- read.csv('../../CSV/03 - Main/foodSecurity_clean.csv', 
+                   na = "", 
+                   header = TRUE, 
+                   strip.white = TRUE) %>%
+  arrange(., communty, HHID, stmtNum)
+count <- nrow(fsData)
+cat(formatSummaryBlock(paste("Opening file: foodSecurity_clean.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+
+sampleData <- read.csv('../../CSV/03 - Main/sample.csv', 
+                   na = "", 
+                   header = TRUE, 
+                   strip.white = TRUE)
+count <- nrow(sampleData)
+cat(formatSummaryBlock(paste("Opening file: sample.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+                 
+
+```
+
+## Automation lists
+
+```{r automation list}
+
+# List of various columns that are recoded at various points. These are repeated
+#   enough that it simplifies things to leave them here. Also, the occList
+#   is used to sum across.
+occList <- c('occJan', 'occFeb', 'occMar', 'occApr', 'occMay', 'occJun', 'occJul', 'occAug', 'occSep', 'occOct', 'occNov', 'occDec')
+othColsList <- c('stmt1to3Value', 'eatLess', 'hungryNotEat','loseWeight','trueForHH','getFood','notEatWholeDay', 'filterq',
+                 "TrueNumMos", "trueForHH_4", "trueForHH_5","trueForHH_6","trueForHH_6_1","trueForHH_6_2",
+                 "trueForHH_9", "trueForHH_10", "trueForHH_11","trueForHH_12","trueForHH_13")
+fullRecodeList <- c(occList, othColsList)
+
+```
+
+## Final Pre-Coding
+
+```{r final pre-coding}
+
+fsData <- fsData %>%
+  # Recode `fullRecodeList` values of -6 and -8 to NA
+  recode_variables(fullRecodeList, -6, NA) %>%
+  recode_variables(fullRecodeList, -8, NA) %>%
+  # Set valid response indicator
+  mutate(validResp = if_else(is.na(trueForHH), 0, 1),
+         # Handle invalid stmt1to3Value where stmtNum == 0
+         stmt1to3Value = if_else(stmt1to3Value == 0 & stmtNum == 0, NA_real_, stmt1to3Value)) %>% 
+  rename(trueNumMos = TrueNumMos)
+
+# Filter to temporary dataset with stmtNum == 0
+temp <- fsData %>% filter(stmtNum == 0)
+
+```
+
+# Food secure categories
+
+Harvest categories - this is where we evaluate High & Marginal, Low and Very Low households. The included code is derived from the SPSS Code developed by Marylynne Kostick.  
+
+This will be saved: foodInsecureConditions_raw.csv at the end of the processing.  
+
+```{r food secure}
+## Food Secure Categories
+
+# Initialize raw scores and handle specific question logic
+hhScoreData <- fsData %>%
+  mutate(
+    rawScoreAll = if_else(!(question %in% c(6.1, 6.2)), trueForHH, 0),
+    rawScoreAll = if_else((trueNumMos > 0) & question %in% c(9, 13), rawScoreAll + 1, rawScoreAll)
+  ) %>%
+  # Summarize to the household (HH) level
+  group_by(projID, studyear, communty, strata, HHID) %>%
+  summarize(
+    rawScoreAll = sum(rawScoreAll, na.rm = TRUE),
+    validResp = max(validResp, na.rm = TRUE),
+    refusedIndex = max(refusedIndex, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  # Merge sampling data and calculate weighting factor
+  left_join(sampleData, by = c("projID", "studyear", "communty", "strata")) %>%
+  group_by(projID, studyear, communty, strata) %>%
+  mutate(
+    totalValidResp = sum(validResp, na.rm = TRUE),
+    weightFact = commhh / totalValidResp
+  ) %>%
+  ungroup() %>%
+  # Categorize households into food security levels
+  mutate(
+    highFoodSecure = as.numeric(dplyr::between(rawScoreAll, 0, 2)) * weightFact,
+    lowFoodSecure = as.numeric(dplyr::between(rawScoreAll, 3, 5)) * weightFact,
+    veryLowFoodSecure = as.numeric(rawScoreAll >= 6) * weightFact,
+    refusedIndex = refusedIndex * weightFact
+  )
+
+# Summarize at the community level
+commScore <- hhScoreData %>%
+  group_by(projID, studyear, communty, commname, NHouseholds) %>%
+  summarize(
+    highFoodSecure = sum(highFoodSecure, na.rm = TRUE),
+    lowFoodSecure = sum(lowFoodSecure, na.rm = TRUE),
+    veryLowFoodSecure = sum(veryLowFoodSecure, na.rm = TRUE),
+    refusedIndex = sum(refusedIndex, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    pctHighFoodSecure = highFoodSecure / NHouseholds,
+    pctLowFoodSecure = lowFoodSecure / NHouseholds,
+    pctVeryLowFoodSecure = veryLowFoodSecure / NHouseholds,
+    refusedIndex = refusedIndex / NHouseholds
+  )
+
+# Prepare data for plotting
+tmpFigData <- commScore %>%
+  select(commname, pctHighFoodSecure, pctLowFoodSecure, pctVeryLowFoodSecure) %>%
+  pivot_longer(
+    cols = starts_with("pct"),
+    names_to = "Category",
+    values_to = "value"
+  ) %>%
+  mutate(
+    Category = recode(
+      Category,
+      pctHighFoodSecure = "High and marginal food security",
+      pctLowFoodSecure = "Low food security",
+      pctVeryLowFoodSecure = "Very low food security"
+    )
+  )
+
+# Define plot colors and order
+labelOrder <- c("High and marginal food security", "Low food security", "Very low food security")
+colrs <- getColors("Spectral", 3)
+
+# Generate stacked bar plot
+plotOut <- ggplot(tmpFigData, aes(
+  fill = factor(Category, levels = labelOrder),
+  x = commname, y = value,
+  label = scales::percent(value)
+)) +
+  ggtitle(str_interp("Food security by category, ${studyear}")) +
+  geom_bar(position = "fill", stat = "identity") +
+  scale_fill_manual(values = colrs) +
+  geom_text(position = position_stack(vjust = 0.5), size = 3) +
+  labs(fill = "") +
+  xlab("Community") +
+  ylab("Percent of households") +
+  scale_y_continuous(labels = scales::percent) +
+  theme(
+    legend.position = "bottom",
+    text = element_text(family = "serif"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  )
+
+print(plotOut)
+
+
+```
+
+# Food insecure conditions
+
+```{r food insecure conditions}
+
+# Prepare dataset with required columns and merge sampling data
+condData <- fsData %>%
+  select(projID, studyear, communty, strata, HHID, question, trueForHH, validResp, refusedIndex) %>%
+  left_join(sampleData, by = c("projID", "studyear", "communty", "strata")) %>%
+  group_by(projID, studyear, communty, strata, question) %>%
+  mutate(
+    totalValidResp = sum(validResp, na.rm = TRUE),
+    hhYes = trueForHH * (commhh / totalValidResp)
+  ) %>%
+  ungroup()
+
+# Assign hard-coded question text
+question_text_mapping <- c(
+  "4" = "Worried about having enough food",
+  "5" = "Lacked resources to get food",
+  "6" = "Food did not last, could not get more",
+  "6.1" = "Food (subsistence) did not last",
+  "6.2" = "Food (store-bought) did not last",
+  "9" = "Cut size of meals or skipped meals",
+  "10" = "Ate less than we felt we should",
+  "11" = "Hungry but did not eat",
+  "12" = "Lost weight, not enough food",
+  "13" = "Did not eat for a whole day"
+)
+condData <- condData %>%
+  mutate(questionText = question_text_mapping[as.character(question)])
+
+# Summarize to question level and calculate percentages
+condData <- condData %>%
+  group_by(projID, studyear, communty, commname, NHouseholds, question, questionText) %>%
+  summarize(
+    trueForHH = sum(hhYes, na.rm = TRUE),
+    refusedIndex = sum(refusedIndex, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  filter(!is.na(questionText)) %>%
+  mutate(
+    pctTrueForHH = trueForHH / NHouseholds
+  ) %>%
+  arrange(communty, desc(question))
+
+# Create and display HTML table
+tmpTableData <- condData %>%
+  mutate(
+    pctTrueForHH = paste0(round(pctTrueForHH * 100, 1), "%"),
+    value = pctTrueForHH
+  ) %>%
+  select(commname, questionText, value) %>%
+  pivot_wider(id_cols = questionText, names_from = commname)
+
+tblOut <- kbl(
+  tmpTableData,
+  caption = formatTableHeader(str_interp("Food security by community, ${studyear}")),
+  col.names = c("Food security question", sampleData$commname)
+) %>%
+  kable_styling(full_width = FALSE)
+
+print(tblOut)
+
+# Prepare data for plotting
+labelOrder <- c(
+  "Worried about having enough food",
+  "Lacked resources to get food",
+  "Food did not last, could not get more",
+  "Food (subsistence) did not last",
+  "Food (store-bought) did not last",
+  "Cut size of meals or skipped meals",
+  "Ate less than we felt we should",
+  "Hungry but did not eat",
+  "Lost weight, not enough food",
+  "Did not eat for a whole day"
+)
+
+tmpFigData <- condData %>%
+  mutate(
+    questionText = factor(questionText, levels = labelOrder),
+    scored = if_else(question %in% c(6.1, 6.2), 
+                     "Responses to additional questions asked in this study", 
+                     "Responses used to calculate households' food security category")
+  )
+
+# Generate plots for each community
+for (comm in sampleData$commname) {
+  figData <- filter(tmpFigData, commname == comm)
+  
+  plotOut <- ggplot(figData, aes(x = factor(questionText, levels = labelOrder), y = pctTrueForHH)) +
+    ggtitle(str_interp("Food insecure conditions by category, ${comm}, ${studyear}.")) +
+    geom_col(aes(fill = scored)) +
+    scale_fill_manual(values = colrs) +
+    scale_y_continuous(labels = scales::percent, limits = c(0, 1)) +
+    scale_x_discrete(limits = rev(levels(figData$questionText))) +
+    coord_flip() +
+    labs(x = "Condition", y = "Percent of households", fill = "") +
+    theme(
+      # legend.position = "bottom",
+      legend.title = element_blank(),
+      text = element_text(family = "serif"),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.background = element_blank(),
+      axis.line = element_line(colour = "black"),
+      legend.position = "bottom"
+    ) +
+    guides(fill = guide_legend(nrow = 2, byrow = TRUE))
+
+  print(plotOut)
+}
+
+```
+
+## Food security timing - conditions
+
+Get the raw score for each household, then apply that to each month in which the household reported not having enough store-bought OR subsistence food. to get a combined amount (either store-bought OR subsistence). Add an extra case for each household that combines these two questions. A column for a month gets a yes if either store-bought or subsistence was indicated as having run out.
+
+The data is then aggregated by 'question' - where only Subsistence / Store-Bought  or All food is included and also split by overall score so that we can see the food security of households at the 3 different security levels.
+
+```{r food security conditions timing}
+
+# Filter and prepare dataset
+timingData <- fsData %>%
+  filter(question %in% c(6.1, 6.2)) %>%
+  select(projID, studyear, communty, strata, HHID, question, !!!syms(occList)) %>%
+  group_by(projID, studyear, communty, strata, HHID) %>%
+  summarize(across(all_of(occList), max), .groups = "drop") %>%
+  bind_rows(select(fsData, projID, studyear, communty, strata, HHID, question, !!!syms(occList))) %>%
+  mutate(
+    question = if_else(is.na(question), 6, question)
+  ) %>%
+  left_join(hhScoreData, by = c("projID", "studyear", "communty", "strata", "HHID")) %>%
+  mutate(across(all_of(occList), ~ . * rawScoreAll * weightFact))
+
+# Add security levels and labels
+timingData <- timingData %>%
+  mutate(
+    secureLevel = case_when(
+      rawScoreAll <= 2 & validResp == 1 ~ 1,
+      rawScoreAll > 2 & rawScoreAll < 6 & validResp == 1 ~ 2,
+      rawScoreAll >= 6 & validResp == 1 ~ 3,
+      TRUE ~ 0
+    ),
+    secureLabel = case_when(
+      secureLevel == 1 ~ "High and marginal food security",
+      secureLevel == 2 ~ "Low food security",
+      secureLevel == 3 ~ "Very low food security",
+      TRUE ~ ""
+    ),
+    questionLabel = case_when(
+      question == 6.1 ~ "Subsistence foods",
+      question == 6.2 ~ "Store-bought foods",
+      TRUE ~ "Any food"
+    )
+  )
+
+# Summarize and calculate mean conditions
+conditionTiming <- timingData %>%
+  group_by(projID, studyear, communty, commname, NHouseholds, question, questionLabel, secureLevel, secureLabel, strata) %>%
+  summarize(
+    nHHs = sum(weightFact, na.rm = TRUE),
+    across(all_of(occList), sum),
+    .groups = "drop"
+  ) %>%
+  group_by(projID, studyear, communty, commname, question, questionLabel, secureLevel, secureLabel) %>%
+  summarize(
+    NHouseholds = first(NHouseholds),
+    nHHs = sum(nHHs, na.rm = TRUE),
+    across(all_of(occList), sum),
+    .groups = "drop"
+  ) %>%
+  ungroup() %>%
+  mutate(across(all_of(occList), ~ . / nHHs))
+
+# Ensure all categories are present in all communities
+tmpCommData <- conditionTiming %>%
+  select(projID, studyear, communty, commname, NHouseholds) %>%
+  distinct()
+
+tmpCondData <- data.frame(
+  question = c(6.0, 6.1, 6.2),
+  questionLabel = c("Any food", "Subsistence foods", "Store-bought foods")
+)
+
+tmpSecData <- data.frame(
+  secureLevel = c(1, 2, 3),
+  secureLabel = c(
+    "High and marginal food security",
+    "Low food security",
+    "Very low food security"
+  )
+)
+
+tmpData <- cross_join(tmpCondData, tmpSecData) %>%
+  cross_join(tmpCommData)
+
+conditionTiming <- left_join(tmpData, conditionTiming, by = c(
+  "projID", "studyear", "communty", "commname",
+  "NHouseholds", "question", "questionLabel",
+  "secureLevel", "secureLabel"
+)) %>%
+  arrange(projID, studyear, communty, commname, question, secureLabel) %>%
+  recode_variables(c("nHHs"), NA, 0)
+
+# Prepare table data
+tmpTblData <- conditionTiming %>%
+  select(commname, secureLabel, questionLabel, !!!syms(occList)) %>%
+  mutate(
+    questionLabel = recode(
+      questionLabel,
+      "Any food" = "Mean number of food insecure conditions for either subsistence or store-bought foods",
+      "Subsistence foods" = "Mean number of food insecure conditions for subsistence foods",
+      "Store-bought foods" = "Mean number of food insecure conditions for store-bought foods"
+    ),
+    across(all_of(occList), ~ round(., 1))
+  )
+
+# Generate tables and figures for each community
+questionList <- distinct(tmpTblData, questionLabel)
+
+for (comm in sampleData$commname) {
+  l1TblData <- filter(tmpTblData, commname == comm) %>%
+    select(-commname)
+
+  for (question in questionList$questionLabel) {
+    l2TblData <- filter(l1TblData, questionLabel == question) %>%
+      select(-questionLabel)
+
+    tmpFigData <- l2TblData %>%
+      pivot_longer(cols = starts_with("occ"), names_to = "month", values_to = "meanConditions") %>%
+      mutate(
+        month = factor(str_replace(month, "occ", ""), levels = unique(str_replace(month, "occ", "")))
+      )
+
+    tblOut <- kbl(
+      l2TblData,
+      caption = formatTableHeader(str_interp("Table. ${question}, ${comm}, ${studyear}.")),
+      col.names = c(" ", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+    ) %>%
+      kable_styling(full_width = FALSE)
+
+    plotOut <- ggplot(tmpFigData, aes(x = month, y = meanConditions, group = secureLabel)) +
+      ggtitle(str_wrap(str_interp("Fig. ${question}, ${comm}, ${studyear}."), 80)) +
+      geom_line(aes(color = secureLabel)) +
+      geom_point(aes(color = secureLabel, shape = secureLabel)) +
+      scale_color_manual(values = colrs) +
+      labs(x = "Month", y = "Mean conditions") +
+      theme(
+        legend.position = "bottom",
+        legend.title = element_blank(),
+        text = element_text(family = "serif"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        axis.line = element_line(colour = "black")
+      )
+
+    print(plotOut)
+    print(tblOut)
+  }
+}
+
+```
+
+## Subsistence vs. Store-bought timing
+
+Develop a table for percentage of households indicating subsistence, store-bought or any type of food did not last.
+
+```{r food secure store vs subs}
+
+subStoreTimingData1 <- fsData %>% 
+  filter(question == 6.1 | question == 6.2) %>%
+  select(projID, studyear, communty, strata, HHID, question, !!!syms(occList))
+
+subStoreTimingData <- subStoreTimingData1 %>% 
+  group_by(projID, studyear, communty, strata, HHID) %>%
+  summarize(across(all_of(occList), max)) %>%
+  mutate(question = 6) %>% 
+  
+  bind_rows(subStoreTimingData1) %>% 
+  
+  left_join(hhScoreData, by=c("projID","studyear","communty","strata","HHID")) %>% 
+
+# This multiplies each of the occ months (Jan - Feb) by rawScoreAll and weightFact.
+  mutate(across(all_of(occList), ~ . * weightFact),
+         questionLabel = case_when(question == 6.1 ~ "Subsistence foods",
+                                   question == 6.2 ~ "Store-bought foods",
+                                   TRUE ~ "Any food")) %>% 
+  group_by(projID, studyear, communty, commname, 
+         NHouseholds, question, questionLabel, strata) %>%
+  summarize(nHHs = sum(weightFact, na.rm=TRUE),
+            across(all_of(occList), sum)) %>%
+  summarize(nHHs = sum(nHHs),
+            across(all_of(occList), sum)) %>%
+  ungroup() %>% 
+  mutate(across(all_of(occList), ~ . / nHHs))
+
+tmpTableData <- subStoreTimingData %>% 
+  select(commname, questionLabel, !!!syms(occList)) %>% 
+  mutate(across(all_of(occList), ~ paste(as.character(round(. * 100,1)),'%',sep=''))) 
+
+tmpFigData <- subStoreTimingData %>% 
+  select(commname, questionLabel, !!!syms(occList)) %>% 
+  pivot_longer(cols = starts_with("occ"), names_to = "month", values_to = "Percent") %>% 
+  mutate(month = str_replace(month, "occ", "") %>% factor(levels = c("Jan","Feb","Mar",
+                                                                     "Apr","May","Jun",
+                                                                     "Jul","Aug","Sep",
+                                                                     "Oct","Nov","Dec"),
+                                                          ordered = TRUE)) 
+
+for(comm in sampleData$commname)
+{
+  tmpOutData <- filter(tmpTableData, commname == comm) %>%
+    select(-commname)
+  tmpOutFigData <- filter(tmpFigData, commname == comm) %>%
+    select(-commname)
+  
+  tblOut <- kbl(tmpOutData, 
+                  caption=formatTableHeader(str_interp('Comparison of months where subsistence foods did not last vs. store foods did not last, ${comm}, ${studyear}.')),
+                  col.names = c(" ",
+                                "Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")) %>%
+                  kable_styling(full_width = F)
+
+  plotOut <- ggplot(tmpOutFigData, aes(x=month, y=Percent, group=questionLabel))  +
+      ggtitle(str_wrap(str_interp('Fig. Comparison of months where subsistence foods did not last vs. store foods did not last, ${comm}, ${studyear}.'), 80)) +
+      geom_line(aes(color=questionLabel)) +
+      geom_point(aes(color=questionLabel, shape=questionLabel)) +
+      scale_y_continuous(labels = scales::percent,
+                         limits = c(0,max(tmpOutFigData$Percent)+.1)) +
+      scale_color_manual(values = colrs) +
+      xlab("Month") +
+      ylab("Percent of households") +
+      theme(legend.position="bottom", legend.title = element_blank()) +
+      #guides(fill=guide_legend(nrow=2,byrow=TRUE))
+      theme(text=element_text(family="serif")) +
+      theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"))
+      
+    print(plotOut)
+    print(tblOut)  
+}
+
+```
+
+## Kinds of foods 
+
+Table that describes whether or not households responded that they could get the kinds of foods they wanted.
+
+```{r kinds of foods}
+respCols <- c("hadEnough","hadEnoughKindWanted","notEnough","missing")
+
+kindFoodData <- fsData %>% 
+  filter(stmtNum == 0) %>% 
+  mutate(hadEnough = if_else(stmt1to3Value == 1, 1, 0),
+         hadEnoughKindWanted = if_else(stmt1to3Value == 2, 1, 0),
+         notEnough = if_else(stmt1to3Value == 3, 1, 0),
+         missing = if_else(is.na(stmt1to3Value) | stmt1to3Value < 0, 1, 0),
+         validResp = if_else(stmt1to3Value >= 0, 1, 0)) %>%
+  
+  left_join(sampleData, by=c("projID", "studyear", "communty", "strata")) %>% 
+  
+  group_by(projID, studyear, NHouseholds, communty, commname, strata) %>%
+  
+  summarize(totalValidResp = sum(validResp, na.rm=TRUE),
+            across(all_of(respCols), ~ . * strataWt)) %>%
+  
+  summarize(totalValidResp = sum(totalValidResp, na.rm=TRUE),
+            across(all_of(respCols), sum, na.rm = TRUE),
+            .groups = "drop") %>% 
+  
+  mutate(across(all_of(respCols), ~ . / NHouseholds))
+
+
+tmpTableData <- kindFoodData %>% 
+  select(commname, hadEnough, hadEnoughKindWanted, notEnough, missing) %>% 
+  pivot_longer(cols = c('hadEnough', 
+                        'hadEnoughKindWanted', 
+                        'notEnough',
+                        'missing'), 
+               names_to = 'Statement', 
+               values_to = 'Percent') %>% 
+
+  # Better labels.
+  mutate(
+    Statement = case_when(
+      Statement == 'hadEnough' ~ 'Had enough of the kinds of food desired',
+      Statement == 'hadEnoughKindWanted' ~ 'Had enough food, but not the desired kind',
+      Statement == 'notEnough' ~ 'Sometimes, or often, did not have enough food',
+      Statement == 'missing' ~ 'Missing/no response',
+      TRUE ~ Statement),
+    Percent = paste(as.character(round(Percent * 100,1)),'%', sep='')) %>% 
+  pivot_wider(id_cols = 'Statement', 
+              names_from = 'commname',
+              values_from = 'Percent')
+
+kbl(tmpTableData,
+    caption=formatTableHeader(str_interp("Household's assessments of food security conditions, ${studyear}"))) %>% kable_styling(full_width = F) %>%
+  add_header_above(c(" " = 1, "Percentage of households" = nrow(sampleData)))
+
+```
+
+# Write SQLite files
+
+This chunk writes the CSIS files for just the food insecure conditions. 
+
+```{r SQL Lite table update}
+
+# commscore
+csisCommScore <- commScore %>%
+  rename("projid"="projID",
+         "year"="studyear",
+         "commcode"="communty",
+         "wghtFoodSecure"="highFoodSecure",
+         "wghtLowFoodSecurity"="lowFoodSecure",
+         "wghtVeryLowFoodSecurity"="veryLowFoodSecure",
+         "pctFoodSecure"="pctHighFoodSecure",
+         "pctLowFoodSecurity"="pctLowFoodSecure",
+         "pctVeryLowFoodSecurity"="pctVeryLowFoodSecure")
+
+csisCommScore$pctRefused = csisCommScore$refusedIndex / csisCommScore$NHouseholds
+
+csisCommScore <- csisCommScore %>% 
+  select(projid, year, commcode, pctRefused, wghtFoodSecure, wghtLowFoodSecurity, 
+         wghtVeryLowFoodSecurity, pctFoodSecure, pctLowFoodSecurity, pctVeryLowFoodSecurity)
+
+# Put it into the SQLite database.
+csisDB <- dbConnect(RSQLite::SQLite(), "../../SQLite/csisDB.db")
+
+delSQL = 'DROP TABLE IF EXISTS "dat_foodsecurity";'
+
+DBResult <- dbSendQuery(csisDB, delSQL)
+cat("<h4>Drop table:</h4>")
+print(DBResult)
+dbClearResult(DBResult)
+
+tblSQL = 'CREATE TABLE "dat_foodsecurity" (foodSecurityUID INTEGER NOT NULL
+                    ,"commcode" INTEGER
+                    ,"year" INTEGER
+                    ,"projid" INTEGER
+                    ,"pctRefused" REAL
+                    ,"wghtFoodSecure" REAL
+                    ,"wghtLowFoodSecurity" REAL
+                    ,"wghtVeryLowFoodSecurity" REAL
+                    ,"pctFoodSecure" REAL
+                    ,"pctLowFoodSecurity" REAL
+                    ,"pctVeryLowFoodSecurity" REAL
+                    , PRIMARY KEY ("foodSecurityUID" AUTOINCREMENT));'
+
+DBResult <- dbSendQuery(csisDB, tblSQL)
+cat("<h4>Create empty table:</h4>")
+print(DBResult)
+dbClearResult(DBResult)
+
+strSQL = 'INSERT INTO "dat_foodsecurity" (commcode
+                      ,year
+                      ,projid
+                      ,pctRefused
+                      ,wghtFoodSecure
+                      ,wghtLowFoodSecurity
+                      ,wghtVeryLowFoodSecurity
+                      ,pctFoodSecure
+                      ,pctLowFoodSecurity
+                      ,pctVeryLowFoodSecurity) VALUES (:commcode
+                      ,:year
+                      ,:projid
+                      ,:pctRefused
+                      ,:wghtFoodSecure
+                      ,:wghtLowFoodSecurity
+                      ,:wghtVeryLowFoodSecurity
+                      ,:pctFoodSecure
+                      ,:pctLowFoodSecurity
+                      ,:pctVeryLowFoodSecurity);'
+
+dbBegin(csisDB)
+DBResult <- dbSendQuery(csisDB, strSQL, csisCommScore)
+cat("<h4>Insert data:</h4>")
+print(DBResult)
+dbClearResult(DBResult)
+dbCommit(csisDB)
+
+dbDisconnect(csisDB)
+
+```
+
+# Write CSV files
+
+```{r write csv files}
+
+# ##############################################################################
+# Write out CSV files.
+# ##############################################################################
+
+rio::export(kindFoodData, str_interp('../../CSV/05 - Final Analysis Output/AltFoodSecureFilter(T)_raw.csv'))
+
+
+# #################################################################################
+  fName = '../../CSV/05 - Final Analysis Output/foodSecurityCategories_raw.csv'
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(commScore), ' records to be written', sep='')))
+
+  rio::export(commScore, fName)
+  
+# #################################################################################
+  fName = '../../CSV/05 - Final Analysis Output/foodInsecureConditions_raw.csv'
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(condData), ' records to be written', sep='')))
+
+  rio::export(condData, fName)  
+
+# #################################################################################
+  fName = '../../CSV/05 - Final Analysis Output/foodSecureTiming_raw.csv'
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(conditionTiming), ' records to be written', sep='')))
+
+  rio::export(conditionTiming, fName)
+  
+# #################################################################################
+  fName = '../../CSV/05 - Final Analysis Output/foodSecureSubsStoreTime_raw.csv'
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(subStoreTimingData), ' records to be written', sep='')))
+
+  rio::export(subStoreTimingData, fName)    
+
+# #################################################################################
+  fName = '../../CSV/05 - Final Analysis Output/AltFoodSecureFilter(T)_raw.csv'
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(kindFoodData), ' records to be written', sep='')))
+
+  rio::export(kindFoodData, fName)      
+    
+```
+
+<p class="h1footer"> End of Food Security analysis script. </p>
