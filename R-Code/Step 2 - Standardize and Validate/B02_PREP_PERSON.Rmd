@@ -1,7 +1,7 @@
 ---
 title: "B02_PREP_PERSON - (316) NPS Ambler Comprehensive"
 author: "Jesse Coleman"
-date: "2025-08-15"
+date: "2025-08-19"
 output:
   html_document:
     theme: null
@@ -14,6 +14,7 @@ output:
   <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
   <div class="title">B02_PREP_PERSON - (316) NPS Ambler Comprehensive</div>
 </div>
+
 
 # Prepare Person record
 
@@ -71,14 +72,14 @@ Note, this code only reorganizes and standardizes the data in order to facilitat
 - adfgSubs
 
 ```{r setup, echo=FALSE}
-
 # Set some knit options and functions for formatting data.
-knitr::opts_chunk$set(echo = FALSE)
-knitr::opts_chunk$set(include = TRUE)
-knitr::opts_chunk$set(results='asis')
+knitr::opts_chunk$set(echo = FALSE,
+                      include = TRUE,
+                      message = FALSE,
+                      warning = FALSE,
+                      results='asis')
 
 options(knitr.kable.NA = '')
-
 ```
 
 # Data processing

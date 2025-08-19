@@ -28,9 +28,10 @@
 #
 # ##############################################################################
 
-# Standard librarires
+# Standard libraries
 library(tidyverse)
 library(rio)
+library(adfgSubs)
 
 # ##############################################################################
 # 0.0 - SETUP - Establish user and project specific paths, variables and file names.
@@ -77,13 +78,26 @@ options(scipen = 999)
 
 standardCFHarvColumns = c("amtGavetoCrew", "amtGaveOthers", "removeOwnUse")
 
-standardGearColumns = c("amtDriftGillNet","amtSetGillNet",
-                        "amtUnspecifiedGillNet","amtSeine",
-                        "amtFishTrap", "amtDipNet","amtRodReel",
-                        "amtJigHandLine", "amtHookUnderIce","amtNetUnderIce","amtTrotLine",
-                        "amtFishTrapUnderIce", "amtUnspecifiedIceFishing",
-                        "amtLongLineSkate","amtTrolling","amtSpearGaff", "amtCastNet",
-                        "amtOtherGear")
+standardGearColumns = c("amtDriftGillNet",
+                        "amtSetGillNet",
+                        "amtUnspecifiedGillNet",
+                        "amtSeine",
+                        "amtFishTrap", 
+                        "amtDipNet",
+                        "amtRodReel",
+                        "amtJigHandLine", 
+                        "amtHookUnderIce",
+                        "amtNetUnderIce",
+                        "amtTrotLine",
+                        "amtFishTrapUnderIce", 
+                        "amtUnspecifiedIceFishing",
+                        "amtLongLineSkate",
+                        "amtTrolling",
+                        "amtSpearGaff", 
+                        "amtCastNet",
+                        "amtOtherGear",
+                        "amtFishWheel",
+                        "amtUnspecifiedSubsistenceNet")
 standardFishOtherColumns = c("amtDogFood")
 
 standardMammalColumns = c("harvJan", "harvFeb",

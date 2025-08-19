@@ -1,7 +1,7 @@
 ---
 title: "B09_PREP_REC12 - (316) NPS Ambler Comprehensive"
 author: "Jesse Coleman"
-date: "2025-08-15"
+date: "2025-08-19"
 output:
   html_document:
     theme: null
@@ -14,6 +14,8 @@ output:
   <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
   <div class="title">B09_PREP_REC12 - (316) NPS Ambler Comprehensive</div>
 </div>
+
+
 # Prep REC12
 
 Organize and standardize REC12 (Marine mammals) in order to merge with all other harvest record types in a later step. 
@@ -89,12 +91,14 @@ Lists from Z00_PROJECT_PARAMETERS.r, fullHarvColList
 - knitr
 - adfgSubs
 
-```{r setup, echo=FALSE}
+```{r setup}
 
 # Set some knit options and functions for formatting data.
-knitr::opts_chunk$set(echo = FALSE)
-knitr::opts_chunk$set(include = TRUE)
-knitr::opts_chunk$set(results='asis')
+knitr::opts_chunk$set(echo = FALSE,
+                      include = TRUE,
+                      message = FALSE,
+                      warning = FALSE,
+                      results='asis')
 
 options(knitr.kable.NA = '')
 
@@ -163,7 +167,7 @@ The code chunk below (echoed for clarity), filters the record type 12 so only ha
 - Do nothing  
 - Remove necessary rows  
 
-```{r remove non-harvest records, echo=TRUE}
+```{r remove non-harvest records}
 
 #REC12Data <- filter(REC12Data, subRecordCD == 0)
 
@@ -255,7 +259,7 @@ Evaluate columns of data used for development of tables and figures. Recode miss
 - Recode all variables named in recodeColList to -8 if they are coded as any negative code.  
 - For any resource added to any household that goes beyond the defaults on the printed survey, we need to add that to all other households. Note that the code allows us to retain certain key information, but it isn't required. By standardizing the resource list in this manner, summary statistics can be reliably computed using built-in R functions such as sd() and mean().  
 - Recode variables to ensure proper handling of missing data. We interpret empty or missing data as 0 or NO. The reason for this is partially one of expediency in data processing, and also a matter of ensuring that when collected data is reviewed, it has been VERIFIED as some type of 'unknown' data.  
-```{r standarize coding, message=FALSE}
+```{r standarize coding}
 
 # #############################################################################
 # Reporting on missing data for filterq
@@ -494,6 +498,102 @@ if(nrow(REC12StdData) == 0)
   cat(formatSummaryBlock('Successfully Standardized units for all REC12 resource codes'))
 }
 ```
+## Conversion factors for unspecified resources
+Resources are often reported as 'unspecified', in cases where the survey respondent
+was unsure of the species harvested or received. To calculate the edible weight of 
+unspecified resources harvested, similar resources and the amounts/weights harvested
+are used to calculate the conversion factor for unspecified resources. Analysts must
+develop a list of resources to use in this calculation for each unspecified resource.
+
+```{r Calculate conversion factors for unspecified resources}
+
+unspecTable <- REC12StdData %>% filter(str_detect(resName, "Unspecified") & harvestq == 1) %>% 
+  ungroup() %>% 
+  select(commname, resource, resName) 
+
+unspecTable %>% 
+  kable(caption = 'Unspecified resources that were harvested',
+        col.names = c('Community','Resource code','Resource name'),
+        na = 'NA')
+
+if (nrow(unspecTable) == 0) {
+  cat(greenMessage("No unspecified resources were harvested."))
+}
+
+# The list of unspecified resources (resCalcConvFactList) and the group of resources from which the conversion factor will be calculated (resGroupConvFactList) must be modified for each project and record type. NOTE: given units and default units must be consistent among all resources used in the calculation!
+
+# Example:
+
+# resCalcConvFactList <- list(410499000, # Unspecified geese 
+#                             421802990) # Unspecified grouses
+# 
+# resGroupConvFactList <- list(
+#   c(410406000, 410408000, 410410000, 410404990), # Other types of geese harvested
+#   c(421802020, 421802060, 421802040) # Other types of grouse harvested
+
+ 
+# If no unspecified resources require conversion factors, use the following:
+  
+# resCalcConvFactList <- list(c(numeric(0))) # No unspecified resources
+# 
+# resGroupConvFactList <- list(
+#   c(numeric(0)) # No other resources
+# )
+
+
+resCalcConvFactList <- list(c(numeric(0))) # Unspecified resource
+
+resGroupConvFactList <- list(
+  c(numeric(0)
+  ) # Other types harvested
+)
+
+calcConvFactData <- map2_dfr(
+  resCalcConvFactList,
+  resGroupConvFactList,
+  function(resCalcConvFact, resGroupConvFact) {
+    REC12StdData %>%
+      filter(resource %in% resGroupConvFact) %>%
+      rowwise() %>%
+      mutate(
+        reptHarvestAmt = sum(across(all_of(harvAmtList)), na.rm = TRUE),
+        reptHarvestLbs = reptHarvestAmt * convFact
+      ) %>%
+      filter(reptHarvestAmt > 0) %>%
+      group_by(communty) %>%
+      summarize(convFact = sum(reptHarvestLbs) / sum(reptHarvestAmt)) %>%
+      mutate(
+        lbsToDefault = 1 / convFact,
+        resource = resCalcConvFact,
+        source = 'Calculated'
+      ) %>%
+      left_join(convFactData, by = c('communty', 'resource'))  %>% 
+      select(
+        projID, studyear, communty, resName, resource, units, convFact.x, lbsToDefault.x, defaultUnits, source
+      ) %>%
+      rename(
+        convFact = convFact.x,
+        lbsToDefault = lbsToDefault.x
+      ) %>%
+      mutate(convFact = case_when(units == 2 & defaultUnits == 1 ~ 1,
+                             TRUE ~ convFact))
+  }
+)
+
+  kable(calcConvFactData,
+        caption = 'Unspecified resource conversion factors')
+
+  if (nrow(calcConvFactData > 0)) {  
+
+  cat(warningMessage("Double-check conversion factors, default units, and lbsToDefault"))
+}
+
+  convFactData <- convFactData %>%
+  filter(!resource %in% unlist(resCalcConvFactList)) %>%
+  bind_rows(calcConvFactData) %>%
+  arrange(resource)
+
+```
 
 ## De-duplicate
 Eliminate duplicates introduced when adding volunteered resources to the harvest record.
@@ -507,7 +607,7 @@ Eliminate duplicates introduced when adding volunteered resources to the harvest
 
 *NOTE* If you receive a -InfWarning message regarding no missing arguments to max, you should have already received a message previously regarding missing data for the use/sharing questions. These are processed here.
 
-```{r eliminate duplicates, echo=TRUE, message=FALSE}
+```{r eliminate duplicates}
 # Eliminate duplicates.
 REC12StdData <- group_by(REC12StdData, projID, studyear, communty, commname, commhh, 
                      samphh, sampPop, NHouseholds, strata, HHID, 
@@ -548,7 +648,7 @@ In the event that a single household indicated harvest of a resource, but did no
 
 <div class="todoBlock">Revise the mean replacement code if months are not used.</div>
 
-```{r Missing replacement, message=FALSE}
+```{r Missing replacement}
 
 # Bring back in conversion factors.
 REC12StdData <- select(convFactData, projID, studyear, communty, resName, resource, units, convFact) %>%
@@ -758,19 +858,23 @@ cat(formatSummaryBlock(
 
 # Write out CSV files
 
-```{r write csv files, message=FALSE}
+```{r write csv files}
 
-# ##############################################################################
-# Write out CSV files.
-# ##############################################################################
-
-# Write out Marine Mammals CSIS formatted datafile
+# Write out CSIS organized file.
   fName = str_interp('../../CSV/03 - main/REC12_CSIS_ORG_clean.csv')
   cat(formatSummaryBlock(
     paste('Writing file: ', fName, 
           ' ', nrow(REC12CSISData), ' records to be written', sep='')))
 
 rio::export(REC12CSISData, fName)
+
+# Write out unspecified resource conversion factor table for binding to convFact.csv
+  fName = str_interp('../../CSV/03 - main/REC12_calc_convFact.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(calcConvFactData), ' records to be written', sep='')))
+
+rio::export(calcConvFactData, fName)
 
 ```
 

@@ -1,7 +1,7 @@
 ---
 title: "B07_PREP_REC08 - (316) NPS Ambler Comprehensive"
 author: "Jesse Coleman"
-date: "2025-08-15"
+date: "2025-08-19"
 output:
   html_document:
     theme: null
@@ -87,12 +87,14 @@ Lists from Z00_PROJECT_PARAMETERS.r, fullHarvColList
 - knitr  
 - adfgSubs
 
-```{r setup, echo=FALSE}
+```{r setup}
 
 # Set some knit options and functions for formatting data.
-knitr::opts_chunk$set(echo = FALSE)
-knitr::opts_chunk$set(include = TRUE)
-knitr::opts_chunk$set(results='asis')
+knitr::opts_chunk$set(echo = FALSE,
+                      include = TRUE,
+                      message = FALSE,
+                      warning = FALSE,
+                      results='asis')
 
 options(knitr.kable.NA = '')
 
@@ -453,6 +455,101 @@ if(nrow(REC08StdData) == 0)
 
 ```
 
+## Conversion factors for unspecified resources
+Resources are often reported as 'unspecified', in cases where the survey respondent
+was unsure of the species harvested or received. To calculate the edible weight of 
+unspecified resources harvested, similar resources and the amounts/weights harvested
+are used to calculate the conversion factor for unspecified resources. Analysts must
+develop a list of resources to use in this calculation for each unspecified resource.
+
+```{r Calculate conversion factors for unspecified resources}
+
+unspecTable <- REC08StdData %>% filter(str_detect(resName, "Unspecified") & harvestq == 1) %>% 
+  ungroup() %>% 
+  select(commname, resource, resName) 
+
+unspecTable %>% 
+  kable(caption = 'Unspecified resources that were harvested',
+        col.names = c('Community','Resource code','Resource name'),
+        na = 'NA')
+
+if (nrow(unspecTable) == 0) {
+  cat(greenMessage("No unspecified resources were harvested."))
+}
+
+# The list of unspecified resources (resCalcConvFactList) and the group of resources from which the conversion factor will be calculated (resGroupConvFactList) must be modified for each project and record type. NOTE: given units and default units must be consistent among all resources used in the calculation!
+
+# Example:
+
+# resCalcConvFactList <- list(410499000, # Unspecified geese 
+#                             421802990) # Unspecified grouses
+# 
+# resGroupConvFactList <- list(
+#   c(410406000, 410408000, 410410000, 410404990), # Other types of geese harvested
+#   c(421802020, 421802060, 421802040) # Other types of grouse harvested
+# 
+# If no unspecified resources require conversion factors, use the following:
+# # 
+# resCalcConvFactList <- list(c(numeric(0))) # No unspecified resources
+# 
+# resGroupConvFactList <- list(
+#   c(numeric(0)) # No other resources
+# )
+
+
+resCalcConvFactList <- list(c(numeric(0))) # Unspecified resource
+
+resGroupConvFactList <- list(
+  c(numeric(0)) # Other types harvested
+)
+
+calcConvFactData <- map2_dfr(
+  resCalcConvFactList,
+  resGroupConvFactList,
+  function(resCalcConvFact, resGroupConvFact) {
+    REC08StdData %>%
+      filter(resource %in% resGroupConvFact) %>%
+      rowwise() %>%
+      mutate(
+        reptHarvestAmt = sum(across(all_of(harvAmtList)), na.rm = TRUE),
+        reptHarvestLbs = reptHarvestAmt * convFact
+      ) %>%
+      filter(reptHarvestAmt > 0) %>%
+      group_by(communty) %>%
+      summarize(convFact = sum(reptHarvestLbs) / sum(reptHarvestAmt)) %>%
+      mutate(
+        lbsToDefault = 1 / convFact,
+        resource = resCalcConvFact,
+        source = 'Calculated'
+      ) %>%
+      left_join(convFactData, by = c('communty', 'resource'))  %>% 
+      select(
+        projID, studyear, communty, resName, resource, units, convFact.x, lbsToDefault.x, defaultUnits, source
+      ) %>%
+      rename(
+        convFact = convFact.x,
+        lbsToDefault = lbsToDefault.x
+      ) %>%
+      mutate(convFact = case_when(units == 2 & defaultUnits == 1 ~ 1,
+                             TRUE ~ convFact))
+  }
+)
+
+  kable(calcConvFactData,
+        caption = 'Unspecified resource conversion factors')
+
+  if (nrow(calcConvFactData > 0)) {  
+
+  cat(warningMessage("Double-check conversion factors, default units, and lbsToDefault"))
+}
+
+  convFactData <- convFactData %>%
+  filter(!resource %in% unlist(resCalcConvFactList)) %>%
+  bind_rows(calcConvFactData) %>%
+  arrange(resource)
+
+```
+
 ## De-duplicate
 Eliminate duplicates introduced when adding volunteered resources to the harvest record.
 
@@ -648,17 +745,21 @@ cat(formatSummaryBlock(
 
 ```{r write csv files}
 
-# ##############################################################################
-# Write out CSV files.
-# ##############################################################################
-
-# Write out marine invertebrate files.
+# Write out CSIS organized file.
   fName = str_interp('../../CSV/03 - main/REC08_CSIS_ORG_clean.csv')
   cat(formatSummaryBlock(
     paste('Writing file: ', fName, 
           ' ', nrow(REC08CSISData), ' records to be written', sep='')))
 
 rio::export(REC08CSISData, fName)
+
+# Write out unspecified resource conversion factor table for binding to convFact.csv
+  fName = str_interp('../../CSV/03 - main/REC08_calc_convFact.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(calcConvFactData), ' records to be written', sep='')))
+
+rio::export(calcConvFactData, fName)
 
 ```
 

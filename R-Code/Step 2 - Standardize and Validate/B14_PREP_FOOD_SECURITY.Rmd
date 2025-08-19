@@ -1,7 +1,7 @@
 ---
 title: "B14_PREP_FOOD_SECURITY - (316) NPS Ambler Comprehensive"
 author: "Jesse Coleman"
-date: "2025-08-15"
+date: "2025-08-19"
 output:
   html_document:
     theme: null
@@ -72,14 +72,17 @@ The organization of the data in the Subsistence Data System (SDS) developed to s
 - knitr
 - adfgSubs
 
-```{r setup, echo=FALSE}
+```{r setup}
 
 # Set some knit options and functions for formatting data.
-knitr::opts_chunk$set(echo = FALSE)
-knitr::opts_chunk$set(include = TRUE)
-knitr::opts_chunk$set(results='asis')
+knitr::opts_chunk$set(echo = FALSE,
+                      include = TRUE,
+                      message = FALSE,
+                      warning = FALSE,
+                      results='asis')
 
 options(knitr.kable.NA = '')
+
 
 ```
 

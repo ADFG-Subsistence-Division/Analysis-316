@@ -1,7 +1,7 @@
 ---
 title: "B04_PREP_REC03 - (316) NPS Ambler Comprehensive"
 author: "Jesse Coleman"
-date: "2025-08-15"
+date: "2025-08-19"
 output:
   html_document:
     theme: null
@@ -97,14 +97,14 @@ Lists from Z00_PROJECT_PARAMETERS.r, fullHarvColList
 - adfgSubs
 
 ```{r setup, echo=FALSE}
-
 # Set some knit options and functions for formatting data.
-knitr::opts_chunk$set(echo = FALSE)
-knitr::opts_chunk$set(include = TRUE)
-knitr::opts_chunk$set(results='asis')
+knitr::opts_chunk$set(echo = FALSE,
+                      include = TRUE,
+                      message = FALSE,
+                      warning = FALSE,
+                      results='asis')
 
 options(knitr.kable.NA = '')
-
 ```
 
 # Data processing
@@ -208,8 +208,9 @@ if(length(colList) > 0) {
 
 The commercial fishing record does not have the standard 'use' columns of used, attempt, harvestq, recieved, giveaway. These are added with appropriate values based on responses to removed for own use, gave to crew and gave to others. Further, the standardized list of harvest columns and necessary columns for the household database are added here to ensure consistent processing later in the analysis.
 
-```{r insert missing and derived columns, eval = TRUE}
+```{r insert missing and derived columns}
 
+                            
 # Number of columns.
 count = length(REC03Data)
 
@@ -220,7 +221,8 @@ REC03Data <- REC03Data %>%
     attempt = 0, 
     giveaway = 0,
     received = 0,
-    used = 0
+    used = 0,
+    displayGroup = 0
   ) %>%
   # Use across() to update multiple columns at once
   mutate(
@@ -238,9 +240,6 @@ REC03Data <- REC03Data %>%
       TRUE ~ giveaway
     )
   )
-
-
-
 ```
 
 ## Standardize coding
@@ -433,6 +432,89 @@ if(nrow(REC03StdData) == 0)
 
 
 ```
+
+## Conversion factors for unspecified resources
+Resources are often reported as 'unspecified', in cases where the survey respondent
+was unsure of the species harvested or received. To calculate the edible weight of 
+unspecified resources harvested, similar resources and the amounts/weights harvested
+are used to calculate the conversion factor for unspecified resources. Analysts must
+develop a list of resources to use in this calculation for each unspecified resource.
+
+```{r Calculate conversion factors for unspecified resources}
+
+unspecTable <- REC03StdData %>% filter(is.na(convFact) & harvestq == 1) %>% 
+  ungroup() %>% 
+  select(commname, resource, resName) 
+
+unspecTable %>% 
+  kable(caption = 'Unspecified resources that were harvested',
+        col.names = c('Community','Resource code','Resource name'),
+        na = 'NA')
+
+if (nrow(unspecTable) == 0) {
+  cat(greenMessage("No unspecified resources were harvested."))
+}
+
+# The list of unspecified resources (resCalcConvFactList) and the group of resources from which the conversion factor will be calculated (resGroupConvFactList) must be modified for each project and record type. NOTE: given units and default units must be consistent among all resources used in the calculation!
+
+# Example:
+
+# resCalcConvFactList <- list(410499000, # Unspecified geese 
+#                             421802990) # Unspecified grouses
+# 
+# resGroupConvFactList <- list(
+#   c(410406000, 410408000, 410410000, 410404990), # Other types of geese harvested
+#   c(421802020, 421802060, 421802040) # Other types of grouse harvested
+# )
+
+resCalcConvFactList <- list(numeric(0)) # Unspecified resource
+
+resGroupConvFactList <- list(numeric(0)) # Other types harvested
+
+calcConvFactData <- map2_dfr(
+  resCalcConvFactList,
+  resGroupConvFactList,
+  function(resCalcConvFact, resGroupConvFact) {
+    REC03StdData %>%
+      filter(resource %in% resGroupConvFact) %>%
+      rowwise() %>%
+      mutate(
+        reptHarvestAmt = sum(across(all_of(harvAmtList)), na.rm = TRUE),
+        reptHarvestLbs = reptHarvestAmt * convFact
+      ) %>%
+      filter(reptHarvestAmt > 0) %>%
+      group_by(communty) %>%
+      summarize(convFact = sum(reptHarvestLbs) / sum(reptHarvestAmt)) %>%
+      mutate(
+        lbsToDefault = 1 / convFact,
+        resource = resCalcConvFact,
+        source = 'Calculated'
+      ) %>%
+      left_join(convFactData, by = c('communty', 'resource'))  %>% 
+      select(
+        projID, studyear, communty, resName, resource, units, convFact.x, lbsToDefault.x, defaultUnits, source
+      ) %>%
+      rename(
+        convFact = convFact.x,
+        lbsToDefault = lbsToDefault.x
+      ) %>%
+      mutate(convFact = case_when(units == 2 & defaultUnits == 1 ~ 1,
+                             TRUE ~ convFact))
+  }
+)
+
+  kable(calcConvFactData,
+        caption = 'Unspecified resource conversion factors')
+  
+cat(warningMessage("Double-check conversion factors, default units, and lbsToDefault"))
+    
+convFactData <- convFactData %>%
+  filter(!resource %in% unlist(resCalcConvFactList)) %>%
+  bind_rows(calcConvFactData) %>%
+  arrange(resource)
+
+```
+
 
 ## De-duplicate
 Eliminate duplicates introduced when adding volunteered resources to the harvest record.

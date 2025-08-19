@@ -1,7 +1,7 @@
 ---
 title: "B01_PREP_SAMPLE - (316) NPS Ambler Comprehensive"
 author: "Jesse Coleman"
-date: "2025-08-15"
+date: "2025-08-19"
 output:
   html_document:
     theme: null
@@ -14,6 +14,7 @@ output:
   <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
   <div class="title">B01_PREP_SAMPLE - (316) NPS Ambler Comprehensive</div>
 </div>
+
 
 # Prep Sample
 
@@ -113,14 +114,14 @@ In the SAMPLE code chunk above, the color brewer is selecting 6 colors from the 
 - adfgSubs
 
 ```{r setup, echo=FALSE}
-
 # Set some knit options and functions for formatting data.
-knitr::opts_chunk$set(echo = FALSE)
-knitr::opts_chunk$set(include = TRUE)
-knitr::opts_chunk$set(results='asis')
+knitr::opts_chunk$set(echo = FALSE,
+                      include = TRUE,
+                      message = FALSE,
+                      warning = FALSE,
+                      results='asis')
 
-options(knitr.kable.NA = '_')
-
+options(knitr.kable.NA = '')
 ```
 
 # Data processing
@@ -133,7 +134,7 @@ options(knitr.kable.NA = '_')
 rm(list=ls(all=TRUE))
 library(knitr)
 library(ggrepel)
-library(adfgSubs)
+
 
 # Include the project parameters file - this needs to be updated for all
 #   projects.
