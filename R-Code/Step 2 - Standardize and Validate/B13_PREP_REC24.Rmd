@@ -268,14 +268,15 @@ knitr::kable(tempData,
 
 ```{r write csv files}
 
-# Write out CSIS organized file.
-  fName = str_interp('../../CSV/03 - main/REC24_CSIS_ORG_clean.csv')
+# Write out clean income file
+  fName = str_interp('../../CSV/03 - main/REC24_OTH_INCOME_clean.csv')
   cat(formatSummaryBlock(
     paste('Writing file: ', fName, 
           ' ', nrow(REC24Data), ' records to be written', sep='')))
 
 rio::export(REC24Data, fName)
 
+```
 ```
 
 <p class="h1footer"> End of Prep REC24 script. </p>

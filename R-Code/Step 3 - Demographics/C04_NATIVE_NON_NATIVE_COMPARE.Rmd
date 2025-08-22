@@ -118,7 +118,7 @@ personData <- read.csv(str_interp('../../CSV/03 - Main/REC01_clean.csv'),
                        strip.white = TRUE)
 
 count <- nrow(personData)
-cat(formatSummaryBlock(paste("Opening file: REC01std.csv, ", 
+cat(formatSummaryBlock(paste("Opening file: REC01_clean.csv, ", 
                              count, 
                              " records loaded.", sep="")))
 
