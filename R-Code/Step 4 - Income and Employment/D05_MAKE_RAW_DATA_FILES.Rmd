@@ -282,10 +282,13 @@ weeksEmployData <- group_by(employMonthsData, projID, studyear,
             validWeeks = sum(validWeeks, na.rm=TRUE),
             nCases = n(),
             minMonthsEmplAdults = min(minMonthsEmplAdults, na.rm=TRUE),
-            maxMonthsEmplAdults = max(maxMonthsEmplAdults, na.rm=TRUE)) %>% 
+            maxMonthsEmplAdults = max(maxMonthsEmplAdults, na.rm=TRUE), .groups = "drop") %>% 
+  
   mutate(estWeeksEmploy = weeksEmployed * (nCases/validWeeks) * strataWt,
          estYrRound = yrRound * (nCases/validWeeks) * strataWt) %>% 
+  
   group_by(projID, studyear, communty) %>% 
+  
   summarize(estWeeksEmploy = sum(estWeeksEmploy, na.rm=TRUE),
             estYrRound = sum(estYrRound, na.rm=TRUE),
             minMonthsEmplAdults = min(minMonthsEmplAdults, na.rm=TRUE),
@@ -293,7 +296,7 @@ weeksEmployData <- group_by(employMonthsData, projID, studyear,
             .groups = "drop")
 
 # tidy-up a bit.
-rm(employMonthsData)
+# rm(employMonthsData)
 
 ```
 

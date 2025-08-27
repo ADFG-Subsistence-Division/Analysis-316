@@ -234,7 +234,7 @@ In this step, please review each table for obvious errors or issues. When re-run
 
 ```{r harv use table}
 
-commnameList <- harvRawData %>% distinct(commname) %>% pull(commname)
+commnameList <- harvRawData %>% select(commname) %>% distinct()
 
 walk(commnameList, function(comm) {
   tempData <- harvRawData %>%
@@ -317,42 +317,32 @@ walk(commnameList, function(comm) {
     add_header_above(c("  " = 1, "Harvest in pounds usable weight" = 2))
   print(tblOut)
   
-  # Pie chart: Remove total and unused
+ 
+  
   pieData <- tempData %>%
     filter(resName != 'All resources', percap > 0) %>%
     arrange(percap) %>%
-    mutate(resName = factor(resName, levels = rev(unique(resName)))) %>% 
-  # Calculate percentage and label positions for outside labeling
-    mutate(
-      pct = round(percap / sum(percap) * 100,0),
-      ymax = cumsum(pct),
-      ymin = lag(ymax, default = 0),
-      mid = (ymax + ymin) / 2,
-      # Place the labels outside at 1.2x the radius of the chart
-      label_x = 1.2 * sin(2 * pi * mid),
-      # Place the labels halfway between ymax and ymin in radians
-      label_y = 1.2 * cos(2 * pi * mid)
-    )
-  
-  colrs <- getColors(nColors = nrow(pieData))
+    mutate(resName = factor(resName, levels = rev(unique(resName))))
 
-  catPlot <- ggplot(pieData, 
-                    aes(x = "", y = pct, fill = resName)) +
-    geom_col(width = 1, color = "white") +
-    coord_polar(theta = "y", start = 0, direction = -1) +
-    ggtitle(str_interp("Harvest by category ${comm}, ${unique(harvUseCatData$studyear[harvUseCatData$commname == comm])}.")) +
-    xlab("") + ylab("") +
-    scale_fill_manual(values = colrs, labels = paste0(pieData$resName,"; ",pieData$pct,"%")) +
-    theme_void() +
-    # geom_text(
-    #   aes(x = label_x, y = label_y, label = paste0(pct,"%")),
-    # inherit.aes = FALSE,
-    # size = 5
-    # ) +
-    theme(legend.title = element_blank(), text = element_text(family = "serif")) +
-    guides(fill = guide_legend(title = "Resource category"))
+  # Get colors (use your existing function or any palette)
+  colrs <- getColors(nColors = nrow(pieData))
   
-  print(catPlot)
+  # Create labels: "Resource; XX%"
+  labels <- paste0(pieData$resName, "; ", round(pieData$percap / sum(pieData$percap) * 100), "%")
+  
+  # Draw the pie chart using base R
+  catPlot <- pie(
+    pieData$percap,
+    labels = labels,
+    col = colrs,
+    main = str_interp("Harvest by category for ${comm}, ${unique(harvUseCatData$studyear[harvUseCatData$commname == comm])}"),
+    font.main = 1,
+    family = "serif",
+    cex = 0.8
+  )
+  
+ catPlot
+
   
   # Bar plot: Use, attempt, and harvest by resource category
   tempCatData <- harvUseCatData %>%
@@ -395,118 +385,11 @@ walk(commnameList, function(comm) {
 })
 
 
-############## 
-# Legacy plots code
-
-# harvUseCatData <- filter(harvRawData, specList == 2) %>%
-#   select(projID, studyear, communty, commname, resource, resName, 
-#          used_pct, attempt_pct, harvestq_pct, estHarvestAmt_sum, estHarvestLbs_sum, percap)
-# 
-# for(comm in commnameList$commname)
-# {
-# 
-#   tempData <- filter(harvUseCatData, commname == comm) %>%
-#     arrange(resource) %>%
-#     select(resName, estHarvestLbs_sum, percap)
-#   
-#   tempData$estHarvestLbs_sum <- round(tempData$estHarvestLbs_sum, 1)
-#   tempData$percap <- round(tempData$percap, 1)
-#   
-#   tblOut <- kbl(tempData,
-#       caption=formatTableHeader(str_interp("Harvest by category for ${comm}, ${studyear}")),
-#       col.names=c("Resource",
-#                   "Total",
-#                  "Per capita")) %>%
-#     kable_styling(full_width = F) %>%
-#     add_header_above(c("  " = 1, "Harvest in pounds usable weight" = 2))
-#   
-#   print(tblOut)
-#   
-#   # For the figure, we need to remove the total row.
-#   tempData <- filter(tempData, resName != 'All resources')
-#   
-#   # Omit non-harvested species for clarity.
-#   tempData <- filter(tempData, percap > 0.000)
-#   # Organize data for more logical display.
-#   tempData <- arrange(tempData, percap)
-#   tempData$resName = factor(tempData$resName, levels = rev(unique(tempData$resName)))
-#   # Label
-#   
-#   # Prep color pallette.
-#   colrs <- getColors(nColors = nrow(tempData))
-#   
-#   catPlot <- ggplot(tempData, 
-#          aes(x = "", 
-#              y = percap, 
-#              fill = resName)) +
-#     ggtitle(str_interp("Harvest by category ${comm}, ${studyear}.")) +
-#     geom_bar(width = 1, 
-#              stat = "identity", 
-#              color = "white") +
-#     coord_polar("y", 
-#                 start = 0, 
-#                 direction = -1) +
-#    # geom_text(aes(y = lab.ypos, label = label), 
-#   #          color = "black") +      
-#     xlab("") + ylab("") +
-#     scale_fill_manual(values = colrs) +    
-#      theme_void() + theme(legend.title = element_blank()) +
-#     theme(text=element_text(family="serif"))
-# 
-#   print(catPlot)
-#   
-#   tempData <- filter(harvUseCatData, commname == comm) %>%
-#     arrange(resource) %>%
-#     select(resName, used_pct, attempt_pct, harvestq_pct)
-#   
-#   #usePlot <- ggplot(data, aes(fill=condition, y=value, x=resName)) + 
-#   #  geom_bar(position="dodge", stat="identity")
-# 
-#   tempData <- filter(harvUseCatData, commname == comm & resource != 0)
-#   count = nrow(tempData)
-#   
-#   useVar <- c(tempData$used_pct, tempData$attempt_pct, tempData$harvestq_pct)
-#   label <- c(rep("using", count), rep("attempting", count), rep("harvesting", count))
-#   # Repeat each category 3 times?
-#   category <- rep(tempData$resName, 3)  
-#   plotData <- data.frame(category, label, useVar)
-#   
-#   labelOrder = c("using", "attempting", "harvesting")
-#   plotData$category = str_wrap(plotData$category, width = 10)
-#   catOrder <- distinct(plotData, category)$category
-#       
-#   colrs <- getColors(nColors = 3)
-#   plotOut <- ggplot(plotData, aes(fill=factor(label, labelOrder), 
-#                                   y=useVar, 
-#                                   x=category,
-#                        label = scales::percent(useVar))) + 
-#     ggtitle(str_interp("Use, attempt, and harvest by resource category, ${comm}, ${studyear}")) +
-#     geom_bar(position = position_dodge(width = 0.5), stat="identity") +
-#     geom_text(position = position_dodge(width = .5),    # move to center of bars
-#               vjust = -0.5,    # nudge above top of bar
-#               size = 3) +
-#     scale_x_discrete(limits = catOrder) +
-#     scale_y_continuous(labels = scales::percent) +
-#     scale_fill_manual(values = colrs) +
-#     labs(fill='') +
-#     ylab("Percentage") + xlab("Resource category") +
-#     theme(legend.position="bottom", legend.title = element_blank()) +
-#     theme(text=element_text(family="serif")) +
-#     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-#         panel.background = element_blank(), axis.line = element_line(colour = "black"))
-#     # For angle
-#     #theme(axis.text.x = element_text(angle = 0, vjust = 0.5))
-#  
-#   print(plotOut)
-# 
-# }
-
-
 ```
 
 ## Category figure data
 
-Produce a dataset containing species by category for pie-charts by resource category.
+Produce a dataset containing species by category for pie charts by resource category.
 
 ```{r category figure data, message=FALSE}
 
@@ -553,7 +436,6 @@ veg_lump <- function(data, resource_range, name, code = NULL) {
 }
 
 
-
 # Special handling for vegetation, we'll lump into sub-categories to start:
 #  Mushrooms, Berries, Other vegetation, seaweed, all other processing will work fine as below (I think).
 
@@ -593,7 +475,8 @@ lumpedSpecies1Data <- harvUseFigData_main %>%
       catCode == 21 ~ "All other large land mammals",
       catCode == 22 ~ "All other small land mammals",
       catCode == 23 ~ "All other feral animals",
-      catCode %in% c(41, 42, 43) ~ "All other birds and eggs",
+      # catCode %in% c(41, 42, 43) ~ "All other birds and eggs",
+      catCode == 40 ~ "All other birds and eggs",
       TRUE ~ "All other"
     ),
     resource = (catCode * 10000000) + 9999999
@@ -609,7 +492,8 @@ lumpedSpecies2Data <- harvUseFigData_main %>%
     resName = case_when(
       catCode == 30 ~ "All other marine mammals",
       catCode == 50 ~ "All other marine invertebrates",
-      catCode %in% c(41, 42, 43) ~ "All other birds and eggs",
+      # catCode %in% c(41, 42, 43) ~ "All other birds and eggs",
+      catCode == 40 ~ "All other birds and eggs",
       TRUE ~ "All other"
     ),
     resource = (catCode * 10000000) + 99999999
@@ -641,412 +525,15 @@ harvUseFigData$resName <- str_trim(harvUseFigData$resName, side = "both")
 
 ```
 
-## Salmon
-
-```{r salmon species pie, eval = FALSE}
-
-for(comm in commnameList$commname)
-{
-  tempData <- filter(harvUseFigData, catCode == 11 & 
-                       resource != 110000000 &
-                       commname == comm) 
-  
-  if(nrow(tempData) > 0)
-  {
-     colrs <- getColors(nColors = nrow(tempData))
-       # Organize data for more logical display.
-      tempData <- arrange(tempData, percap)
-      tempData$resName = factor(tempData$resName, levels = rev(unique(tempData$resName)))
-
-     specPlot <- ggplot(tempData, 
-           aes(x = "", 
-               y = percap, 
-               fill = resName)) +
-      ggtitle(str_interp("Salmon harvest by species ${comm}, ${studyear}.")) +
-      geom_bar(width = 1, 
-               stat = "identity", 
-               color = "white") +
-      coord_polar("y", 
-                  start = 0, 
-                  direction = -1) +
-      xlab("") + ylab("") +
-      scale_fill_manual(values = colrs) +    
-       theme_void() +  theme(legend.title = element_blank()) +
-      theme(text=element_text(family="serif"))
-  
-    print(specPlot)   
-    
-  } else {
-    cat(warningMessage(str_interp("No salmon data present for ${comm}, ${studyear}")))
-  }
-}
-
-```
-
-## Non Salmon fish  
-  
-```{r non salmon species pie, eval = FALSE}
-
-for(comm in commnameList$commname)
-{
-  tempData <- filter(harvUseFigData, catCode == 12 & 
-                       resource != 120000000 &
-                       commname == comm) 
-  
-    if(nrow(tempData) > 10) {
-      tempData <- select(tempData, resName, percap, estHarvestLbs_sum) %>%
-        arrange(desc(percap))
-      tempData$order = seq(1, nrow(tempData))
-      
-      tempData$order[tempData$order >= 10] = 10
-      tempData$resName[tempData$order == 10] = "All other species"
-      
-      tempData <- tempData %>% 
-        group_by(resName) %>%
-        summarise(percap = sum(percap, na.rm=TRUE),
-                  estHarvestLbs_sum = sum(estHarvestLbs_sum, na.rm=TRUE)) %>%
-        ungroup()
-    }
-  
-  if(nrow(tempData) > 0)
-  {
-     colrs <- getColors(nColors = nrow(tempData))
-      tempData <- arrange(tempData, percap)
-      tempData$resName = factor(tempData$resName, levels = rev(unique(tempData$resName)))
-     
-     specPlot <- ggplot(tempData, 
-           aes(x = "", 
-               y = percap, 
-               fill = resName)) +
-      ggtitle(str_interp("Non-salmon harvest by species ${comm}, ${studyear}.")) +
-      geom_bar(width = 1, 
-               stat = "identity", 
-               color = "white") +
-      coord_polar("y", 
-                  start = 0, 
-                  direction = -1) +
-      xlab("") + ylab("") +
-      scale_fill_manual(values = colrs) +    
-       theme_void() + theme(legend.title = element_blank()) +
-      theme(text=element_text(family="serif"))
-  
-    print(specPlot)   
-    
-  } else {
-    cat(warningMessage(str_interp("No non-salmon data present for ${comm}, ${studyear}")))
-  }
-}
-
-```
-
-## Large game
-
-```{r large game species pie, eval = FALSE}
-
-for(comm in commnameList$commname)
-{
-  tempData <- filter(harvUseFigData, catCode == 21 & 
-                       resource != 210000000 &
-                       commname == comm) 
-  
-  if(nrow(tempData) > 0)
-  {
-     colrs <- getColors(nColors = nrow(tempData))
-      tempData <- arrange(tempData, percap)
-      tempData$resName = factor(tempData$resName, levels = rev(unique(tempData$resName)))
-     
-     specPlot <- ggplot(tempData, 
-           aes(x = "", 
-               y = percap, 
-               fill = resName)) +
-      ggtitle(str_interp("Large land mammal harvest by species ${comm}, ${studyear}.")) +
-      geom_bar(width = 1, 
-               stat = "identity", 
-               color = "white") +
-      coord_polar("y", 
-                  start = 0, 
-                  direction = -1) +
-      xlab("") + ylab("") +
-      scale_fill_manual(values = colrs) +    
-       theme_void() + theme(legend.title = element_blank()) +
-      theme(text=element_text(family="serif"))
-  
-    print(specPlot)   
-    
-  } else {
-    cat(warningMessage(str_interp("No large land mammal data present for ${comm}, ${studyear}")))
-  }
-}
-
-```
-
-## Small game / furbearers
-
-```{r small game species pie, eval = FALSE}
-
-for(comm in commnameList$commname)
-{
-  tempData <- filter(harvUseFigData, catCode == 22 & 
-                       resource != 220000000 &
-                       commname == comm) 
-  
-  if(nrow(tempData) > 0)
-  {
-     colrs <- getColors(nColors = nrow(tempData))
-      tempData <- arrange(tempData, percap)
-      tempData$resName = factor(tempData$resName, levels = rev(unique(tempData$resName)))
-     
-     specPlot <- ggplot(tempData, 
-           aes(x = "", 
-               y = estHarvestAmt_sum, 
-               fill = resName)) +
-      ggtitle(str_interp("Small land mammal harvest by species ${comm}, ${studyear}.")) +
-      geom_bar(width = 1, 
-               stat = "identity", 
-               color = "white") +
-      coord_polar("y", 
-                  start = 0, 
-                  direction = -1) +
-      xlab("") + ylab("") +
-      scale_fill_manual(values = colrs) +    
-       theme_void() + theme(legend.title = element_blank()) +
-      theme(text=element_text(family="serif"))
-  
-    print(specPlot)   
-    
-  } else {
-    cat(warningMessage(str_interp("No small land mammal data present for ${comm}, ${studyear}")))
-  }
-}
-
-```
-
-## Feral game
-
-```{r feral species pie, eval = FALSE}
-
-for(comm in commnameList$commname)
-{
-  tempData <- filter(harvUseFigData, catCode == 23 & 
-                       resource != 230000000 &
-                       commname == comm) 
-  
-  if(nrow(tempData) > 0)
-  {
-     colrs <- getColors(nColors = nrow(tempData))
-      tempData <- arrange(tempData, percap)
-      tempData$resName = factor(tempData$resName, levels = rev(unique(tempData$resName)))
-     
-     specPlot <- ggplot(tempData, 
-           aes(x = "", 
-               y = percap, 
-               fill = resName)) +
-      ggtitle(str_interp("feral land mammal harvest by species ${comm}, ${studyear}.")) +
-      geom_bar(width = 1, 
-               stat = "identity", 
-               color = "white") +
-      coord_polar("y", 
-                  start = 0, 
-                  direction = -1) +
-      xlab("") + ylab("") +
-      scale_fill_manual(values = colrs) +    
-       theme_void() + theme(legend.title = element_blank()) +
-      theme(text=element_text(family="serif"))
-  
-    print(specPlot)   
-    
-  } else {
-    cat(warningMessage(str_interp("No feral land mammal data present for ${comm}, ${studyear}")))
-  }
-}
-
-```
-
-## Marine Mammals
-
-```{r marine mammal species pie, eval = FALSE}
-
-for(comm in commnameList$commname)
-{
-  tempData <- filter(harvUseFigData, catCode == 30 & 
-                       resource != 300000000 &
-                       commname == comm) 
-  
-  if(nrow(tempData) > 0)
-  {
-     colrs <- getColors(nColors = nrow(tempData))
-      tempData <- arrange(tempData, percap)
-      tempData$resName = factor(tempData$resName, levels = rev(unique(tempData$resName)))
-     
-     specPlot <- ggplot(tempData, 
-           aes(x = "", 
-               y = percap, 
-               fill = resName)) +
-      ggtitle(str_interp("Marine mammal harvest by species ${comm}, ${studyear}.")) +
-      geom_bar(width = 1, 
-               stat = "identity", 
-               color = "white") +
-      coord_polar("y", 
-                  start = 0, 
-                  direction = -1) +
-      xlab("") + ylab("") +
-      scale_fill_manual(values = colrs) +    
-       theme_void() + theme(legend.title = element_blank()) +
-      theme(text=element_text(family="serif"))
-  
-    print(specPlot)   
-    
-  } else {
-    cat(warningMessage(str_interp("No marine mammal data present for ${comm}, ${studyear}")))
-  }
-}
-
-```
-
-## Birds
-
-```{r migratory bird species pie, eval = FALSE}
-
-for(comm in commnameList$commname)
-{
-  tempData <- filter(harvUseFigData, catCode == 40 & 
-                       resource != 400000000 &
-                       commname == comm) 
-
-    if(nrow(tempData) > 10) {
-      tempData <- select(tempData, resName, percap, estHarvestLbs_sum) %>%
-        arrange(desc(percap))
-      tempData$order = seq(1, nrow(tempData))
-      
-      tempData$order[tempData$order >= 10] = 10
-      tempData$resName[tempData$order == 10] = "All other species"
-      
-      tempData <- tempData %>% 
-        group_by(resName) %>%
-        summarise(percap = sum(percap, na.rm=TRUE),
-                  estHarvestLbs_sum = sum(estHarvestLbs_sum, na.rm=TRUE)) %>%
-        ungroup()
-    }
-    
-  if(nrow(tempData) > 0)
-  {
-     colrs <- getColors(nColors = nrow(tempData))
-      tempData <- arrange(tempData, percap)
-      tempData$resName = factor(tempData$resName, levels = rev(unique(tempData$resName)))
-     
-     specPlot <- ggplot(tempData, 
-           aes(x = "", 
-               y = percap, 
-               fill = resName)) +
-      ggtitle(str_interp("Bird harvest by species ${comm}, ${studyear}.")) +
-      geom_bar(width = 1, 
-               stat = "identity", 
-               color = "white") +
-      coord_polar("y", 
-                  start = 0, 
-                  direction = -1) +
-      xlab("") + ylab("") +
-      scale_fill_manual(values = colrs) +    
-       theme_void() + theme(legend.title = element_blank()) +
-      theme(text=element_text(family="serif"))
-  
-    print(specPlot)   
-    
-  } else {
-    cat(warningMessage(str_interp("No bird data present for ${comm}, ${studyear}")))
-  }
-}
-
-```
-
-## Marine Invertebrate
-
-```{r marine invertebrate species pie, eval = FALSE}
-
-for(comm in commnameList$commname)
-{
-  tempData <- filter(harvUseFigData, catCode == 50 & 
-                       resource != 500000000 &
-                       commname == comm) 
-  
-  if(nrow(tempData) > 0)
-  {
-     colrs <- getColors(nColors = nrow(tempData))
-      tempData <- arrange(tempData, percap)
-      tempData$resName = factor(tempData$resName, levels = rev(unique(tempData$resName)))
-     
-     specPlot <- ggplot(tempData, 
-           aes(x = "", 
-               y = percap, 
-               fill = resName)) +
-      ggtitle(str_interp("Marine invertebrate harvest by species ${comm}, ${studyear}.")) +
-      geom_bar(width = 1, 
-               stat = "identity", 
-               color = "white") +
-      coord_polar("y", 
-                  start = 0, 
-                  direction = -1) +
-      xlab("") + ylab("") +
-      scale_fill_manual(values = colrs) +    
-       theme_void() + theme(legend.title = element_blank()) +
-      theme(text=element_text(family="serif"))
-  
-    print(specPlot)   
-    
-  } else {
-    cat(warningMessage(str_interp("No marine invertebrate data present for ${comm}, ${studyear}")))
-  }
-}
-
-```
-
-## Vegetation
-
-```{r vegetation species pie, eval = FALSE}
-
-for(comm in commnameList$commname)
-{
-  tempData <- filter(harvUseFigData, catCode == 60 & 
-                       resource != 600000000 &
-                       commname == comm) 
-  
-  if(nrow(tempData) > 0)
-  {
-     colrs <- getColors(nColors = nrow(tempData))
-      tempData <- arrange(tempData, percap)
-      tempData$resName = factor(tempData$resName, levels = rev(unique(tempData$resName)))
-     
-     specPlot <- ggplot(tempData, 
-           aes(x = "", 
-               y = percap, 
-               fill = resName)) +
-      ggtitle(str_interp("Vegetation harvest by species ${comm}, ${studyear}.")) +
-      geom_bar(width = 1, 
-               stat = "identity", 
-               color = "white") +
-      coord_polar("y", 
-                  start = 0, 
-                  direction = -1) +
-      xlab("") + ylab("") +
-      scale_fill_manual(values = colrs) +    
-       theme_void() + theme(legend.title = element_blank()) +
-      theme(text=element_text(family="serif"))
-  
-    print(specPlot)   
-    
-  } else {
-    cat(warningMessage(str_interp("No vegetation data present for ${comm}, ${studyear}")))
-  }
-}
-
-```
+## Species composition by resource category
 
 ```{r Function to create all species composition plots}
 
 # Helper function for pie plotting
 plot_species_pie <- function(data, comm, study_year, cat_code, resource_exclude, 
                              title_prefix, yvar = "percap", 
-                             collapse_all_other = FALSE, n_collapse = 10) {
+                             collapse_all_other = FALSE, n_collapse = 10,
+                             collapse_label) {
 
   tempData <- filter(data, 
                      .data$catCode == cat_code,
@@ -1060,7 +547,7 @@ plot_species_pie <- function(data, comm, study_year, cat_code, resource_exclude,
       arrange(desc(!!sym(yvar)))
     tempData$order <- seq_len(nrow(tempData))
     tempData$order[tempData$order >= n_collapse] <- n_collapse
-    tempData$resName[tempData$order == n_collapse] <- "All other species"
+    tempData$resName[tempData$order == n_collapse] <- glue("{collapse_label}")
     tempData <- tempData %>%
       group_by(resName) %>%
       summarise(percap = sum(percap, na.rm = TRUE),
@@ -1092,16 +579,16 @@ plot_species_pie <- function(data, comm, study_year, cat_code, resource_exclude,
 
 # List of plots to make, specifying unique settings for each
 pie_plot_settings <- tibble::tribble(
-  ~plot_group,        ~cat_code, ~resource_exclude, ~title_prefix,                    ~yvar,              ~collapse_all_other, ~n_collapse,
-  "salmon",           11,       110000000,         "Salmon harvest by species",      "percap",           FALSE,               NA,
-  "non_salmon_fish",  12,       120000000,         "Non-salmon harvest by species",  "percap",           TRUE,                10,
-  "large_game",       21,       210000000,         "Large land mammal harvest by species", "percap",    FALSE,               NA,
-  "small_game",       22,       220000000,         "Small land mammal harvest by species", "estHarvestAmt_sum", FALSE,         NA,
-  "feral_game",       23,       230000000,         "Feral land mammal harvest by species", "percap",    FALSE,               NA,
-  "marine_mammals",   30,       300000000,         "Marine mammal harvest by species", "percap",         FALSE,               NA,
-  "birds",            40,       400000000,         "Bird harvest by species",        "percap",           TRUE,                10,
-  "marine_invert",    50,       500000000,         "Marine invertebrate harvest by species", "percap",   FALSE,               NA,
-  "vegetation",       60,       600000000,         "Vegetation harvest by species",  "percap",           FALSE,               NA
+  ~plot_group,        ~cat_code, ~resource_exclude, ~title_prefix,                    ~yvar,              ~collapse_all_other, ~n_collapse, ~collapse_label,
+  "salmon",           11,       110000000,         "Salmon harvest by species",      "percap",           FALSE,               NA, "All other salmon",
+  "non_salmon_fish",  12,       120000000,         "Non-salmon harvest by species",  "percap",           TRUE,                10, "All other nonsalmon fishes",
+  "large_game",       21,       210000000,         "Large land mammal harvest by species", "percap",    FALSE,               NA, "All other large land mammals",
+  "small_game",       22,       220000000,         "Small land mammal harvest by species", "estHarvestAmt_sum", FALSE,         NA, "All other small land mammals",
+  "feral_game",       23,       230000000,         "Feral land mammal harvest by species", "percap",    FALSE,               NA, "All other feral land mammals",
+  "marine_mammals",   30,       300000000,         "Marine mammal harvest by species", "percap",         FALSE,               NA, "All other marine mammals",
+  "birds",            40,       400000000,         "Bird harvest by species",        "percap",           TRUE,                10, "All other birds and eggs",
+  "marine_invert",    50,       500000000,         "Marine invertebrate harvest by species", "percap",   FALSE,               NA, "All other marine invertebrates",
+  "vegetation",       60,       600000000,         "Vegetation harvest by species",  "percap",           FALSE,               NA, "All other plants and berries"
 )
 
 # Plot for each community and group
@@ -1119,7 +606,8 @@ walk2(
       title_prefix = setting$title_prefix,
       yvar = setting$yvar,
       collapse_all_other = setting$collapse_all_other,
-      n_collapse = setting$n_collapse %||% 10
+      n_collapse = setting$n_collapse %||% 10,
+      collapse_label = setting$collapse_label
     )
   }
 )
