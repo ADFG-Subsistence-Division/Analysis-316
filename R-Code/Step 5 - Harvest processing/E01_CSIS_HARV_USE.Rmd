@@ -324,7 +324,9 @@ harvData <- group_by(harvData, projID, studyear, communty, commname, NHouseholds
 fCount = nrow(harvData)
 cat(formatSummaryBlock(str_interp("Summarized to the community level, ${iCount} records have been aggregated to ${fCount}; if communities have NOT been stratified, this should be the same as above.")))
 
-for(comm in distinct(select(harvData, commname), commname)$commname)
+commnameList <- distinct(harvData, commname)
+
+for(comm in commnameList$commname)
 {
   count = nrow(harvData[harvData$specList == 1 & harvData$commname == comm,])
   cat(formatSummaryBlock(str_interp("${count} species-level records present for ${comm}.")))

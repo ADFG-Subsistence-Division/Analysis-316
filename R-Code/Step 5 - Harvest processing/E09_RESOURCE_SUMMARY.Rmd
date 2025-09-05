@@ -37,7 +37,7 @@ Produce outputs that list the resources asked about as well as scientific names 
 
 ## Input data
   
-- /CSV/03 - Main/convFact.csv  
+- /CSV/03 - Main/convFact_final.csv  
 - /CSV/05 - Final Analysis Output/harvest_use_raw.csv  
 - /CSV/00 - Lookup Codes/fullResList_raw.csv  
 - /CSV/00 - Lookup Codes/fullScientificResourceList.csv  
@@ -113,12 +113,12 @@ cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${s
 # ##############################################################################
 
 
-convData <- read.csv('../../CSV/03 - Main/convFact.csv', 
+convData <- read.csv('../../CSV/03 - Main/convFact_final.csv', 
                       na = '', 
                       header = TRUE, 
                       strip.white = TRUE)
 count <- nrow(convData)
-cat(formatSummaryBlock(paste("Opening file: convFact.csv, ", 
+cat(formatSummaryBlock(paste("Opening file: convFact_final.csv, ", 
                              count, 
                              " records loaded.", sep="")))
 

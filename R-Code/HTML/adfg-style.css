@@ -95,6 +95,20 @@ th {
     font-weight: bold;
 }
 
+/* Ensure table header styles persist inside kableExtra scroll_box and other containers */
+.scroll-box table th,
+.scroll-box th,
+.scrollBox table th,
+.scrollBox th,
+div.scroll-box th,
+div.scrollBox th,
+th {
+    background: #194a6b !important;
+    color: #fff !important;
+    font-weight: bold !important;
+    font-family: 'Segoe UI', Arial, 'Liberation Sans', sans-serif !important;
+}
+
 /* 6. Page background color is #e5e5e5 */
 body {
     font-family: 'Segoe UI', Arial, 'Liberation Sans', sans-serif;

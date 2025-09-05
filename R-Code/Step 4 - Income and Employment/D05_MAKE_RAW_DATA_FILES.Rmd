@@ -1009,17 +1009,17 @@ plotMedIncData <- bind_rows(medianEmployData, acsMedIncData)
 
 # Plot
 ggplot(plotMedIncData, aes(x = factor(commname, 
-                                         levels = c("United States","Alaska","Port Graham")), 
+                                      levels = c("United States", "Alaska", setdiff(unique(commname), c("United States", "Alaska")))), 
                            y = estIncome_median)) +
   geom_col(fill = "steelblue") +
   geom_errorbar(aes(ymin = lower_medIncome, ymax = upper_medIncome), width = 0.2) +
-  ggtitle(str_c("Median Income ", str_c(medianEmployData$commname, collapse = ", "), ", 2023")) +
+  ggtitle(str_c("Median Income ", str_c(medianEmployData$commname, collapse = ", "), ", ", medianEmployData$studyear)) +
   labs(
     x = "",
     y = "Median Income (USD)"
   ) +
   scale_y_continuous(labels = scales::label_dollar(accuracy = 1, big.mark = ",", decimal.mark = ".", prefix = "$")) +
-  theme_minimal()
+  theme_minimal(base_family = "serif")
 ```
 
 ## Write CSV files

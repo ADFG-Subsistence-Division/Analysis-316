@@ -446,7 +446,7 @@ for(comm in commnameList$commname)
   if(nrow(plotData) > 0)
   {
     # Get the number of resources before we pivot.
-      colrs <- getColors(nColors = nrow(plotData), override=TRUE)
+      colrs <- getColors(nColors = nrow(plotData))
     # THis only works because we don't need the community name at this point.
     plotData <- pivot_longer(plotData, cols=all_of(harvCols), names_to="month")
     plotData <- plotData %>% left_join(monthOrderData, by=c("month"))

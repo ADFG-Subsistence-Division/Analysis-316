@@ -1,7 +1,7 @@
 ---
 title: "D02_PREP_EMPLOY - (316) NPS Ambler Comprehensive"
 author: "Jesse Coleman"
-date: "2025-08-15"
+date: "2025-08-11"
 output:
   html_document:
     theme: null
@@ -430,21 +430,21 @@ expInfoData <- employData %>%
     validHH = max(1),
     employedAdultCount = max(employedAdult, na.rm = TRUE),
     jobCount = sum(employedAdult, na.rm = TRUE),
-    .groups = "drop"
+    #.groups = "drop"
   ) %>%
-  group_by(projID, samp, studyear, communty, commhh) %>%
+  #group_by(projID, samp, studyear, communty, commhh) %>%
   summarize(
     validHH = max(validHH, na.rm = TRUE),
     employedAdultCount = sum(employedAdultCount, na.rm = TRUE),
     jobCount = sum(jobCount, na.rm = TRUE),
-    .groups = "drop"
+    #.groups = "drop"
   ) %>%
-  group_by(projID, samp, studyear, communty, commhh) %>%
+  #group_by(projID, samp, studyear, communty, commhh) %>%
   summarize(
     validHH = sum(validHH, na.rm = TRUE),
     employedAdultCount = sum(employedAdultCount, na.rm = TRUE),
     jobCount = sum(jobCount, na.rm = TRUE),
-    .groups = "drop"
+    #.groups = "drop"
   ) %>%
   mutate(employStrataWt = commhh / validHH)
 

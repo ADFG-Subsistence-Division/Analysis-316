@@ -135,34 +135,47 @@ cat(formatSummaryBlock(paste("Opening file: fullResList_raw.csv, ",
                              count, 
                              " records loaded.", sep="")))
 
-# Load csv files with calculated conversion factors.
-calcConvFact <-
-  list.files(path = "../../CSV/03 - Main/", 
-             pattern = "^REC\\d{2}_calc_convFact\\.csv$", 
-             full.names = TRUE) %>% 
-  lapply(function(f) {
-    read.csv(f, stringsAsFactors = FALSE)
-  }) %>% 
-  keep(~ nrow(.) > 0) %>% 
-  bind_rows()
-
-
+# Read raw conversion factor file data.
 convFactData_raw <- read.csv(str_interp('../../CSV/03 - Main/convFact.csv'), 
                          na = '', header = TRUE, strip.white = TRUE) 
 
-convFactData <- convFactData_raw %>%
-                select(projID, studyear, communty, resource, units, convFact)%>% filter(!is.na(convFact)) %>% 
-  bind_rows(calcConvFact %>% select(projID, studyear, communty, resource, units, convFact)) %>% 
-  arrange(resource)
+# Load data for calculations & attempt to merge.
+convFactData_final <- tryCatch(
+  {
+    # Load csv files with calculated conversion factors.
+    calcConvFact <-
+      list.files(path = "../../CSV/03 - Main/", 
+                 pattern = "^REC\\d{2}_calc_convFact\\.csv$", 
+                 full.names = TRUE) %>% 
+      lapply(function(f) {
+        read_csv(f,col_types = c("cicciddddc"))
+      }) %>% 
+      bind_rows()
+    
+    assign("calcConvFact", calcConvFact, envir = .GlobalEnv)
+    
+    bind_rows(calcConvFact %>% 
+              rename(Source = source) %>% 
+              mutate(Source = "Calculated"),
+              convFactData_raw)
 
-convFactData_final <- bind_rows(calcConvFact %>% 
-                                  rename(Source = source) %>% 
-                                  mutate(Source = "Calculated"),
-                                convFactData_raw)
+  },
+    # If we fail here, there is nothing to bind from the calc file, so just use
+    #  the raw input as the _final output.
+    error = function(e) {
+      convFactData_raw
+  })
+
+# Reduce the final conversion factor file to just the essentials for data 
+#   processing.
+
+convFactData <- convFactData_final %>% 
+        select(projID, studyear, communty, resource, units, convFact, defaultUnits) 
 
 cat(formatSummaryBlock(paste("Opening file: convFact.csv, ", 
                              nrow(convFactData), 
                              " records loaded.", sep="")))
+
 
 ```
 
@@ -492,6 +505,15 @@ harvData$reptHarvestLbs[harvData$mRepl == 1 & harvData$specList == 1 & harvData$
 
 # final step for mixed units.
 harvData$units[harvData$specList == 2 & harvData$unit_min != harvData$unit_max] = 0
+
+# Dolly Varden 125006000 was causing duplication of Dolly Varden, unknown type harvests. Recoding specList to avoid duplication.
+
+harvData <- harvData %>% mutate(specList = if_else(resource == 125006000, 2, specList))
+
+# Market resources are showing up for some reason, and causing NAs.
+
+harvData <- harvData %>% filter(!is.na(commname))
+
 
 # Clean up coding issues.
 

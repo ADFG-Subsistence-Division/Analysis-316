@@ -822,6 +822,13 @@ cat(formatSummaryBlock(
 
 ```
 
+```{r manual fixes}
+
+# One respondent gave an unclear response about their harvest of red squirrel; they reported normally harvesting red squirrel but could not recall if they harvested them during the study year. Removing this record.
+
+REC14CSISData <- REC14CSISData %>% filter(!is.na(used))
+
+```
 
 # Write out CSV files
 

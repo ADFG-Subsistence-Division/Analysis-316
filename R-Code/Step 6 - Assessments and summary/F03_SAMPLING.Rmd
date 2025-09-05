@@ -138,7 +138,7 @@ sampleOutData <- sampleData
 sampleOutData$attemptSurvey = sampleOutData$samphh + sampleOutData$refuse + sampleOutData$noContact
 
 sampleOutData$pctSurvey = sampleOutData$samphh / sampleOutData$commhh
-sampleOutData$refuseRate = sampleOutData$samphh / (sampleOutData$samphh + sampleOutData$refuse)
+sampleOutData$refuseRate = sampleOutData$refuse / (sampleOutData$samphh + sampleOutData$refuse)
 
 sampleOutData$newHouseholds = NA
 

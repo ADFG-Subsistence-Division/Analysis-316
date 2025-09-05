@@ -544,32 +544,35 @@ In order for this figure to work properly in ggplot2, the data must be pivoted s
 
 example footnote: "Note: Dip net for salmon was asked on the survey form, but respondents did not indicate use." or something similar. 
 
-```{r salmon figures}
+```{r salmon figures, eval = FALSE}
 
 # Remove all gear types without harvest quantities for clarity (by category).
-plotSalmonData <- pivot_longer(figData, cols=starts_with("elbs_"), names_to="gearType", values_to="harvestLbs") %>%
+plotSalmonData <- figData %>% 
+  select(-elbs_amtDogFood) %>% 
+  pivot_longer(cols = starts_with("elbs_"), 
+               names_to = "gearType", 
+               values_to = "harvestLbs") %>%
   filter(resource < 120000000 & 
            !(gearType %in% paste('elbs_', cfHarvList, sep="")) &
-           gearType != 'elbs_amtSubsHarv')
+           gearType != 'elbs_amtSubsHarv') %>% 
 
 # Find the 'max' harvest for each specified gear type as a mutate. Filter on this so that gear types
 #   without harvests don't appear (this is done to provide a mechanism for analysts
 #   to simply RUN the R-Markdown without first correctly identifying gear type).
-plotSalmonData <- group_by(plotSalmonData, projID, studyear, communty, gearType) %>%
+  group_by(projID, studyear, communty, gearType) %>%
   mutate(maxGearLbs = max(harvestLbs, na.rm=TRUE)) %>%
   filter(harvestLbs > 0) %>%
-  ungroup()
-
-plotSalmonData$gearType = str_replace(plotSalmonData$gearType, 'elbs_', '')
-plotSalmonData <- left_join(plotSalmonData, gearLabelData, by="gearType")
+  ungroup() %>% 
+  mutate(gearType =str_replace(gearType, 'elbs_', '')) %>% 
+  left_join(gearLabelData, by = "gearType")
 
 for(comm in commnameList$commname)
 {
   tmpFigData <- filter(plotSalmonData, commname == comm) %>%
     select(fishCategory, harvRank, resName, gearName, harvestLbs)
 
-  colCount = nrow(distinct(tmpFigData, gearName))
-  colrs <- getColors(nColors = colCount)
+  print(tmpFigData)
+  colrs <- getColors(nColors = nrow(distinct(tmpFigData, gearName))
 
   # ggplot labels  
   tmpFigLabels <- group_by(tmpFigData, fishCategory, harvRank) %>%
@@ -623,74 +626,72 @@ for(comm in commnameList$commname)
 
 ```
 
-### Non salmon figures
-```{r non salmon figures}
-
+```{r non salmon figures, eval = FALSE}
 
 #Remove all gear types without harvest quantities for clarity (by category).
-plotNonSalmonData <- pivot_longer(figData, cols=starts_with("elbs_"), names_to="gearType", values_to="harvestLbs") %>%
+plotNonSalmonData <- figData %>% 
+  select(-elbs_amtDogFood) %>% 
+  pivot_longer(cols = starts_with("elbs_"), 
+               names_to = "gearType", 
+               values_to = "harvestLbs") %>%
   filter(resource > 120000000 & 
            !(gearType %in% paste('elbs_', cfHarvList, sep="")) &
-           gearType != 'elbs_amtSubsHarv')
+           gearType != 'elbs_amtSubsHarv') %>% 
 
 # Find the 'max' harvest for each specified gear type as a mutate. Filter on this so that gear types
 #   without harvests don't appear (this is done to provide a mechanism for analysts
 #   to simply RUN the R-Markdown without first correctly identifying gear type).
-plotNonSalmonData <- group_by(plotNonSalmonData, projID, studyear, communty, gearType) %>%
+  group_by(projID, studyear, communty, gearType) %>%
   mutate(maxGearLbs = max(harvestLbs, na.rm=TRUE)) %>%
   filter(harvestLbs > 0) %>%
-  ungroup()
-
-plotNonSalmonData$gearType = str_replace(plotNonSalmonData$gearType, 'elbs_', '')
-plotNonSalmonData <- left_join(plotNonSalmonData, gearLabelData, by="gearType")
+  group_by(projID, studyear, communty) %>%
+  ungroup() %>% 
+  mutate(gearType = str_replace(gearType, 'elbs_', '')) %>% 
+  left_join(gearLabelData, by = "gearType")
 
 for(comm in commnameList$commname)
 {
-
   tmpFigData <- filter(plotNonSalmonData, commname == comm) %>%
     select(fishCategory, harvRank, resName, gearName, harvestLbs)
 
-  if(nrow(tmpFigData) > 0)
+  print(tmpFigData)
+  colCount = nrow(distinct(tmpFigData, gearName))
+  colrs <- getColors(nColors = colCount)
+
+  # ggplot labels  
+  tmpFigLabels <- group_by(tmpFigData, fishCategory, harvRank) %>%
+    summarize(labelValue = sum(harvestLbs, na.rm=TRUE)) %>% 
+    arrange(desc(harvRank)) %>%
+    ungroup()
+
+  # Start with initial plot information.
+  plotOut <- ggplot(tmpFigData, aes(x=reorder(resName, desc(harvRank)), y=harvestLbs)) +
+  ggtitle(str_interp("Harvests of nonsalmon by gear type ${comm}, ${studyear}")) +
+      geom_col(aes(fill = gearName), width=0.7) +
+      scale_fill_manual(values = colrs)
+                        
+  # Add labels, use 1% of highest harvest amount as the margin.
+  margin = ceiling(max(tmpFigLabels$labelValue) *.01)
+  for(ii in 1:nrow(tmpFigLabels))
   {
-    colCount = nrow(distinct(tmpFigData, gearName))
-    colrs <- getColors(nColors = colCount)
-  
-    # ggplot labels  
-    tmpFigLabels <- group_by(tmpFigData, fishCategory, harvRank) %>%
-      summarize(labelValue = sum(harvestLbs, na.rm=TRUE)) %>% 
-      arrange(desc(fishCategory), desc(harvRank)) %>%
-      ungroup()
+    tmpAmt = round(tmpFigLabels$labelValue[ii], 1)
     
-    tmpFigData <- arrange(tmpFigData, fishCategory, harvRank, desc(harvestLbs))
-    tmpFigData$dispOrder = 1:nrow(tmpFigData)
-    
-    # Start with initial plot information.
-    plotOut <- ggplot(tmpFigData, aes(x=reorder(resName, desc(dispOrder)), y=harvestLbs)) +
-    ggtitle(str_interp("Harvests of non-salmon fish by gear type ${comm}, ${studyear}")) +
-        geom_col(aes(fill = gearName), width=0.7) +
-        scale_fill_manual(values = colrs) 
-                          
-    # Add labels, use 1% of highest harvest amount as the margin.
-    margin = ceiling(max(tmpFigLabels$labelValue) *.01)
-    for(ii in 1:nrow(tmpFigLabels))
-    {
-      tmpAmt = round(tmpFigLabels$labelValue[ii], 1)
-      # Default align to the RIGHT.
-      lrAlign = 0
-      # If we think that the label will spill over the edge of the plot,
-      #  align to the inside edge.
-      if(tmpAmt/max(tmpFigLabels$labelValue) > 0.75)
-      { 
-        lrAlign = 1
-        margin = margin * -1
-      }
-      
-      plotOut = plotOut + 
-        annotate("text", x=ii, y=tmpAmt + margin, 
-                 hjust=lrAlign, label=tmpAmt)
+    # Default align to the RIGHT.
+    lrAlign = 0
+    # If we think that the label will spill over the edge of the plot,
+    #  align to the inside edge.
+    if(tmpAmt/max(tmpFigLabels$labelValue) > 0.75)
+    { 
+      lrAlign = 1 
+      margin = margin * -1
     }
     
-    # Add remainder of formatting.
+    plotOut = plotOut + 
+          annotate("text", x=ii, y=tmpAmt+margin, 
+                    label=tmpAmt, hjust=lrAlign, angle=0)
+  }
+  
+      # Add remainder of formatting.
     plotOut = plotOut +
       coord_flip() +
       ylab("Harvest (Pounds)") +
@@ -705,9 +706,137 @@ for(comm in commnameList$commname)
     # Display plots
     print(plotOut)
   }  # End of 'if no records' logic item.
-}
 
 ```
+
+```{r set up plotting functions}
+
+horizBarPlot <- function(df, year, comm) {
+  # Filter for study year and community
+  df_filt <- df %>%
+    filter(studyear == year, commname == comm)
+
+  # Calculate sum(harvestLbs) by resource
+  resource_totals <- df_filt %>%
+    group_by(resource, resName) %>%
+    summarize(total_harvest = sum(harvestLbs, na.rm = TRUE), .groups = "drop") %>%
+    arrange(desc(total_harvest))
+
+  # Order resources by total harvest
+  df_filt <- df_filt %>%
+    mutate(
+      resource = factor(resource, levels = resource_totals$resource),
+      resName = factor(resName, levels = resource_totals$resName)
+    )
+  
+  # For label positions: get total per resource
+  label_df <- resource_totals %>%
+    mutate(
+      resName = factor(resName, levels = resource_totals$resName)
+    )
+
+  ggplot(df_filt, aes(x = harvestLbs, y = resName, fill = gearName)) +
+    geom_col(position = "stack") +
+    geom_text(
+      data = label_df,
+      aes(
+        x = total_harvest + max(resource_totals$total_harvest) * 0.02, # a little to the right
+        y = resName,
+        label = round(total_harvest, 1)
+      ),
+      inherit.aes = FALSE,
+      hjust = 0,
+      size = 4,
+      family = "serif"
+    ) +
+    scale_x_continuous(expand = expansion(mult = c(0, .15))) +
+    labs(
+      title = str_glue("Harvest by Resource and Gear ({comm}, {year})"),
+      x = "Harvest (Pounds)",
+      y = "Resource",
+      fill = "Gear Type"
+    ) +
+    scale_fill_manual(values = getColors(nColors = nrow(distinct(df_filt, gearName)))) +
+    theme_minimal() +
+      theme(
+      axis.text.y = element_text(face = "bold"),
+      text=element_text(family="serif"),
+      legend.title = element_blank(),
+      panel.grid.major = element_blank(), 
+      panel.grid.minor = element_blank(),
+      panel.background = element_blank(), 
+      axis.line = element_line(colour = "black"),
+      legend.position="bottom")
+
+}
+
+# Get all combinations
+combinations <- figData %>% distinct(studyear, commname)
+```
+
+## Salmon harvest by gear type
+
+```{r salmon harvest by gear type}
+
+# Remove all gear types without harvest quantities for clarity (by category).
+plotSalmonData <- figData %>% 
+  select(-elbs_amtDogFood) %>% 
+  pivot_longer(cols = starts_with("elbs_"), 
+               names_to = "gearType", 
+               values_to = "harvestLbs") %>%
+  filter(resource < 120000000 & 
+           !(gearType %in% paste('elbs_', cfHarvList, sep="")) &
+           gearType != 'elbs_amtSubsHarv') %>% 
+
+# Find the 'max' harvest for each specified gear type as a mutate. Filter on this so that gear types
+#   without harvests don't appear (this is done to provide a mechanism for analysts
+#   to simply RUN the R-Markdown without first correctly identifying gear type).
+  group_by(projID, studyear, communty, gearType) %>%
+  mutate(maxGearLbs = max(harvestLbs, na.rm=TRUE)) %>%
+  filter(harvestLbs > 0) %>%
+  ungroup() %>% 
+  mutate(gearType =str_replace(gearType, 'elbs_', '')) %>% 
+  left_join(gearLabelData, by = "gearType")
+
+# Make salmon plots
+pmap(
+  combinations,
+  function(studyear, commname) horizBarPlot(plotSalmonData, studyear, commname)
+)
+
+```
+
+## Nonsalmon harvest by gear type
+```{r nonsalmon harvest by gear type}
+
+plotNonSalmonData <- figData %>% 
+  select(-elbs_amtDogFood) %>% 
+  pivot_longer(cols = starts_with("elbs_"), 
+               names_to = "gearType", 
+               values_to = "harvestLbs") %>%
+  filter(resource > 120000000 & 
+           !(gearType %in% paste('elbs_', cfHarvList, sep="")) &
+           gearType != 'elbs_amtSubsHarv') %>% 
+
+# Find the 'max' harvest for each specified gear type as a mutate. Filter on this so that gear types
+#   without harvests don't appear (this is done to provide a mechanism for analysts
+#   to simply RUN the R-Markdown without first correctly identifying gear type).
+  group_by(projID, studyear, communty, gearType) %>%
+  mutate(maxGearLbs = max(harvestLbs, na.rm=TRUE)) %>%
+  filter(harvestLbs > 0) %>%
+  group_by(projID, studyear, communty) %>%
+  ungroup() %>% 
+  mutate(gearType = str_replace(gearType, 'elbs_', '')) %>% 
+  left_join(gearLabelData, by = "gearType")
+
+# Make nonsalmon plots
+pmap(
+  combinations,
+  function(studyear, commname) horizBarPlot(plotNonSalmonData, studyear, commname)
+)
+
+```
+
 
 # Harvest by gear percentages
 

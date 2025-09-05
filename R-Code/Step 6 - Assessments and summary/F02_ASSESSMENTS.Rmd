@@ -1,7 +1,7 @@
 ---
-title: "F02_ASSESSMENTS - (316) NPS Ambler Comprehensive"
+title: "F02_ASSESSMENTS - (316) NPS Ambler Comprehensive 2025"
 author: "Jesse Coleman"
-date: "2025-08-15"
+date: "2025-08-11"
 output:
   html_document:
     theme: null
@@ -194,15 +194,17 @@ mutate(across(all_of(c("whyDiffCD1","whyDiffCD2")),
 
 # May require adjustment according to the data collected for this survey or if display
 #   groups weren't properly assigned.
-lsmDisplayGroups <- c('6604', '6606', '6608', '6610', '6612', 
+lsmDisplayGroups <- c('6600', '6604', '6606', '6608', '6610', '6612', 
                       '6614', '6615', '6617', '6618')
+
+REC66Data <- REC66Data %>% filter(displayGroup %in% lsmDisplayGroups)
 
 lsmCodeList <- codeSetData %>% 
   filter(codeSetID == 6) %>%
   select(code, codeDescription) %>% 
   # Make codeDescription as a factor so that we can control the order.
   mutate(codeDescription = factor(codeDescription, 
-                                  levels = c('Less', 'Same', 'More', 'Did not use'),
+                                  levels = c("Never harvest/ don't use","Less", "Same", "More", "Missing","Unknown","Refused","Didn't Ask"),
                                   ordered = TRUE)) %>%
   rename('histUse' = 'code',
          'histUseDesc' = 'codeDescription')
@@ -252,9 +254,10 @@ lsmReasonLessList <- tibble(
                  'Access restrictions',
                  'COVID-related',
                  'Other / unspecified')) %>% 
-  
+  mutate(lessSOrder = row_number())
+  # Below doesn't seem to work when pivoting.
   # set up the reasons as factors so that they sort properly.
-  mutate(lessReason = factor(lessReason, ordered = TRUE))
+  #mutate(lessReason = factor(lessReason, ordered = TRUE)) # Doesn't order 
 
 # List for 'more' reasons.
 lsmReasonMoreList <- tibble(
@@ -276,8 +279,11 @@ lsmReasonMoreList <- tibble(
                 'Had more help',
                 'Travelled further to harvest',
                 'Resource larger/healthier',
-                'Other / unspecified')) %>% 
-  mutate(moreReason = factor(moreReason, ordered = TRUE))
+                'Other / unspecified'))  %>% 
+  mutate(moreSOrder = row_number()) # %>% 
+  # Below doesn't seem to work when pivoting.
+  # set up the reasons as factors so that they sort properly.
+  #mutate(moreReason = factor(moreReason, ordered = TRUE))
   
 
 ```
@@ -295,9 +301,10 @@ Multiple resource may have been offered as being 'needed', aggregate just the Le
 REC66Data <- REC66Data %>% 
   mutate(histUse = if_else(histUse < 0 | is.na(histUse) , -9, histUse)) 
 
-# Merge in histUse codes for pivoting later on.
+# Merge in histUse codes for pivoting later on. -- remove NPS-Specific assessments.
 REC66LSMData <- REC66Data %>% left_join(lsmCodeList, by = c("histUse")) %>% 
-  mutate(hhRept = 1)
+  mutate(hhRept = 1) #%>%
+  #filter(displayGroup %in% lsmDisplayGroups)
 
 lsmCols <- unique(REC66LSMData$histUseDesc)
 
@@ -334,7 +341,8 @@ lsmTableData <- REC66LSMData %>%
   ungroup() %>%
   pivot_wider(names_from = histUseDesc, 
               values_from = number,
-              names_sort = TRUE)
+              names_sort = TRUE) #%>% 
+  #rename(DontUse = `Never harvest/ don't use`)
 
 lsmFrequencyData <- REC66LSMData %>% 
   group_by(projID, studyear, communty, 
@@ -443,6 +451,9 @@ lessReason2Data <- select(REC66LessData, projID, studyear, communty,
 
 # Combine and ensure there aren't duplicate reason codes, then
 #    merge and pivot.
+
+# First do some things to make sure we get stuff in the right order.
+
 lessReasonsData <- dplyr::bind_rows(lessReason1Data, lessReason2Data) %>%
                left_join(lsmReasonLessList, by=c("reasonCD")) %>%  
                group_by(projID, studyear, communty, 
@@ -450,9 +461,12 @@ lessReasonsData <- dplyr::bind_rows(lessReason1Data, lessReason2Data) %>%
                summarize(lessUse = max(lessUse)) %>%
                summarize(lessUse = sum(lessUse)) %>%
                 ungroup() %>%
-                pivot_wider(names_from=lessReason, 
-                               values_from=lessUse,
-                               names_sort=TRUE)
+              pivot_wider(names_from=lessReason, 
+                            values_from=lessUse,
+                            names_sort=TRUE) %>%
+              select(projID, studyear, communty, 
+                     commname, resource, resName, 
+                     any_of(lsmReasonLessList$lessReason))
 
 lessReasonsData <- left_join(validLessReasonData, lessReasonsData, 
                              by=c('projID', 'studyear', 'communty', 
@@ -505,7 +519,10 @@ moreReasonsData <- dplyr::bind_rows(moreReason1Data, moreReason2Data) %>%
                 ungroup() %>%
                 pivot_wider(names_from=moreReason, 
                                values_from=moreUse,
-                               names_sort=TRUE)
+                               names_sort=TRUE) %>%
+              select(projID, studyear, communty, 
+                     commname, resource, resName, 
+                     any_of(lsmReasonMoreList$moreReason))
 
 moreReasonsData <- left_join(validMoreReasonData, moreReasonsData, 
                              by=c('projID', 'studyear', 'communty', 
@@ -526,20 +543,20 @@ In this step, please review each table for obvious errors or issues. When re-run
 
 <div class="todoBlock">Re-enable the code below and reorganize to work with the new table and data layouts produced above. Temporary tables have been produced above.</div>
 
-```{r LSM table review, eval=FALSE}
+```{r LSM table review, eval = FALSE}
 # Here you can display summary information regarding the analysis that will help. 
 # One community at a time and only necessary outputs, we'll simplify further
 #   in the next step.
 
-commnameList <- ungroup(lsmOutputData) %>% select(commname) %>% distinct(commname)
-LSMtempData <- lsmOutputData
+commnameList <- ungroup(lsmTableData) %>% select(commname) %>% distinct(commname)
+LSMtempData <- lsmTableData
 
 # Calculate percentages and ensure NA gets turned to 0.
-LSMtempData$anyUse_pct = LSMtempData$anyUse/LSMtempData$validLSM
-LSMtempData$less_pct = LSMtempData$less/LSMtempData$validLSM
-LSMtempData$same_pct = LSMtempData$same/LSMtempData$validLSM
-LSMtempData$more_pct = LSMtempData$more/LSMtempData$validLSM
-LSMtempData$DontUse_pct = LSMtempData$DontUse/LSMtempData$validLSM
+LSMtempData$anyUse_pct = LSMtempData$usesRes/LSMtempData$valid
+LSMtempData$less_pct = LSMtempData$Less/LSMtempData$valid
+LSMtempData$same_pct = LSMtempData$Same/LSMtempData$valid
+LSMtempData$more_pct = LSMtempData$More/LSMtempData$valid
+LSMtempData$DontUse_pct = LSMtempData$DontUse/LSMtempData$valid
 LSMtempData <- recode_variables(LSMtempData, c('less_pct', 'same_pct', 'more_pct', 'DontUse_pct'),NA,0)
 
 for(comm in commnameList$commname)
@@ -676,7 +693,7 @@ In this step, please review each table for obvious errors or issues. When re-run
 
 # Reasons for less >=  valid responses
 
-lessTempData <- filter (LSMtempData, resName != 'Any resource')
+lessTempData <- filter(LSMtempData, resName != 'Any resource')
 
 lessTempData$lessReasonsTtl = 0
 lessTempData$lessReasonsTtl = (lessTempData$Less_FamPers + lessTempData$Less_UsedOtherResources + lessTempData$Less_Availability + lessTempData$Less_TooFar + lessTempData$Less_NoEquip + lessTempData$Less_notReceive + lessTempData$Less_EffortNoTry + lessTempData$Less_Unsuccessful + lessTempData$Less_WeatherEnv + lessTempData$Less_WorkingNoTime + lessTempData$Less_Regulations + lessTempData$Less_smallORdiseasedRes + lessTempData$Less_Expense + lessTempData$Less_NotNeed + lessTempData$Less_Competition + lessTempData$Less_NoHelp + lessTempData$Less_CovidRelated + lessTempData$Less_AccessRestrictions + lessTempData$Less_Other + lessTempData$Less_NR)
@@ -782,18 +799,203 @@ tempMoreData <- filter(moreTempData, commname == comm &
 
 ```
 
+## Reasons for more or less use - network figures
+
+```{r More reasons network figure}
+moreReasonsLong <- moreReasonsData %>%  
+  pivot_longer(cols = c(10:ncol(.)),
+               names_to = "moreReason",
+               values_to = "numResponses") %>% 
+  filter(!is.na(numResponses))
+  
+
+require(tidygraph)
+require(ggraph)
+
+moreNodes <- bind_rows(moreReasonsLong %>% group_by(projID, studyear, communty, commname, moreReason) %>% 
+                         summarize(nodeSize = sum(numResponses)) %>% 
+                         rename(name = moreReason),
+                       moreReasonsLong %>% group_by(projID, studyear, communty, commname, resName) %>% 
+                         summarize(nodeSize = 1) %>% 
+                         rename(name = resName)
+) %>% 
+  mutate(group = if_else(name %in% moreReasonsLong$moreReason, "Reason","Resource"),
+         x = if_else(group == "Resource", 0, 1)) %>% 
+  arrange(commname, studyear, group, desc(name)) %>%
+  group_by(commname, studyear, group) %>%
+  mutate(numRows = n_distinct(name),
+         maxRows = max(numRows),
+         y = if_else(numRows < maxRows, row_number() + maxRows-numRows/2, row_number()))
+
+moreEdges <- moreReasonsLong %>% mutate(to = moreReason, from = resName) %>% select(projID, commname, communty, studyear, to, from, numResponses) 
+
+
+combinations <- moreNodes %>% ungroup() %>%
+  select(commname, studyear) %>%
+  distinct()
+
+pwalk(
+  .l = combinations,
+  .f = function(commname_val, studyear_val) {
+    nodes_filt <- moreNodes %>% filter(commname == commname_val, studyear == studyear_val)
+    edges_filt <- moreEdges %>% filter(commname == commname_val, studyear == studyear_val)
+  
+moreNetwork <- tbl_graph(edges = edges_filt,
+                         nodes = nodes_filt,
+                         directed = FALSE)
+
+manual_layout <- nodes_filt %>% select(name, x, y)
+
+plotOut <- ggraph(moreNetwork, layout = manual_layout) +
+  geom_edge_link(aes(width = numResponses), color = "gray80", alpha = 0.5) +
+  geom_node_point(aes(size = nodeSize, color = name, shape = group)) +
+  geom_node_text(aes(label = name, hjust = ifelse(group == "Resource", 0, 1)),
+    vjust = 0.5, size = 3) +
+  scale_size_continuous(name = "Total number of responses",
+                        breaks = scales::pretty_breaks(n = 5), 
+                        labels = function(x) format(x, nsmall = 0, trim = TRUE)) +
+  scale_edge_width_continuous(name = "Number of responses per resource category",
+                              breaks = scales::pretty_breaks(n = 5), 
+                              labels = function(x) format(x, nsmall = 0, trim = TRUE)) +
+  theme_graph(base_family = "serif") +
+  guides(color = "none", shape = "none") +
+  ggtitle(paste0("Reasons for more use by resource category, ",commname_val,", ",studyear_val))
+
+print(plotOut)
+
+   # Optionally, save the plot:
+      # ggsave(filename = paste0("../../MoreReasonsNetwork_", commname, "_", studyear, ".png"), width = 10, height = 8)
+  }
+)
+
+```
+
+```{r Less reasons network figure}
+lessReasonsLong <- lessReasonsData %>%  
+  pivot_longer(cols = c(10:ncol(.)),
+               names_to = "lessReason",
+               values_to = "numResponses") %>% 
+  filter(!is.na(numResponses))
+  
+  
+lessNodes <- bind_rows(lessReasonsLong %>% group_by(projID, studyear, communty, commname, lessReason) %>% 
+                         summarize(nodeSize = sum(numResponses)) %>% 
+                         rename(name = lessReason),
+                       lessReasonsLong %>% group_by(projID, studyear, communty, commname, resName) %>% 
+                         summarize(nodeSize = 1) %>% 
+                         rename(name = resName)
+) %>% 
+  mutate(group = if_else(name %in% lessReasonsLong$lessReason, "Reason","Resource"),
+         x = if_else(group == "Resource", 0, 1)) %>% 
+  arrange(commname, studyear, group, desc(name)) %>%
+  group_by(commname, studyear, group) %>%
+  mutate(numRows = n_distinct(name),
+         maxRows = max(numRows),
+         y = if_else(numRows < maxRows, row_number() + (maxRows-numRows)/2, row_number()))
+
+lessEdges <- lessReasonsLong %>% mutate(to = lessReason, from = resName) %>% select(projID, commname, communty, studyear, to, from, numResponses) 
+
+
+combinations <- lessNodes %>% ungroup() %>%
+  select(commname, studyear) %>%
+  distinct()
+
+pwalk(
+  .l = combinations,
+  .f = function(commname_val, studyear_val) {
+    nodes_filt <- lessNodes %>% filter(commname == commname_val, studyear == studyear_val)
+    edges_filt <- lessEdges %>% filter(commname == commname_val, studyear == studyear_val)
+  
+lessNetwork <- tbl_graph(edges = edges_filt,
+                         nodes = nodes_filt,
+                         directed = FALSE)
+
+manual_layout <- nodes_filt %>% select(name, x, y)
+
+plotOut <- ggraph(lessNetwork, layout = manual_layout) +
+  geom_edge_link(aes(width = numResponses), color = "gray80", alpha = 0.5) +
+  geom_node_point(aes(size = nodeSize, color = name, shape = group)) +
+  geom_node_text(aes(label = name, hjust = ifelse(group == "Resource", 0, 1)),
+    vjust = 0.5, size = 3) +
+  scale_size_continuous(name = "Total number of responses",
+                        breaks = scales::pretty_breaks(n = 5), 
+                        labels = function(x) format(x, nsmall = 0, trim = TRUE)) +
+  scale_edge_width_continuous(name = "Number of responses per resource category",
+                              breaks = scales::pretty_breaks(n = 5), 
+                              labels = function(x) format(x, nsmall = 0, trim = TRUE)) +
+  theme_graph(base_family = "serif") +
+  guides(color = "none", shape = "none") +
+  ggtitle(paste0("Reasons for less use by resource category, ",commname_val,", ",studyear_val))
+
+print(plotOut)
+
+   # Optionally, save the plot:
+      # ggsave(filename = paste0("../../lessReasonsNetwork_", commname, "_", studyear, ".png"), width = 10, height = 8)
+  }
+)
+
+```
+
+## Heat tables
+
+```{r, eval = FALSE}
+
+moreReasonsHeat <- moreReasonsLong %>%
+ group_by(resName) %>% 
+ mutate(
+    row_max = max(numResponses, na.rm = TRUE),
+    fill_alpha = ifelse(row_max == 0, 0, moreUse / row_max), # avoid div by zero
+    fill_col = scales::alpha("red", fill_alpha)              # alpha sets transparency
+  ) %>%
+  ungroup()
+
+pwalk(
+  .l = combinations,
+  .f = function(commname_val, studyear_val) {
+    df_filt <- moreReasonsHeat %>% filter(commname == commname_val, studyear == studyear_val)
+    
+ print(df_filt)
+ 
+ plotOut <- ggplot(df_filt, aes(x = moreReason, y = resName)) +
+   geom_tile(aes(fill = fill_col, alpha = fill_alpha), color = "white", na.rm = TRUE) +
+   geom_text(aes(label = numResponses), color = "black", fontface = "bold") +
+   scale_fill_identity() +
+   theme_minimal(base_size = 12, base_family = "serif") +
+   theme(
+     axis.text.x = element_text(angle = 45, hjust = 1),
+     panel.grid = element_blank()
+   ) +
+   labs(x = "Reasons for more use", y = "Resource Name", title = paste0("Reasons for more use by resource category, ",commname_val,", ",studyear_val))
+ 
+ print(plotOut)
+ 
+  }
+)
+```
+
 ### Get enough/ Impact
 
 This portion of the assessment section addresses if households got enough of a resource category and the impact to the household if they did not. The same resource categories listed under the Less/Same/More section are also asked about in this section. If the household responds 'No' to the get enough question for any resource category, a follow up question is asked regarding the impact to the household of not getting enough. The impact question responses are on a scale from 'not noticeable' to 'severe'. Historically a 4 point scale was used, but recently an additional point (moderate) was added. Ascertain which scale was used in the data entry screen. You may need to remove 'moderate' from the column list. 
 
 ```{r get enough and impact data}
 
-REC66Data$validEnough = 0
+# Recode (-) codes to provide only one 'unknown' column rather than multiples.
+REC66Data <- REC66Data %>%
+  mutate(
+    validEnough = 0,
+    validEnough = if_else(histUse == 0, 1, validEnough),
+    validEnough = if_else(getEnough %in% c(0, 1), 1, validEnough),
+    impact = if_else(impact < 0, -9, impact),
+    # Provide an additional impact code to distingush between 'no use' and missing.
+    impact = if_else(histUse == 0, -10, impact)
+    )
 
-REC66Data$validEnough[which(REC66Data$histUse == 0)] = 1
-REC66Data$validEnough[which(REC66Data$getEnough %in% c(0,1))] = 1
+#REC66Data$validEnough = 0
+
+#REC66Data$validEnough[which(REC66Data$histUse == 0)] = 1
+#REC66Data$validEnough[which(REC66Data$getEnough %in% c(0,1))] = 1
 # Provide an additional impact code to distingush between 'no use' and missing.
-REC66Data$impact[which(REC66Data$histUse == 0)] = -10
+#REC66Data$impact[which(REC66Data$histUse == 0)] = -10
 
 
 # Develop 'any resource' code using -1 as the rescode so that we get proper sorting.
@@ -802,7 +1004,6 @@ REC66EnoughAnyData$resource = -1
 REC66EnoughAnyData$resName = 'Any resource'
 
 REC66EnoughData <- dplyr::bind_rows(REC66Data, REC66EnoughAnyData)
-
 REC66EnoughData$notEnough = 0
 # Differentiate between not enough and do not use. Depending on how the data entry 
 #   screen was set up this may or not may be necessary.
@@ -859,7 +1060,12 @@ REC66ImpactData <- group_by(REC66ImpactData,  projID, studyear, communty,
 getEnoughTableData <- left_join(keyData, REC66EnoughData, by=c('projID', 'studyear', 'communty', 
                                   'commname', 'resource', 'resName')) %>% 
                       left_join(REC66ImpactData, by=c('projID', 'studyear', 'communty', 
-                                  'commname', 'resource', 'resName'))
+                                  'commname', 'resource', 'resName')) %>%
+                      select(projID, studyear, communty, commname, samphh, resource, resName, 
+                             any_of(c('validEnough', 'getEnough', 'notEnough', 'Do Not Use',
+                                      'Missing', 'Not noticable', 'Minor', 
+                                      'Moderate', 'Major', 'Severe')))
+
 
 # ##############################################################
 # Calculate frequencies - Number of categories reported per HH
@@ -888,7 +1094,10 @@ REC66ImpactFrequencyData <- group_by(REC66ImpactFrequencyData,  projID, studyear
                    filter(!is.na(impactDesc)) %>%
                    pivot_wider(names_from="impactDesc", 
                                 values_from="number",
-                                names_sort = TRUE)
+                                names_sort = TRUE) %>%
+                   select(projID, studyear, communty, commname, HHID,
+                          any_of(c("Missing", "Not noticable", "Minor", 
+                                   "Moderate", "Major", "Severe")))
 
 # Enforce 0-values in the pivoted data; because we know what the first 5 values ought
 #   to be we can just skip those - they shouldn't be blank at this point.
