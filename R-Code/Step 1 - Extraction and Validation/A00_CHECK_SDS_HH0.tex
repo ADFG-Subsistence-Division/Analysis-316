@@ -1,0 +1,3136 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{longtable,booktabs,array}
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\usepackage{graphicx}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+% Set default figure placement to htbp
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  pdftitle={A00\_CHECK\_SDS\_HH0 - (316) NPS Ambler Comprehensive},
+  pdfauthor={Jesse Coleman},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\title{A00\_CHECK\_SDS\_HH0 - (316) NPS Ambler Comprehensive}
+\author{Jesse Coleman}
+\date{2025-08-15}
+
+\begin{document}
+\maketitle
+
+A00\_CHECK\_SDS\_HH0 - (316) NPS Ambler Comprehensive
+
+\section{Check SDS Summary}\label{check-sds-summary}
+
+Get data files from SQL Server for the SDS HH0 and verify that HH0
+doesn't contain erroneous records.
+
+\subsection{Changelog}\label{changelog}
+
+\begin{itemize}
+\tightlist
+\item
+  Programmer: D. Koster\\
+\item
+  Date: 05/21/2024
+\item
+  Change Description: Update to templates to improve consistency\\
+\item
+  Template Update {[}Y\textbar N{]}: Y\\
+\item
+  One-Off: No - all future scripts should implement these changes.
+\end{itemize}
+
+\subsection{Input data}\label{input-data}
+
+\begin{itemize}
+\tightlist
+\item
+  dfgjnusql-db71p/Sub\_SDS.dbo.xref\_community\_master\\
+\item
+  dfgjnusql-db71p/Sub\_SDS.dbo.META\_RECTYPE\_SPEC\\
+\item
+  dfgjnusql-db71p/Sub\_SDS.dbo.vw\_definedRecordTypes\\
+\item
+  dfgjnusql-db71p/Sub\_SDS.dbo.vw\_definedColumns\\
+\item
+  dfgjnusql-db71p/Sub\_SDS.dbo.vw\_fullCodesetList\\
+\item
+  dfgjnusql-db71p/Sub\_SDS.dbo.SP\_GET\_DATA\_BY\_RECTYPE\_FULL
+\end{itemize}
+
+\emph{NOTE:} No files from file-system are read in.
+
+\subsection{Output data}\label{output-data}
+
+\emph{NOTE:} No data files are written to the file-system.
+
+\subsection{Background}\label{background}
+
+To simplify data processing, each community will have a blank, default
+household record added. This is called Household 0, HHID 0 or HH 0.
+Standard coding procedure for identifying information, such as
+communities, resources, and household IDs, the value of 0 is used to
+represent `All' or `Any'. We use this for HH 0 to indicate that all
+households should begin with a certain set of default information. When
+a new household is entered in the data entry system, it starts as a copy
+of HH 0.
+
+Additional records can be added during data entry for specific
+households; however, by providing default records, analysis can begin
+with a reasonably standardized dataset. Again, this simplifies data
+entry, data processing, and data analysis.
+
+If HH 0 contains erroneous information or records, such as a non-zero
+harvest amount, this data will be propagated to all households and may
+require manual correction for all records created from HH 0.
+
+\subsection{Checklist}\label{checklist}
+
+\begin{itemize}
+\tightlist
+\item
+  All communities that have data entry screens are present\\
+\item
+  Communities have the correct codes \& names\\
+\item
+  All record types used on the survey form are present for each
+  community\\
+\item
+  Default values are correct - these should be 0 for harvest
+  information, NO for yes or no questions, blank or NA for: reason
+  codes, person information, employment information, and comments\\
+\item
+  Resource codes match the survey instrument \& are correct for the
+  record type (Commercial retention requires a 1 at the end)
+\item
+  No categorical resource codes are present on harvest records
+\end{itemize}
+
+\subsection{Additional Information}\label{additional-information}
+
+This file is not built to be compatible with SPSS data processing
+procedures.
+
+To loop through each record type code and community, we set up iterators
+and step through a list of valid record type codes and communities.
+{[}1{]} below illustrates the process. Note that we use c() to create a
+vector and we use the \$ to reference ONLY the column data in the query
+called recordTypeCD.
+
+{[}1{]} recTypeCDList \textless- c(dbGetQuery(conn,
+strSQL)\$recordTypeCD)
+
+\subsection{Required libraries}\label{required-libraries}
+
+\begin{itemize}
+\tightlist
+\item
+  tidyVerse\\
+\item
+  odbc\\
+\item
+  knitr
+\end{itemize}
+
+\section{Data Processing}\label{data-processing}
+
+\subsection{Initialize environment}\label{initialize-environment}
+
+\begin{verbatim}
+## Some optional R packages were not installed and therefore some file formats are not supported. Check file support with show_unsupported_formats()
+\end{verbatim}
+
+Working on project 316 NPS Ambler Comprehensive - 2024
+
+\begin{verbatim}
+## Warning: package 'odbc' was built under R version 4.4.3
+\end{verbatim}
+
+\subsection{Load data}\label{load-data}
+
+This script only extracts data from the database.
+
+SQL Extract:SELECT communty, commname FROM
+{[}xref\_community\_master{]}, 906 records loaded.
+
+SQL Extract:SELECT recordTypeCD, recordType FROM
+{[}META\_RECTYPE\_SPEC{]}, 34 records loaded.
+
+SQL Extract:SELECT DISTINCT {[}communty{]}, {[}recordTypeCD{]} FROM
+{[}vw\_definedRecordTypes{]} WHERE {[}projID{]} = 316 AND {[}studyear{]}
+= 2024 AND definedRecordTypeCD is not null, 17 records loaded.
+
+SQL Extract:SELECT projID, studyear, communty, recordTypeCD, colName,
+colDesc, colDataType, codeSetID FROM dbo.vw\_definedColumns\\
+WHERE (projID = 316 AND studyear = 2024 AND defColID is not null AND
+systemCD = 0), 336 records loaded.
+
+SQL Extract:SELECT DISTINCT codeSetID, codeSetName FROM
+dbo.vw\_fullCodesetList, 135 records loaded.
+
+SQL Extract:SELECT DISTINCT codeSetID, codeSetName FROM
+dbo.vw\_fullCodesetList, 336 records loaded.
+
+\subsection{SDS HHID0 Reports}\label{sds-hhid0-reports}
+
+Below are a series of reports that describe the contents of the template
+household. Please review carefully. Make sure if changes are required to
+data entry forms that records will not erroneously be hidden.
+
+\subsection{\texorpdfstring{11 - Ambler }{11 - Ambler  }}\label{ambler}
+
+Table:
+
+Defined record type codes
+
+\begin{longtable}[]{@{}ll@{}}
+\toprule\noalign{}
+Record Type Code & Record Type Description \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+00 & Household information \\
+01 & Person information \\
+03 & Retained Commercial Harvests \\
+04 & Salmon harvests (non commercial) \\
+06 & Non-salmon Fish harvests (non commercial) \\
+08 & Marine invertebrate harvests (non commercial) \\
+10 & Large Land Mammals \\
+12 & Marine Mammals \\
+14 & Small Land mammals \\
+15 & Birds and Eggs \\
+17 & Vegetation \\
+201 & Food Security \\
+23 & Household Employment \\
+24 & Other sources of income \\
+300 & Survey summary comments \\
+376 & Resource health and safety \\
+66 & Assessments \\
+\end{longtable}
+
+Table:
+
+Defined Columns 00 - Household information
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1240}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.6612}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1157}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.0992}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+colName
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+colDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+colDataType
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+codeSetName
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+recordTypeCD & Record Type Code & varchar(6) & \\
+subRecordCD & Logical subdivision of recordTypeCD & smallint & \\
+subRecordDesc & Description of subRecordCD & varchar(50) & \\
+recContComment & Record controller level comment (can be used at the top
+of a page for instance) & ntext & \\
+intvwr & Initials of interviewer & varchar(5) & \\
+intvwr2 & Initials of second interviewer & varchar(5) & \\
+intDate & Date of interview & smalldatetime & \\
+strtime & Start time of interview in 24 hour clock. Record as whole
+number. & smallint & \\
+endtime & End time of interview in 24 hour clock. Record as whole
+number. & smallint & \\
+coder & Initials of survey coder & varchar(5) & \\
+refusedFL & Refused to respond to questions & int & YesNo \\
+hhSize & How many people live in this household? & int & \\
+huntFishYN & Did anyone in the household hunt or fish during the study
+period? YN & int & YesNo \\
+\end{longtable}
+
+Table:
+
+HH 0 - Record Type: 00 - Household information
+
+\begin{longtable}[]{@{}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 36\tabcolsep) * \real{0.0407}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 36\tabcolsep) * \real{0.0523}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 36\tabcolsep) * \real{0.0523}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 36\tabcolsep) * \real{0.0291}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 36\tabcolsep) * \real{0.0407}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 36\tabcolsep) * \real{0.0465}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 36\tabcolsep) * \real{0.0756}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 36\tabcolsep) * \real{0.0698}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 36\tabcolsep) * \real{0.0814}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 36\tabcolsep) * \real{0.0407}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 36\tabcolsep) * \real{0.0465}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 36\tabcolsep) * \real{0.0465}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 36\tabcolsep) * \real{0.0465}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 36\tabcolsep) * \real{0.0465}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 36\tabcolsep) * \real{0.0349}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 36\tabcolsep) * \real{0.0581}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 36\tabcolsep) * \real{0.0407}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 36\tabcolsep) * \real{0.0640}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 36\tabcolsep) * \real{0.0872}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedleft
+projID
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+communty
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+studyear
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+HHID
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+strata
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+version
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+recordTypeCD
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+subRecordCD
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+subRecordDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+intvwr
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+intvwr2
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+intDate
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+strtime
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+endtime
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+coder
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+refusedFL
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+hhSize
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+huntFishYN
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+recContComment
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+316 & 11 & 2024 & 0 & 0 & 0 & 00 & 0 & default & & & & & & & & & & \\
+\end{longtable}
+
+Table:
+
+Defined Columns 01 - Person information
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1560}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.6147}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1101}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1193}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+colName
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+colDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+colDataType
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+codeSetName
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+recordTypeCD & Record Type Code & varchar(6) & \\
+subRecordCD & Logical subdivision of recordTypeCD & smallint & \\
+subRecordDesc & Description of subRecordCD & varchar(50) & \\
+person & Numeric person ID for each person 1=self/HH Head, 2=second HH
+Head & smallint & \\
+answerQuestions & Is this person answering questions during the survey?
+YN & smallint & YesNo \\
+sex & Is this person Male or Female? & smallint & Sex \\
+relation & How is this person related to HH Head 1? & int &
+Relationship \\
+ethnic & Is this person Alaska Native YN & smallint & ethnic \\
+birthyear & In what year was this person Born? & int & \\
+sewSkinsCloth & Did this person sew skins or cloth? & int & YesNo \\
+cookWildFoods & Did this person cook wild Foods? & int & YesNo \\
+handicraftsYN & Did this person make handicrafts with natural materials?
+& int & YesNo \\
+shelterYN & Did this person build a shelter, cabin lean-to etc\ldots? &
+int & YesNo \\
+procOtherFish & Did this person process nonsalmon fish YN? & smallint &
+YesNo \\
+harvOtherFish & Did this person harvest nonsalmon fish YN? & smallint &
+YesNo \\
+procSalm & Did this person process salmon YN? & int & YesNo \\
+harvSalm & Did this person harvest salmon YN? & int & YesNo \\
+procMI & Did this person process Marine Invertebrates? & int & YesNo \\
+harvMI & Did this person harvest Marine Invertebrates? & int & YesNo \\
+buildFishTrapsYN & Did this person build fish traps? & int & YesNo \\
+buildDogSleds & Did this person build dog sleds? & int & YesNo \\
+procBirds & Did this person process birds YN? & smallint & YesNo \\
+harvBirds & Did this person hunt/harvest birds YN? & smallint & YesNo \\
+procMM & Did this person process marine mammals YN? & smallint &
+YesNo \\
+harvMM & Did this person hunt/harvest marine mammals YN? & smallint &
+YesNo \\
+procPlants & Did this person process plants/berries wood YN? & smallint
+& YesNo \\
+harvPlants & Did this person gather plants/berries wood YN? & smallint &
+YesNo \\
+residpar & Residence community of parents when this person was born &
+smallint & \\
+yrcomcat & How many years has this person lived in the community? &
+smallint & \\
+procLLM & Did this person process large land mammals YN? & smallint &
+YesNo \\
+harvLLM & Did this person harvest/hunt large land mammals YN? & smallint
+& YesNo \\
+procFur & Did this person process small land mammals/furbearers YN? &
+smallint & YesNo \\
+harvFur & Did this person hunt/harv small land mammals/furbearers YN? &
+smallint & YesNo \\
+\end{longtable}
+
+Table:
+
+HH 0 - Record Type: 01 - Person information
+
+\begin{longtable}[]{@{}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0181}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0233}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0233}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0130}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0181}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0207}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0337}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0311}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0363}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0181}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0415}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0104}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0233}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0181}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0259}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0233}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0233}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0207}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0207}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0207}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0207}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0259}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0259}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0181}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0181}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0285}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0285}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0233}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0233}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0181}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0181}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0440}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0363}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0363}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0363}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0363}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0259}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0363}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 76\tabcolsep) * \real{0.0363}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedleft
+projID
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+communty
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+studyear
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+HHID
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+strata
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+version
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+recordTypeCD
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+subRecordCD
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+subRecordDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+person
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+answerQuestions
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+sex
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+relation
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+ethnic
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+birthyear
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+residpar
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+yrcomcat
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+procLLM
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvLLM
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+procFur
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvFur
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+procBirds
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvBirds
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+procMM
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvMM
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+procPlants
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvPlants
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+procSalm
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvSalm
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+procMI
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvMI
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+buildFishTrapsYN
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+buildDogSleds
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+sewSkinsCloth
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+cookWildFoods
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+handicraftsYN
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+shelterYN
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+procOtherFish
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvOtherFish
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+316 & 11 & 2024 & 0 & 0 & 0 & 01 & 0 & default & & & & & & & & & & & & &
+& & & & & & & & & & & & & & & & & \\
+\end{longtable}
+
+Table:
+
+Defined Columns 03 - Retained Commercial Harvests
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1220}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.6667}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1138}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.0976}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+colName
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+colDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+colDataType
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+codeSetName
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+recordTypeCD & Record Type Code & varchar(6) & \\
+subRecordCD & Logical subdivision of recordTypeCD & smallint & \\
+subRecordDesc & Description of subRecordCD & varchar(50) & \\
+filterq & Generic filter question YN hh participated in record type XXXX
+activities & int & YesNo \\
+usuallyq & Generic filter question YN hh usually participates in record
+type XXXX activities & int & YesNo \\
+resource & Resource code fished for? & numeric(18,0) & \\
+commFishYN & Did this household commercial fish for this resource? &
+smallint & YesNo \\
+keepResourceYN & Did HH keep any resources fished for? & smallint &
+YesNo \\
+incidentalYN & Was this reported harvest incidental? & smallint &
+YesNo \\
+units & Harvest amount units & smallint & Units \\
+resComment & Short comment on resource. & varchar(250) & \\
+removeOwnUse & Amount retained from commercial harvest for own use. &
+real & \\
+amtGavetoCrew & Amount retained from commercial harvest for crew. & real
+& \\
+amtGaveOthers & Amount retained from commercial harvest for others &
+real & \\
+\end{longtable}
+
+Table:
+
+HH 0 - Record Type: 03 - Retained Commercial Harvests
+
+\begin{longtable}[]{@{}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0337}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0433}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0433}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0240}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0337}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0385}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0625}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0577}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0673}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0385}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0433}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0481}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0529}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0721}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0625}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0625}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0673}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0673}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0288}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0529}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedleft
+projID
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+communty
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+studyear
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+HHID
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+strata
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+version
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+recordTypeCD
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+subRecordCD
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+subRecordDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+filterq
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+usuallyq
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+resource
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+commFishYN
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+keepResourceYN
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+incidentalYN
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+removeOwnUse
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+amtGavetoCrew
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+amtGaveOthers
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+units
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+resComment
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+316 & 11 & 2024 & 0 & 0 & 0 & 03 & 0 & default & 0 & 0 & 111000001 & 0 &
+0 & 0 & 0 & 0 & 0 & 1 & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 03 & 0 & default & 0 & 0 & 114000001 & 0 &
+0 & 0 & 0 & 0 & 0 & 1 & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 03 & 0 & default & 0 & 0 & 112000001 & 0 &
+0 & 0 & 0 & 0 & 0 & 1 & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 03 & 0 & default & 0 & 0 & 115000001 & 0 &
+0 & 0 & 0 & 0 & 0 & 1 & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 03 & 0 & default & 0 & 0 & 113000001 & 0 &
+0 & 0 & 0 & 0 & 0 & 1 & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 03 & 0 & default & 0 & 0 & 125600001 & 0 &
+0 & 0 & 0 & 0 & 0 & 1 & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 03 & 0 & default & 0 & 0 & 125006991 & 0 &
+0 & 0 & 0 & 0 & 0 & 1 & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 03 & 0 & default & 0 & 0 & 126404001 & 0 &
+0 & 0 & 0 & 0 & 0 & 1 & \\
+\end{longtable}
+
+Table:
+
+Defined Columns 04 - Salmon harvests (non commercial)
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1606}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.5985}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1022}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1387}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+colName
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+colDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+colDataType
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+codeSetName
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+recordTypeCD & Record Type Code & varchar(6) & \\
+subRecordCD & Logical subdivision of recordTypeCD & smallint & \\
+subRecordDesc & Description of subRecordCD & varchar(50) & \\
+filterq & Generic filter question YN hh participated in record type XXXX
+activities & int & YesNo \\
+usuallyq & Generic filter question YN hh usually participates in record
+type XXXX activities & int & YesNo \\
+resource & Resource code & numeric(18,0) & \\
+used & Did household use resource YN? & smallint & UseCodes \\
+attempt & Did household try to harvest resource YN? & smallint &
+YesNo \\
+harvestq & Did household harvest resource YN? & smallint & YesNo \\
+giveaway & Did household give away resource YN? & smallint & YesNo \\
+received & Did household receive resource YN? & smallint & UseCodes \\
+units & What units was the amount of this resource collected in? & int &
+Units \\
+amtDogFood & Amount of reported harvest used exclusively for dogs & real
+& \\
+amtSeine & Amount harvested with Subsistence Seine (gear code=7) & real
+& \\
+amtDipNet & Amount harvested with fish trap (gear code=8) & real & \\
+amtRodReel & Amount harvested with Rod and Reel (gear code=15) & real
+& \\
+amtOtherGear & Amount harvested with other or unspecified Gear (gear
+code=17) & real & \\
+othGearCD1 & Code specifying type of other gear & smallint & Fishing
+Gear Codes \\
+amtFishWheel & Amount harvested with Fish Wheel (gear code=9) & real
+& \\
+amtUnspecifiedGillNet & Amount harvested with Drift gill net (gear
+code=XX) & real & \\
+\end{longtable}
+
+Table:
+
+HH 0 - Record Type: 04 - Salmon harvests (non commercial)
+
+\begin{longtable}[]{@{}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0272}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0350}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0350}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0195}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0272}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0311}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0506}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0467}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0545}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0311}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0350}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0389}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0195}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0311}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0350}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0350}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0350}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0233}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0350}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0389}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0428}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0506}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0428}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0428}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0506}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0856}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedleft
+projID
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+communty
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+studyear
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+HHID
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+strata
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+version
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+recordTypeCD
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+subRecordCD
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+subRecordDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+filterq
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+usuallyq
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+resource
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+used
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+attempt
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvestq
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+giveaway
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+received
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+units
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+amtSeine
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+amtDipNet
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+amtRodReel
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+amtOtherGear
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+othGearCD1
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+amtDogFood
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+amtFishWheel
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+amtUnspecifiedGillNet
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+316 & 11 & 2024 & 0 & 0 & 0 & 04 & 0 & default & 0 & 0 & 111000000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & & 0 & & 0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 04 & 0 & default & 0 & 0 & 114000000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & & 0 & & 0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 04 & 0 & default & 0 & 0 & 112000000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & & 0 & & 0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 04 & 0 & default & 0 & 0 & 115000000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & & 0 & & 0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 04 & 0 & default & 0 & 0 & 113000000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & & 0 & & 0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 04 & 0 & default & 0 & 0 & 119000000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & & 0 & & 0 \\
+\end{longtable}
+
+Table:
+
+Defined Columns 06 - Non-salmon Fish harvests (non commercial)
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2014}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.5694}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.0972}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1319}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+colName
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+colDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+colDataType
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+codeSetName
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+subRecordCD & Logical subdivision of recordTypeCD & smallint & \\
+subRecordDesc & Description of subRecordCD & varchar(50) & \\
+filterq & Generic filter question YN hh participated in record type XXXX
+activities & int & YesNo \\
+usuallyq & Generic filter question YN hh usually participates in record
+type XXXX activities & int & YesNo \\
+recordTypeCD & Record Type Code & varchar(6) & \\
+giveaway & Did household give away resource YN? & smallint & YesNo \\
+received & Did household receive resource YN? & smallint & UseCodes \\
+units & What units was the amount of this resource collected in? & int &
+Units \\
+amtDogFood & Amount of reported harvest used exclusively for dogs & real
+& \\
+displayGroup & Used to distinguish a second page for this record that is
+not a subrecord & int & \\
+resource & Resource code & numeric(18,0) & \\
+used & Did household use resource YN? & smallint & UseCodes \\
+attempt & Did household try to harvest resource YN? & smallint &
+YesNo \\
+harvestq & Did household harvest resource YN? & smallint & YesNo \\
+amtUnspecifiedGillNet & Amount harvested with Drift gill net (gear
+code=XX) & real & \\
+amtNetUnderIce & Amount harvested with net under ice (gear code=12) &
+real & \\
+amtRodReel & Amount harvested with Rod and Reel (gear code=15) & real
+& \\
+amtOtherGear & Amount harvested with other or unspecified Gear (gear
+code=17) & real & \\
+othGearCD1 & Code specifying type of other gear & smallint & Fishing
+Gear Codes \\
+amtUnspecifiedSubsistenceNet & Amount harvested with Unspecified Net
+(gear code=XX) & real & \\
+amtHookUnderIce & Amount harvested ice Fishing with line and pole (gear
+code=10) & real & \\
+\end{longtable}
+
+Table:
+
+HH 0 - Record Type: 06 - Non-salmon Fish harvests (non commercial)
+
+\begin{longtable}[]{@{}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 52\tabcolsep) * \real{0.0235}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 52\tabcolsep) * \real{0.0302}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 52\tabcolsep) * \real{0.0302}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 52\tabcolsep) * \real{0.0168}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 52\tabcolsep) * \real{0.0235}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 52\tabcolsep) * \real{0.0268}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 52\tabcolsep) * \real{0.0436}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 52\tabcolsep) * \real{0.0403}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 52\tabcolsep) * \real{0.0470}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 52\tabcolsep) * \real{0.0268}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 52\tabcolsep) * \real{0.0302}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 52\tabcolsep) * \real{0.0336}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 52\tabcolsep) * \real{0.0168}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 52\tabcolsep) * \real{0.0268}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 52\tabcolsep) * \real{0.0302}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 52\tabcolsep) * \real{0.0302}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 52\tabcolsep) * \real{0.0302}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 52\tabcolsep) * \real{0.0201}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 52\tabcolsep) * \real{0.0369}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 52\tabcolsep) * \real{0.0436}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 52\tabcolsep) * \real{0.0369}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 52\tabcolsep) * \real{0.0369}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 52\tabcolsep) * \real{0.0436}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 52\tabcolsep) * \real{0.0973}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 52\tabcolsep) * \real{0.0537}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 52\tabcolsep) * \real{0.0738}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 52\tabcolsep) * \real{0.0503}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedleft
+projID
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+communty
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+studyear
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+HHID
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+strata
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+version
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+recordTypeCD
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+subRecordCD
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+subRecordDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+filterq
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+usuallyq
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+resource
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+used
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+attempt
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvestq
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+giveaway
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+received
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+units
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+amtRodReel
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+amtOtherGear
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+othGearCD1
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+amtDogFood
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+displayGroup
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+amtUnspecifiedSubsistenceNet
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+amtHookUnderIce
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+amtUnspecifiedGillNet
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+amtNetUnderIce
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+316 & 11 & 2024 & 0 & 0 & 0 & 06 & 0 & default & 0 & 0 & 125600000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & & 0 & 601 & & 0 & 0 & 0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 06 & 0 & default & 0 & 0 & 126404000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & & 0 & 601 & & 0 & 0 & 0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 06 & 0 & default & 0 & 0 & 126408000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & & 0 & 601 & & 0 & 0 & 0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 06 & 0 & default & 0 & 0 & 126406060 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & & 0 & 601 & & 0 & 0 & 0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 06 & 0 & default & 0 & 0 & 126412000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & & 0 & 601 & & 0 & 0 & 0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 06 & 0 & default & 0 & 0 & 126406040 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & & 0 & 601 & & 0 & 0 & 0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 06 & 0 & default & 0 & 0 & 126499000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & & 0 & 601 & & 0 & 0 & 0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 06 & 0 & default & 0 & 0 & 125006990 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & & 0 & 602 & & 0 & 0 & 0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 06 & 0 & default & 0 & 0 & 125002000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & & 0 & 602 & & 0 & 0 & 0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 06 & 0 & default & 0 & 0 & 125012000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & & 0 & 602 & & 0 & 0 & 0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 06 & 0 & default & 0 & 0 & 125010000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & & 0 & 602 & & 0 & 0 & 0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 06 & 0 & default & 0 & 0 & 125500000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & & 0 & 602 & & 0 & 0 & 0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 06 & 0 & default & 0 & 0 & 124800000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & & 0 & 602 & & 0 & 0 & 0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 06 & 0 & default & 0 & 0 & 125200000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & & 0 & 602 & & 0 & 0 & 0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 06 & 0 & default & 0 & 0 & 126000000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & & 0 & 602 & & 0 & 0 & 0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 06 & 0 & default & 0 & 0 & 120406000 & 0 &
+0 & 0 & 0 & 0 & 4 & 0 & 0 & & 0 & 602 & & 0 & 0 & 0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 06 & 0 & default & 0 & 0 & 121010000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & & 0 & 602 & & 0 & 0 & 0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 06 & 0 & default & 0 & 0 & 120200000 & 0 &
+0 & 0 & 0 & 0 & 4 & 0 & 0 & & 0 & 602 & & 0 & 0 & 0 \\
+\end{longtable}
+
+Table:
+
+Defined Columns 08 - Marine invertebrate harvests (non commercial)
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1290}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.6613}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1129}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.0968}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+colName
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+colDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+colDataType
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+codeSetName
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+subRecordDesc & Description of subRecordCD & varchar(50) & \\
+filterq & Generic filter question YN hh participated in record type XXXX
+activities & int & YesNo \\
+usuallyq & Generic filter question YN hh usually participates in record
+type XXXX activities & int & YesNo \\
+recordTypeCD & Record Type Code & varchar(6) & \\
+subRecordCD & Logical subdivision of recordTypeCD & smallint & \\
+resourceComment & Comment on resource & varchar(1000) & \\
+used & Did household use resource YN? & smallint & UseCodes \\
+attempt & Did household try to harvest resource YN? & smallint &
+YesNo \\
+harvestq & Did household harvest resource YN? & smallint & YesNo \\
+giveaway & Did household give away resource YN? & smallint & YesNo \\
+received & Did household receive resource YN? & smallint & UseCodes \\
+units & What units was the amount of this resource collected in? & int &
+Units \\
+resource & Resource code & numeric(18,0) & \\
+amtHarvest & Total amount of resource harvested & real & \\
+\end{longtable}
+
+Table:
+
+HH 0 - Record Type: 08 - Marine invertebrate harvests (non commercial)
+
+\begin{longtable}[]{@{}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0380}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0489}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0489}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0272}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0380}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0435}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0707}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0652}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0761}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0435}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0489}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0543}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0272}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0435}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0489}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0489}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0489}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0326}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0598}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 38\tabcolsep) * \real{0.0870}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedleft
+projID
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+communty
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+studyear
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+HHID
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+strata
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+version
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+recordTypeCD
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+subRecordCD
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+subRecordDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+filterq
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+usuallyq
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+resource
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+used
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+attempt
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvestq
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+giveaway
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+received
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+units
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+amtHarvest
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+resourceComment
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+316 & 11 & 2024 & 0 & 0 & 0 & 08 & 0 & default & 0 & 0 & 501008990 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 08 & 0 & default & 0 & 0 & 500699000 & 0 &
+0 & 0 & 0 & 0 & 4 & 0 & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 08 & 0 & default & 0 & 0 & 502099000 & 0 &
+0 & 0 & 0 & 0 & 4 & 0 & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 08 & 0 & default & 0 & 0 & 503400000 & 0 &
+0 & 0 & 0 & 0 & 4 & 0 & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 08 & 0 & default & 0 & 0 & 509900000 & 0 &
+0 & 0 & 0 & 0 & 4 & 0 & \\
+\end{longtable}
+
+Table:
+
+Defined Columns 10 - Large Land Mammals
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1148}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.6721}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1148}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.0984}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+colName
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+colDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+colDataType
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+codeSetName
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+filterq & Generic filter question YN hh participated in record type XXXX
+activities & int & YesNo \\
+usuallyq & Generic filter question YN hh usually participates in record
+type XXXX activities & int & YesNo \\
+recordTypeCD & Record Type Code & varchar(6) & \\
+subRecordCD & Logical subdivision of recordTypeCD & smallint & \\
+subRecordDesc & Description of subRecordCD & varchar(50) & \\
+received & Did household receive resource YN? & smallint & UseCodes \\
+resource & Resource code & numeric(18,0) & \\
+used & Did household use resource YN? & smallint & UseCodes \\
+attempt & Did household try to harvest resource YN? & smallint &
+YesNo \\
+harvestq & Did household harvest resource YN? & smallint & YesNo \\
+giveaway & Did household give away resource YN? & smallint & YesNo \\
+harvJan & Harvest amount for January & real & \\
+harvFeb & Harvest amount for February & real & \\
+harvMar & Harvest amount for march & real & \\
+harvApr & Harvest amount for April & real & \\
+harvMay & Harvest amount for May & real & \\
+harvJun & Harvest amount for June & real & \\
+harvUnkn & Harvest amount for Unknown Month & real & \\
+amtFoodFur & Amount harvested for food and fur (amount eaten) & real
+& \\
+sex & Sex of animal harvested & smallint & Sex \\
+units & What units was the amount of this resource collected it? & int &
+Units \\
+harvJul & Harvest amount for July & real & \\
+harvAug & Harvest amount for August & real & \\
+harvSep & Harvest amount for September & real & \\
+harvOct & Harvest amount for October & real & \\
+harvNov & Harvest amount for November & real & \\
+harvDec & Harvest amount for December & real & \\
+\end{longtable}
+
+Table:
+
+HH 0 - Record Type: 10 - Large Land Mammals
+
+\begin{longtable}[]{@{}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0253}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0325}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0325}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0181}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0253}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0289}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0469}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0433}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0505}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0289}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0325}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0361}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0181}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0289}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0325}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0325}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0325}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0289}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0289}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0289}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0289}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0289}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0289}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0289}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0289}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0289}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0289}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0289}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0289}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0325}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0397}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0144}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0217}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedleft
+projID
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+communty
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+studyear
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+HHID
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+strata
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+version
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+recordTypeCD
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+subRecordCD
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+subRecordDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+filterq
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+usuallyq
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+resource
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+used
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+attempt
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvestq
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+giveaway
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+received
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvJan
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvFeb
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvMar
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvApr
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvMay
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvJun
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvJul
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvAug
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvSep
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvOct
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvNov
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvDec
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvUnkn
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+amtFoodFur
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+sex
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+units
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+316 & 11 & 2024 & 0 & 0 & 0 & 10 & 0 & default & 0 & 0 & 211000000 & 0 &
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & -6 &
+1 & 1 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 10 & 0 & default & 0 & 0 & 211000000 & 0 &
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & -6 &
+2 & 1 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 10 & 0 & default & 0 & 0 & 211000000 & 0 &
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & -6 &
+-8 & 1 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 10 & 0 & default & 0 & 0 & 211800000 & 0 &
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & -6 &
+1 & 1 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 10 & 0 & default & 0 & 0 & 211800000 & 0 &
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & -6 &
+2 & 1 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 10 & 0 & default & 0 & 0 & 211800000 & 0 &
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & -6 &
+-8 & 1 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 10 & 0 & default & 0 & 0 & 210600000 & 0 &
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 &
+-6 & 1 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 10 & 0 & default & 0 & 0 & 210800000 & 0 &
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 &
+-6 & 1 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 10 & 0 & default & 0 & 0 & 212200000 & 0 &
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & -6 &
+-6 & 1 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 10 & 0 & default & 0 & 0 & 212000000 & 0 &
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & -6 &
+-6 & 1 \\
+\end{longtable}
+
+Table:
+
+Defined Columns 12 - Marine Mammals
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1148}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.6721}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1148}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.0984}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+colName
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+colDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+colDataType
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+codeSetName
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+usuallyq & Generic filter question YN hh usually participates in record
+type XXXX activities & int & YesNo \\
+recordTypeCD & Record Type Code & varchar(6) & \\
+subRecordCD & Logical subdivision of recordTypeCD & smallint & \\
+subRecordDesc & Description of subRecordCD & varchar(50) & \\
+filterq & Generic filter question YN hh participated in record type XXXX
+activities & int & YesNo \\
+received & Did household receive resource YN? & smallint & UseCodes \\
+units & What units was the amount of this resource collected in? & int &
+Units \\
+resource & Resource code & numeric(18,0) & \\
+used & Did household use resource YN? & smallint & UseCodes \\
+attempt & Did household try to harvest resource YN? & smallint &
+YesNo \\
+harvestq & Did household harvest resource YN? & smallint & YesNo \\
+giveaway & Did household give away resource YN? & smallint & YesNo \\
+harvSep & Harvest amount for September & real & \\
+harvOct & Harvest amount for October & real & \\
+harvNov & Harvest amount for November & real & \\
+harvDec & Harvest amount for December & real & \\
+harvUnkn & Harvest amount for Unknown Month & real & \\
+sex & Sex of animal harvested & smallint & Sex \\
+harvMar & Harvest amount for march & real & \\
+harvApr & Harvest amount for April & real & \\
+harvMay & Harvest amount for May & real & \\
+harvJun & Harvest amount for June & real & \\
+harvJul & Harvest amount for July & real & \\
+harvAug & Harvest amount for August & real & \\
+harvJan & Harvest amount for January & real & \\
+harvFeb & Harvest amount for February & real & \\
+\end{longtable}
+
+Table:
+
+HH 0 - Record Type: 12 - Marine Mammals
+
+\begin{longtable}[]{@{}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0263}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0338}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0338}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0188}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0263}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0301}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0489}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0451}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0526}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0301}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0338}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0376}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0188}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0301}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0338}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0338}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0338}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0226}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0301}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0301}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0301}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0301}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0301}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0301}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0301}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0301}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0301}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0301}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0301}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0301}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0338}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0150}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedleft
+projID
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+communty
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+studyear
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+HHID
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+strata
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+version
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+recordTypeCD
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+subRecordCD
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+subRecordDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+filterq
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+usuallyq
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+resource
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+used
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+attempt
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvestq
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+giveaway
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+received
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+units
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvJan
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvFeb
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvMar
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvApr
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvMay
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvJun
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvJul
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvAug
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvSep
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvOct
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvNov
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvDec
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvUnkn
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+sex
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+316 & 11 & 2024 & 0 & 0 & 0 & 12 & 0 & default & 0 & 0 & 300802000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 &
+1 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 12 & 0 & default & 0 & 0 & 300802000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 &
+2 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 12 & 0 & default & 0 & 0 & 300802000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 &
+-8 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 12 & 0 & default & 0 & 0 & 300810000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 &
+-6 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 12 & 0 & default & 0 & 0 & 300812000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 &
+-6 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 12 & 0 & default & 0 & 0 & 300808000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 &
+-6 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 12 & 0 & default & 0 & 0 & 300899000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 &
+-6 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 12 & 0 & default & 0 & 0 & 301602000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 &
+-6 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 12 & 0 & default & 0 & 0 & 301606000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 &
+-6 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 12 & 0 & default & 0 & 0 & 301400000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 &
+-6 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 12 & 0 & default & 0 & 0 & 300400000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 &
+-6 \\
+\end{longtable}
+
+Table:
+
+Defined Columns 14 - Small Land mammals
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1148}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.6721}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1148}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.0984}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+colName
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+colDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+colDataType
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+codeSetName
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+recordTypeCD & Record Type Code & varchar(6) & \\
+subRecordCD & Logical subdivision of recordTypeCD & smallint & \\
+subRecordDesc & Description of subRecordCD & varchar(50) & \\
+filterq & Generic filter question YN hh participated in record type XXXX
+activities & int & YesNo \\
+usuallyq & Generic filter question YN hh usually participates in record
+type XXXX activities & int & YesNo \\
+giveaway & Did household give away resource YN? & smallint & YesNo \\
+received & Did household receive resource YN? & smallint & UseCodes \\
+units & What units was the amount of this resource collected in? & int &
+Units \\
+displayGroup & Used to distinguish a second page for this record that is
+not a subrecord & int & \\
+resource & Resource code & numeric(18,0) & \\
+used & Did household use resource YN? & smallint & UseCodes \\
+attempt & Did household try to harvest resource YN? & smallint &
+YesNo \\
+harvestq & Did household harvest resource YN? & smallint & YesNo \\
+harvUnkn & Harvest amount for Unknown Month & real & \\
+amtFoodFur & Amount use for both food and fur (amount eaten) & real & \\
+harvJul & Harvest amount for July & real & \\
+harvAug & Harvest amount for August & real & \\
+harvSep & Harvest amount for September & real & \\
+harvOct & Harvest amount for October & real & \\
+harvNov & Harvest amount for November & real & \\
+harvDec & Harvest amount for December & real & \\
+harvJan & Harvest amount for January & real & \\
+harvFeb & Harvest amount for February & real & \\
+harvMar & Harvest amount for march & real & \\
+harvApr & Harvest amount for April & real & \\
+harvMay & Harvest amount for May & real & \\
+harvJun & Harvest amount for June & real & \\
+\end{longtable}
+
+Table:
+
+HH 0 - Record Type: 14 - Small Land mammals
+
+\begin{longtable}[]{@{}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0245}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0315}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0315}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0175}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0245}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0280}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0455}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0420}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0490}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0280}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0315}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0350}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0175}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0280}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0315}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0315}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0315}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0210}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0280}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0280}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0280}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0280}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0280}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0280}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0280}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0280}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0280}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0280}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0280}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0280}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0315}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0385}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 64\tabcolsep) * \real{0.0455}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedleft
+projID
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+communty
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+studyear
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+HHID
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+strata
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+version
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+recordTypeCD
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+subRecordCD
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+subRecordDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+filterq
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+usuallyq
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+resource
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+used
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+attempt
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvestq
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+giveaway
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+received
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+units
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvJan
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvFeb
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvMar
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvApr
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvMay
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvJun
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvJul
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvAug
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvSep
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvOct
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvNov
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvDec
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvUnkn
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+amtFoodFur
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+displayGroup
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+316 & 11 & 2024 & 0 & 0 & 0 & 14 & 0 & default & 0 & 0 & 220200000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 &
+0 & 1401 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 14 & 0 & default & 0 & 0 & 222400000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 &
+0 & 1401 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 14 & 0 & default & 0 & 0 & 221004000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 &
+0 & 1401 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 14 & 0 & default & 0 & 0 & 221002000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 &
+0 & 1401 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 14 & 0 & default & 0 & 0 & 222600000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 &
+0 & 1401 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 14 & 0 & default & 0 & 0 & 221800000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 &
+0 & 1401 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 14 & 0 & default & 0 & 0 & 222802000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 &
+0 & 1401 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 14 & 0 & default & 0 & 0 & 222000000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 &
+0 & 1401 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 14 & 0 & default & 0 & 0 & 221200000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 &
+0 & 1401 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 14 & 0 & default & 0 & 0 & 222200000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 &
+0 & 1401 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 14 & 0 & default & 0 & 0 & 223200000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 &
+0 & 1402 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 14 & 0 & default & 0 & 0 & 223400000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 &
+0 & 1402 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 14 & 0 & default & 0 & 0 & 221600000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 &
+0 & 1402 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 14 & 0 & default & 0 & 0 & 220804000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 &
+0 & 1402 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 14 & 0 & default & 0 & 0 & 220802000 & 0 &
+0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 &
+0 & 1402 \\
+\end{longtable}
+
+Table:
+
+Defined Columns 15 - Birds and Eggs
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1290}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.6613}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1129}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.0968}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+colName
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+colDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+colDataType
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+codeSetName
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+recordTypeCD & Record Type Code & varchar(6) & \\
+subRecordCD & Logical subdivision of recordTypeCD & smallint & \\
+subRecordDesc & Description of subRecordCD & varchar(50) & \\
+filterq & Generic filter question YN hh participated in record type XXXX
+activities & int & YesNo \\
+usuallyq & Generic filter question YN hh usually participates in record
+type XXXX activities & int & YesNo \\
+resourceComment & Comment on resource & varchar(1000) & \\
+attempt & Did household try to harvest resource YN? & smallint &
+YesNo \\
+harvestq & Did household harvest resource YN? & smallint & YesNo \\
+giveaway & Did household give away resource YN? & smallint & YesNo \\
+received & Did household receive resource YN? & smallint & UseCodes \\
+units & What units was the amount of this resource collected in? & int &
+Units \\
+displayGroup & Used to distinguish a second page for this record that is
+not a subrecord & int & \\
+resource & Resource code & numeric(18,0) & \\
+used & Did household use resource YN? & smallint & UseCodes \\
+harvSum & Harvest amount in summer & real & \\
+harvSpr & Harvest amount in Spring & real & \\
+harvFal & Harvest amount in Fall & real & \\
+harvWin & Harvest amount in Winter & real & \\
+harvUnkn & Harvest amount in Unknown month & real & \\
+amtHarvest & Total amount harvested (use for eggs sub-records) & real
+& \\
+\end{longtable}
+
+Table:
+
+HH 0 - Record Type: 15 - Birds and Eggs
+
+\begin{longtable}[]{@{}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0294}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0378}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0378}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0210}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0294}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0336}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0546}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0504}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0588}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0336}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0378}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0420}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0210}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0336}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0378}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0378}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0378}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0252}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0546}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0336}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0336}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0336}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0336}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0378}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0462}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 50\tabcolsep) * \real{0.0672}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedleft
+projID
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+communty
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+studyear
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+HHID
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+strata
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+version
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+recordTypeCD
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+subRecordCD
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+subRecordDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+filterq
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+usuallyq
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+resource
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+used
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+attempt
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvestq
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+giveaway
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+received
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+units
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+displayGroup
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvSum
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvSpr
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvFal
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvWin
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvUnkn
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+amtHarvest
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+resourceComment
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+316 & 11 & 2024 & 0 & 0 & 0 & 15 & 0 & Birds & 0 & 0 & 410404990 & 0 & 0
+& 0 & 0 & 0 & 1 & 1501 & 0 & 0 & 0 & 0 & 0 & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 15 & 0 & Birds & 0 & 0 & 410410000 & 0 & 0
+& 0 & 0 & 0 & 1 & 1501 & 0 & 0 & 0 & 0 & 0 & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 15 & 0 & Birds & 0 & 0 & 410402000 & 0 & 0
+& 0 & 0 & 0 & 1 & 1501 & 0 & 0 & 0 & 0 & 0 & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 15 & 0 & Birds & 0 & 0 & 410406000 & 0 & 0
+& 0 & 0 & 0 & 1 & 1501 & 0 & 0 & 0 & 0 & 0 & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 15 & 0 & Birds & 0 & 0 & 410408000 & 0 & 0
+& 0 & 0 & 0 & 1 & 1501 & 0 & 0 & 0 & 0 & 0 & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 15 & 0 & Birds & 0 & 0 & 410499000 & 0 & 0
+& 0 & 0 & 0 & 1 & 1501 & 0 & 0 & 0 & 0 & 0 & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 15 & 0 & Birds & 0 & 0 & 410214000 & 0 & 0
+& 0 & 0 & 0 & 1 & 1502 & 0 & 0 & 0 & 0 & 0 & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 15 & 0 & Birds & 0 & 0 & 410218000 & 0 & 0
+& 0 & 0 & 0 & 1 & 1502 & 0 & 0 & 0 & 0 & 0 & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 15 & 0 & Birds & 0 & 0 & 410220000 & 0 & 0
+& 0 & 0 & 0 & 1 & 1502 & 0 & 0 & 0 & 0 & 0 & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 15 & 0 & Birds & 0 & 0 & 410236020 & 0 & 0
+& 0 & 0 & 0 & 1 & 1502 & 0 & 0 & 0 & 0 & 0 & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 15 & 0 & Birds & 0 & 0 & 410232060 & 0 & 0
+& 0 & 0 & 0 & 1 & 1502 & 0 & 0 & 0 & 0 & 0 & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 15 & 0 & Birds & 0 & 0 & 410230000 & 0 & 0
+& 0 & 0 & 0 & 1 & 1502 & 0 & 0 & 0 & 0 & 0 & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 15 & 0 & Birds & 0 & 0 & 410226990 & 0 & 0
+& 0 & 0 & 0 & 1 & 1502 & 0 & 0 & 0 & 0 & 0 & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 15 & 0 & Birds & 0 & 0 & 410202000 & 0 & 0
+& 0 & 0 & 0 & 1 & 1502 & 0 & 0 & 0 & 0 & 0 & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 15 & 0 & Birds & 0 & 0 & 410212000 & 0 & 0
+& 0 & 0 & 0 & 1 & 1502 & 0 & 0 & 0 & 0 & 0 & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 15 & 0 & Birds & 0 & 0 & 410210990 & 0 & 0
+& 0 & 0 & 0 & 1 & 1502 & 0 & 0 & 0 & 0 & 0 & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 15 & 0 & Birds & 0 & 0 & 410204000 & 0 & 0
+& 0 & 0 & 0 & 1 & 1502 & 0 & 0 & 0 & 0 & 0 & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 15 & 0 & Birds & 0 & 0 & 410228020 & 0 & 0
+& 0 & 0 & 0 & 1 & 1503 & 0 & 0 & 0 & 0 & 0 & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 15 & 0 & Birds & 0 & 0 & 410228040 & 0 & 0
+& 0 & 0 & 0 & 1 & 1503 & 0 & 0 & 0 & 0 & 0 & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 15 & 0 & Birds & 0 & 0 & 410228060 & 0 & 0
+& 0 & 0 & 0 & 1 & 1503 & 0 & 0 & 0 & 0 & 0 & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 15 & 0 & Birds & 0 & 0 & 410206020 & 0 & 0
+& 0 & 0 & 0 & 1 & 1503 & 0 & 0 & 0 & 0 & 0 & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 15 & 0 & Birds & 0 & 0 & 410206990 & 0 & 0
+& 0 & 0 & 0 & 1 & 1503 & 0 & 0 & 0 & 0 & 0 & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 15 & 0 & Birds & 0 & 0 & 410299000 & 0 & 0
+& 0 & 0 & 0 & 1 & 1503 & 0 & 0 & 0 & 0 & 0 & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 15 & 0 & Birds & 0 & 0 & 421804990 & 0 & 0
+& 0 & 0 & 0 & 1 & 1504 & 0 & 0 & 0 & 0 & 0 & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 15 & 0 & Birds & 0 & 0 & 421802990 & 0 & 0
+& 0 & 0 & 0 & 1 & 1504 & 0 & 0 & 0 & 0 & 0 & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 15 & 0 & Birds & 0 & 0 & 410802000 & 0 & 0
+& 0 & 0 & 0 & 1 & 1504 & 0 & 0 & 0 & 0 & 0 & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 15 & 0 & Birds & 0 & 0 & 410604000 & 0 & 0
+& 0 & 0 & 0 & 1 & 1504 & 0 & 0 & 0 & 0 & 0 & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 15 & 0 & Birds & 0 & 0 & 411299000 & 0 & 0
+& 0 & 0 & 0 & 1 & 1504 & 0 & 0 & 0 & 0 & 0 & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 15 & 0 & Birds & 0 & 0 & 411099000 & 0 & 0
+& 0 & 0 & 0 & 1 & 1504 & 0 & 0 & 0 & 0 & 0 & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 15 & 0 & Birds & 0 & 0 & 411216990 & 0 & 0
+& 0 & 0 & 0 & 1 & 1504 & 0 & 0 & 0 & 0 & 0 & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 15 & 1 & Bird Eggs & 0 & 0 & 430299000 & 0
+& 0 & 0 & 0 & 0 & 1 & & & & & & & 0 & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 15 & 1 & Bird Eggs & 0 & 0 & 430499000 & 0
+& 0 & 0 & 0 & 0 & 1 & & & & & & & 0 & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 15 & 1 & Bird Eggs & 0 & 0 & 431212990 & 0
+& 0 & 0 & 0 & 0 & 1 & & & & & & & 0 & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 15 & 1 & Bird Eggs & 0 & 0 & 430604000 & 0
+& 0 & 0 & 0 & 0 & 1 & & & & & & & 0 & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 15 & 1 & Bird Eggs & 0 & 0 & 431099000 & 0
+& 0 & 0 & 0 & 0 & 1 & & & & & & & 0 & \\
+\end{longtable}
+
+Table:
+
+Defined Columns 17 - Vegetation
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1290}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.6613}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1129}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.0968}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+colName
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+colDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+colDataType
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+codeSetName
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+subRecordCD & Logical subdivision of recordTypeCD & smallint & \\
+subRecordDesc & Description of subRecordCD & varchar(50) & \\
+filterq & Generic filter question YN hh participated in record type XXXX
+activities & int & YesNo \\
+usuallyq & Generic filter question YN hh usually participates in record
+type XXXX activities & int & YesNo \\
+recordTypeCD & Record Type Code & varchar(6) & \\
+received & Did household receive resource YN? & smallint & UseCodes \\
+units & What units was the amount of this resource collected in? & int &
+Units \\
+displayGroup & Used to distinguish a second page for this record that is
+not a subrecord & int & \\
+resourceComment & Comment on resource & varchar(1000) & \\
+resource & Resource code & numeric(18,0) & \\
+used & Did household use resource YN? & smallint & UseCodes \\
+attempt & Did household try to harvest resource YN? & smallint &
+YesNo \\
+harvestq & Did household harvest resource YN? & smallint & YesNo \\
+giveaway & Did household give away resource YN? & smallint & YesNo \\
+amtHarvest & Total amount of resource harvested & real & \\
+\end{longtable}
+
+Table:
+
+HH 0 - Record Type: 17 - Vegetation
+
+\begin{longtable}[]{@{}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 40\tabcolsep) * \real{0.0355}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 40\tabcolsep) * \real{0.0457}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 40\tabcolsep) * \real{0.0457}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 40\tabcolsep) * \real{0.0254}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 40\tabcolsep) * \real{0.0355}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 40\tabcolsep) * \real{0.0406}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 40\tabcolsep) * \real{0.0660}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 40\tabcolsep) * \real{0.0609}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 40\tabcolsep) * \real{0.0711}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 40\tabcolsep) * \real{0.0406}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 40\tabcolsep) * \real{0.0457}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 40\tabcolsep) * \real{0.0508}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 40\tabcolsep) * \real{0.0254}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 40\tabcolsep) * \real{0.0406}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 40\tabcolsep) * \real{0.0457}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 40\tabcolsep) * \real{0.0457}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 40\tabcolsep) * \real{0.0457}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 40\tabcolsep) * \real{0.0305}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 40\tabcolsep) * \real{0.0660}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 40\tabcolsep) * \real{0.0558}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 40\tabcolsep) * \real{0.0812}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedleft
+projID
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+communty
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+studyear
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+HHID
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+strata
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+version
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+recordTypeCD
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+subRecordCD
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+subRecordDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+filterq
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+usuallyq
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+resource
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+used
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+attempt
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+harvestq
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+giveaway
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+received
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+units
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+displayGroup
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+amtHarvest
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+resourceComment
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+316 & 11 & 2024 & 0 & 0 & 0 & 17 & 0 & default & 0 & 0 & 601002000 & 0 &
+0 & 0 & 0 & 0 & 4 & 1701 & 0 & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 17 & 0 & default & 0 & 0 & 601016000 & 0 &
+0 & 0 & 0 & 0 & 4 & 1701 & 0 & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 17 & 0 & default & 0 & 0 & 601007000 & 0 &
+0 & 0 & 0 & 0 & 4 & 1701 & 0 & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 17 & 0 & default & 0 & 0 & 601004000 & 0 &
+0 & 0 & 0 & 0 & 4 & 1701 & 0 & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 17 & 0 & default & 0 & 0 & 601006000 & 0 &
+0 & 0 & 0 & 0 & 4 & 1701 & 0 & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 17 & 0 & default & 0 & 0 & 602031000 & 0 &
+0 & 0 & 0 & 0 & 4 & 1701 & 0 & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 17 & 0 & default & 0 & 0 & 602028000 & 0 &
+0 & 0 & 0 & 0 & 4 & 1701 & 0 & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 17 & 0 & default & 0 & 0 & 602044000 & 0 &
+0 & 0 & 0 & 0 & 4 & 1701 & 0 & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 17 & 0 & default & 0 & 0 & 602018000 & 0 &
+0 & 0 & 0 & 0 & 4 & 1701 & 0 & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 17 & 0 & default & 0 & 0 & 602009000 & 0 &
+0 & 0 & 0 & 0 & 4 & 1701 & 0 & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 17 & 0 & default & 0 & 0 & 602049000 & 0 &
+0 & 0 & 0 & 0 & 4 & 1702 & 0 & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 17 & 0 & default & 0 & 0 & 602051000 & 0 &
+0 & 0 & 0 & 0 & 4 & 1702 & 0 & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 17 & 0 & default & 0 & 0 & 602040000 & 0 &
+0 & 0 & 0 & 0 & 4 & 1702 & 0 & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 17 & 0 & default & 0 & 0 & 604000002 & 0 &
+0 & 0 & 0 & 0 & 6 & 1702 & 0 & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 17 & 0 & default & 0 & 0 & 604000000 & 0 &
+0 & 0 & 0 & 0 & 6 & 1702 & 0 & \\
+\end{longtable}
+
+Table:
+
+Defined Columns 201 - Food Security
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1087}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.6159}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.0942}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1812}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+colName
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+colDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+colDataType
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+codeSetName
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+subRecordDesc & Description of subRecordCD & varchar(50) & \\
+filterq & Generic filter question YN hh participated in record type XXXX
+activities & int & YesNo \\
+recordTypeCD & Record Type Code & varchar(6) & \\
+subRecordCD & Logical subdivision of recordTypeCD & smallint & \\
+displayGroup & Filter to indicate page the questions belong on. & int
+& \\
+stmtNum & Statement / Question number on food security pages & smallint
+& \\
+stmtDesc & Statement / Question Text & varchar(250) & \\
+stmt1to3Value & Scores statements 1-3 as 1,2,3 in a single variable &
+smallint & \\
+trueForHH & Was this statement/condition true for your household? &
+smallint & Yes No Food Security \\
+occJan & This condition was true (occurred in) January & smallint & \\
+hungryNotEat & Were adults in this HH ever hungry but not eat because of
+a lack of food? & smallint & YesNo \\
+loseWeight & Did adults in your HH lose weight because of a lack of
+food? & smallint & YesNo \\
+notEatWholeDay & Did adults in the HH ever not eat for a whole day
+because there was not enough food? & smallint & Yes No Food Security \\
+getFood & What types of food was your household unable to get? &
+smallint & Food security food types \\
+occAug & This condition was true (occurred in) August & smallint & \\
+occSep & This condition was true (occurred in) September & smallint & \\
+occOct & This condition was true (occurred in) October & smallint & \\
+occNov & This condition was true (occurred in) November & smallint & \\
+occDec & This condition was true (occurred in) December & smallint & \\
+eatLess & Did adults in this HH eat less than they should because of a
+lack of food? & smallint & YesNo \\
+occFeb & This condition was true (occurred in) February & smallint & \\
+occMar & This condition was true (occurred in) March & smallint & \\
+occApr & This condition was true (occurred in) April & smallint & \\
+occMay & This condition was true (occurred in) May & smallint & \\
+occJun & This condition was true (occurred in) June & smallint & \\
+occJul & This condition was true (occurred in) July & smallint & \\
+\end{longtable}
+
+Table:
+
+HH 0 - Record Type: 201 - Food Security
+
+\begin{longtable}[]{@{}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0159}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0204}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0204}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0113}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0159}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0181}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0295}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0272}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0317}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0295}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0181}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.3741}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0317}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0227}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0159}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0159}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0159}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0159}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0159}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0159}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0159}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0159}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0159}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0159}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0159}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0159}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0181}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0295}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0249}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0340}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0181}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 62\tabcolsep) * \real{0.0181}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedleft
+projID
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+communty
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+studyear
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+HHID
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+strata
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+version
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+recordTypeCD
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+subRecordCD
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+subRecordDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+displayGroup
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+stmtNum
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+stmtDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+stmt1to3Value
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+trueForHH
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+occJan
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+occFeb
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+occMar
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+occApr
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+occMay
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+occJun
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+occJul
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+occAug
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+occSep
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+occOct
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+occNov
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+occDec
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+eatLess
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+hungryNotEat
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+loseWeight
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+notEatWholeDay
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+getFood
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+filterq
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+316 & 11 & 2024 & 0 & 0 & 0 & 201 & 0 & default & 20101 & & & & & & & &
+& & & & & & & & & & & & & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 201 & 0 & default & 20102 & 4 & We WORRIED
+that our household would run out of food before we could get more. & & 0
+& 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & & & & & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 201 & 0 & default & 20103 & 5 & We could
+not get the kinds of foods we wanted to eat because of a LACK OF
+RESOURCES. & & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & & & &
+& & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 201 & 0 & default & 20104 & 6 & The food
+we had JUST DID NOT LAST, and we could not get more. & & 0 & 0 & 0 & 0 &
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & & & & & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 201 & 0 & default & 20105 & 7 & The WILD
+food we had JUST DID NOT LAST, and we could not get more. & & 0 & 0 & 0
+& 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & & & & & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 201 & 0 & default & 20106 & 8 & The
+STORE-BOUGHT food we had JUST DID NOT LAST, and we could not get more. &
+& 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & & & & & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 201 & 0 & default & 20107 & & During the
+last year, did you or other adults in your household ever CUT THE SIZE
+OF YOUR MEALS OR SKIP MEALS because the HH could not get the food that
+was needed? & & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & & &
+& & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 201 & 0 & default & 20108 & & & & & 0 & 0
+& 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & & \\
+\end{longtable}
+
+Table:
+
+Defined Columns 23 - Household Employment
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1217}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.6435}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1130}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1217}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+colName
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+colDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+colDataType
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+codeSetName
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+recordTypeCD & Record Type Code & varchar(6) & \\
+subRecordCD & Logical subdivision of recordTypeCD & smallint & \\
+subRecordDesc & Description of subRecordCD & varchar(50) & \\
+filterq & Generic filter question YN hh participated in record type XXXX
+activities & int & YesNo \\
+person & Person identifier from Page 1 of the survey. & smallint & \\
+jobnum & Job number & smallint & Job Number \\
+jtitle & Job title & varchar(250) & \\
+SIC & Standard Industry Code of job & smallint & \\
+SOC & Standard Occupation Code of job & smallint & \\
+employr & Employer of this job. & varchar(250) & \\
+novWork & Person worked this job in November. & smallint & \\
+decWork & Person worked this job in December. & smallint & \\
+mayWork & Person worked this job in May. & smallint & \\
+junWork & Person worked this job in June. & smallint & \\
+julWork & Person worked this job in July. & smallint & \\
+augWork & Person worked this job in August. & smallint & \\
+sepWork & Person worked this job in September. & smallint & \\
+octWork & Person worked this job in October. & smallint & \\
+schedule & Schedule for this job & smallint & Job Schedules \\
+earnings & Gross earnings for this job? & real & \\
+janWork & Person worked this job in January. & smallint & \\
+febWork & Person worked this job in February. & smallint & \\
+marWork & Person worked this job in march. & smallint & \\
+aprWork & Person worked this job in April. & smallint & \\
+\end{longtable}
+
+Table:
+
+HH 0 - Record Type: 23 - Household Employment
+
+\begin{longtable}[]{@{}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 58\tabcolsep) * \real{0.0288}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 58\tabcolsep) * \real{0.0370}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 58\tabcolsep) * \real{0.0370}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 58\tabcolsep) * \real{0.0206}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 58\tabcolsep) * \real{0.0288}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 58\tabcolsep) * \real{0.0329}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 58\tabcolsep) * \real{0.0535}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 58\tabcolsep) * \real{0.0494}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 58\tabcolsep) * \real{0.0576}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 58\tabcolsep) * \real{0.0329}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 58\tabcolsep) * \real{0.0288}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 58\tabcolsep) * \real{0.0288}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 58\tabcolsep) * \real{0.0288}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 58\tabcolsep) * \real{0.0165}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 58\tabcolsep) * \real{0.0165}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 58\tabcolsep) * \real{0.0329}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 58\tabcolsep) * \real{0.0370}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 58\tabcolsep) * \real{0.0370}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 58\tabcolsep) * \real{0.0329}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 58\tabcolsep) * \real{0.0329}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 58\tabcolsep) * \real{0.0329}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 58\tabcolsep) * \real{0.0329}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 58\tabcolsep) * \real{0.0329}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 58\tabcolsep) * \real{0.0329}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 58\tabcolsep) * \real{0.0329}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 58\tabcolsep) * \real{0.0329}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 58\tabcolsep) * \real{0.0329}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 58\tabcolsep) * \real{0.0329}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 58\tabcolsep) * \real{0.0329}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 58\tabcolsep) * \real{0.0329}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedleft
+projID
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+communty
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+studyear
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+HHID
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+strata
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+version
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+recordTypeCD
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+subRecordCD
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+subRecordDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+filterq
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+person
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+jobnum
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+jtitle
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+SIC
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+SOC
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+employr
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+schedule
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+earnings
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+janWork
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+febWork
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+marWork
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+aprWork
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+mayWork
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+junWork
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+julWork
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+augWork
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+sepWork
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+octWork
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+novWork
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+decWork
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+316 & 11 & 2024 & 0 & 0 & 0 & 23 & 0 & default & 0 & & & & & & & & & & &
+& & & & & & & & & \\
+\end{longtable}
+
+Table:
+
+Defined Columns 24 - Other sources of income
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1042}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.6667}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.0833}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1458}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+colName
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+colDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+colDataType
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+codeSetName
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+recordTypeCD & Record Type Code & varchar(6) & \\
+subRecordCD & Logical subdivision of recordTypeCD & smallint & \\
+subRecordDesc & Description of subRecordCD & varchar(50) & \\
+otherIncomeYN & Did household receive non-employment income other than
+pfd or native corportation dividends YN? & int & YesNo \\
+pfdOrNatCorpYN & Did household receive a permanent fund or native
+corportation dividend this study period YN? & int & YesNo \\
+displayGroup & Used to control where individual records appear & int
+& \\
+incReceived & Was income from this source received? YN & smallint &
+YesNo \\
+incsrce & Other income source code. & smallint & Other income sources \\
+amount & Annual amount received from this income source & real & \\
+\end{longtable}
+
+Table:
+
+HH 0 - Record Type: 24 - Other sources of income
+
+\begin{longtable}[]{@{}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 28\tabcolsep) * \real{0.0458}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 28\tabcolsep) * \real{0.0588}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 28\tabcolsep) * \real{0.0588}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 28\tabcolsep) * \real{0.0327}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 28\tabcolsep) * \real{0.0458}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 28\tabcolsep) * \real{0.0523}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 28\tabcolsep) * \real{0.0850}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 28\tabcolsep) * \real{0.0784}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 28\tabcolsep) * \real{0.0915}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 28\tabcolsep) * \real{0.0915}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 28\tabcolsep) * \real{0.0980}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 28\tabcolsep) * \real{0.0850}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 28\tabcolsep) * \real{0.0784}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 28\tabcolsep) * \real{0.0523}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 28\tabcolsep) * \real{0.0458}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedleft
+projID
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+communty
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+studyear
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+HHID
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+strata
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+version
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+recordTypeCD
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+subRecordCD
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+subRecordDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+otherIncomeYN
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+pfdOrNatCorpYN
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+displayGroup
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+incReceived
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+incsrce
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+amount
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+316 & 11 & 2024 & 0 & 0 & 0 & 24 & 0 & default & 0 & 0 & 2401 & 0 & 32 &
+0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 24 & 0 & default & 0 & 0 & 2401 & 0 & 13 &
+0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 24 & 0 & default & 0 & 0 & 2402 & 0 & 12 &
+0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 24 & 0 & default & 0 & 0 & 2402 & 0 & 8 &
+0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 24 & 0 & default & 0 & 0 & 2402 & 0 & 7 &
+0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 24 & 0 & default & 0 & 0 & 2402 & 0 & 5 &
+0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 24 & 0 & default & 0 & 0 & 2402 & 0 & 31 &
+0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 24 & 0 & default & 0 & 0 & 2402 & 0 & 35 &
+0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 24 & 0 & default & 0 & 0 & 2402 & 0 & 11 &
+0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 24 & 0 & default & 0 & 0 & 2402 & 0 & 3 &
+0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 24 & 0 & default & 0 & 0 & 2402 & 0 & 10 &
+0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 24 & 0 & default & 0 & 0 & 2402 & 0 & 9 &
+0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 24 & 0 & default & 0 & 0 & 2402 & 0 & 6 &
+0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 24 & 0 & default & 0 & 0 & 2403 & 0 & 2 &
+0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 24 & 0 & default & 0 & 0 & 2403 & 0 & 15 &
+0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 24 & 0 & default & 0 & 0 & 2403 & 0 & 41 &
+0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 24 & 0 & default & 0 & 0 & 2403 & 0 & 49 &
+0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 24 & 0 & default & 0 & 0 & 2403 & 0 & 50 &
+0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 24 & 0 & default & 0 & 0 & 2403 & 0 & 33 &
+0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 24 & 0 & default & 0 & 0 & 2403 & 0 & 33 &
+0 \\
+316 & 11 & 2024 & 0 & 0 & 0 & 24 & 0 & default & 0 & 0 & 2403 & 0 & 33 &
+0 \\
+\end{longtable}
+
+Table:
+
+Defined Columns 300 - Survey summary comments
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1892}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.4865}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1622}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1622}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+colName
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+colDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+colDataType
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+codeSetName
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+subRecordCD & Logical subdivision of recordTypeCD & smallint & \\
+subRecordDesc & Description of subRecordCD & varchar(50) & \\
+recordTypeCD & Record Type Code & varchar(6) & \\
+comments & Comments from respondant & ntext & \\
+summary & Researcher summary comments & ntext & \\
+\end{longtable}
+
+Table:
+
+HH 0 - Record Type: 300 - Survey summary comments
+
+\begin{longtable}[]{@{}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 20\tabcolsep) * \real{0.0693}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 20\tabcolsep) * \real{0.0891}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 20\tabcolsep) * \real{0.0891}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 20\tabcolsep) * \real{0.0495}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 20\tabcolsep) * \real{0.0693}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 20\tabcolsep) * \real{0.0792}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 20\tabcolsep) * \real{0.1287}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 20\tabcolsep) * \real{0.1188}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 20\tabcolsep) * \real{0.1386}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 20\tabcolsep) * \real{0.0891}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 20\tabcolsep) * \real{0.0792}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedleft
+projID
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+communty
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+studyear
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+HHID
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+strata
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+version
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+recordTypeCD
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+subRecordCD
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+subRecordDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+comments
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+summary
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+316 & 11 & 2024 & 0 & 0 & 0 & 300 & 0 & default & & \\
+\end{longtable}
+
+Table:
+
+Defined Columns 376 - Resource health and safety
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1228}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.6491}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1228}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1053}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+colName
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+colDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+colDataType
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+codeSetName
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+recordTypeCD & Record Type Code & varchar(6) & \\
+subRecordCD & Logical subdivision of recordTypeCD & smallint & \\
+subRecordDesc & Description of subRecordCD & varchar(50) & \\
+filterq & Generic filter question YN hh participated in record type XXXX
+activities & int & YesNo \\
+resource & Resource in question & numeric(18,0) & \\
+displayGroup & Which page does this display on? & int & \\
+resSafeCD1 & Numeric code \#1 for why resource is not safe to eat. &
+smallint & \\
+resSafeCD2 & Numeric code \#2 for why resource is not safe to eat. &
+smallint & \\
+resSafeCD3 & Numeric code \#3 for why resource is not safe to eat. &
+smallint & \\
+resSafeDesc & Description of why resource is not safe to eat. &
+varchar(1000) & \\
+\end{longtable}
+
+Table:
+
+HH 0 - Record Type: 376 - Resource health and safety
+
+\begin{longtable}[]{@{}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 30\tabcolsep) * \real{0.0440}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 30\tabcolsep) * \real{0.0566}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 30\tabcolsep) * \real{0.0566}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 30\tabcolsep) * \real{0.0314}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 30\tabcolsep) * \real{0.0440}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 30\tabcolsep) * \real{0.0503}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 30\tabcolsep) * \real{0.0818}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 30\tabcolsep) * \real{0.0755}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 30\tabcolsep) * \real{0.0881}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 30\tabcolsep) * \real{0.0503}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 30\tabcolsep) * \real{0.0566}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 30\tabcolsep) * \real{0.0818}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 30\tabcolsep) * \real{0.0692}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 30\tabcolsep) * \real{0.0692}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 30\tabcolsep) * \real{0.0692}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 30\tabcolsep) * \real{0.0755}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedleft
+projID
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+communty
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+studyear
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+HHID
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+strata
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+version
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+recordTypeCD
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+subRecordCD
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+subRecordDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+filterq
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+resource
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+displayGroup
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+resSafeCD1
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+resSafeCD2
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+resSafeCD3
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+resSafeDesc
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+316 & 11 & 2024 & 0 & 0 & 0 & 376 & 0 & default & 0 & & & & & & \\
+\end{longtable}
+
+Table:
+
+Defined Columns 66 - Assessments
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1183}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.5799}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.0828}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2189}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+colName
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+colDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+colDataType
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+codeSetName
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+usuallyq & Generic filter question YN hh usually participates in record
+type XXXX activities & int & YesNo \\
+comments & Comments regarding commercial fisheries. & varchar(1000) & \\
+recordTypeCD & Record Type Code & varchar(6) & \\
+subRecordCD & Logical subdivision of recordTypeCD & smallint & \\
+subRecordDesc & Description of subRecordCD & varchar(50) & \\
+filterq & Generic filter question YN hh participated in record type XXXX
+activities & int & YesNo \\
+resource & Resource category for assessments & numeric(18,0) & \\
+histUse & Was this households use different compared to recent years? &
+smallint & Less/Same/More \\
+whyDiffDesc & Why was this households use different compared to recent
+years? & varchar(1000) & \\
+whyDiffCD1 & Why was this households use different compared to recent
+years Code 1? & smallint & Less/Same/More Reasons \\
+whyDiffCD2 & Why was this households use different compared to recent
+years Code 2? & smallint & Less/Same/More Reasons \\
+getEnough & Did this HH get enough of the resource category? & smallint
+& YesNo \\
+ride & Did household ride along with someone else while using motorized
+equipment? YN & smallint & YesNo \\
+environChangesCD2 & Code for environmental condition affecting HH
+ability to get to resource harvest area (code 2). & int & Empty
+(Placeholder codeset) \\
+units & What units was the amount of this resouce collected in? & int &
+Units \\
+amt & Amount (number) of resource collected. & int & \\
+pctUse & Category percentage used (generic - redefine as needed) & int &
+Heating from firewood (revised 2021) \\
+firewoodChangesYN & Has household harvest area for wood changed in the
+past five years? YN & smallint & YesNo \\
+firewoodChangesDesc & Text description of changes to HH firewood harvest
+area if HH responded yes to firewoodChangesYN. & varchar(1000) & \\
+borrow & Does HH borrow resource (market resource) & int & YesNo \\
+lease & Does HH lease resource (market resource) & int & YesNo \\
+charter & Does HH charter resource (market resource) & int & YesNo \\
+environChangesYN & Has HH ability to get to resource harvest areas
+changed due to environmental conditions? YN & int & YesNo \\
+environChangesDesc & Text description of observed conditions if HH
+responed Yes to environChangesYN. & varchar(250) & \\
+environChangesCD1 & Code for environmental condition affecting HH
+ability to get to resource harvest area (code 1). & int & Empty
+(Placeholder codeset) \\
+resNeededDesc & What kind of resources did the HH need (text
+description) & varchar(1000) & \\
+displayGroup & Used to distinguish records that should be entered on
+different DE pages. & int & \\
+impact & What was the impact of not getting enough? & smallint & Impact
+(5-option scale) \\
+locationDesc & Description of location (NPS Parklands) where resource
+was collected. & varchar(1000) & \\
+resYN & Does HH use resource? (Generic question) & int & YesNo \\
+own & Does HH own resource (market resource) & int & YesNo \\
+resourceNeeded & Resource needed by household & numeric(18,0) & \\
+\end{longtable}
+
+Table:
+
+HH 0 - Record Type: 66 - Assessments
+
+\begin{longtable}[]{@{}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 74\tabcolsep) * \real{0.0176}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 74\tabcolsep) * \real{0.0227}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 74\tabcolsep) * \real{0.0227}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 74\tabcolsep) * \real{0.0126}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 74\tabcolsep) * \real{0.0176}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 74\tabcolsep) * \real{0.0202}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 74\tabcolsep) * \real{0.0327}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 74\tabcolsep) * \real{0.0302}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 74\tabcolsep) * \real{0.0353}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 74\tabcolsep) * \real{0.0252}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 74\tabcolsep) * \real{0.0202}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 74\tabcolsep) * \real{0.0302}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 74\tabcolsep) * \real{0.0277}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 74\tabcolsep) * \real{0.0277}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 74\tabcolsep) * \real{0.0252}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 74\tabcolsep) * \real{0.0378}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 74\tabcolsep) * \real{0.0353}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 74\tabcolsep) * \real{0.0327}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 74\tabcolsep) * \real{0.0176}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 74\tabcolsep) * \real{0.0327}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 74\tabcolsep) * \real{0.0151}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 74\tabcolsep) * \real{0.0101}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 74\tabcolsep) * \real{0.0176}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 74\tabcolsep) * \real{0.0151}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 74\tabcolsep) * \real{0.0202}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 74\tabcolsep) * \real{0.0428}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 74\tabcolsep) * \real{0.0479}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 74\tabcolsep) * \real{0.0453}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 74\tabcolsep) * \real{0.0453}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 74\tabcolsep) * \real{0.0151}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 74\tabcolsep) * \real{0.0101}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 74\tabcolsep) * \real{0.0202}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 74\tabcolsep) * \real{0.0227}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 74\tabcolsep) * \real{0.0176}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 74\tabcolsep) * \real{0.0453}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 74\tabcolsep) * \real{0.0504}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 74\tabcolsep) * \real{0.0126}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 74\tabcolsep) * \real{0.0227}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedleft
+projID
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+communty
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+studyear
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+HHID
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+strata
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+version
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+recordTypeCD
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+subRecordCD
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+subRecordDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+resource
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+histUse
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+whyDiffDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+whyDiffCD1
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+whyDiffCD2
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+getEnough
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+resourceNeeded
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+resNeededDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+displayGroup
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+impact
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+locationDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+resYN
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+own
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+borrow
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+lease
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+charter
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+environChangesYN
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+environChangesDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+environChangesCD1
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+environChangesCD2
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+units
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+amt
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+filterq
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+usuallyq
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+pctUse
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+firewoodChangesYN
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+firewoodChangesDesc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+ride
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+comments
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+316 & 11 & 2024 & 0 & 0 & 0 & 66 & 0 & default & 110000000 & 0 & & & & &
+& & 6604 & & & & & & & & & & & & & & 0 & 0 & & & & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 66 & 0 & default & 120000000 & 0 & & & & &
+& & 6606 & & & & & & & & & & & & & & 0 & 0 & & & & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 66 & 0 & default & 210000000 & 0 & & & & &
+& & 6610 & & & & & & & & & & & & & & 0 & 0 & & & & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 66 & 0 & default & 220000000 & 0 & & & & &
+& & 6614 & & & & & & & & & & & & & & 0 & 0 & & & & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 66 & 0 & default & 400000000 & 0 & & & & &
+& & 6615 & & & & & & & & & & & & & & 0 & 0 & & & & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 66 & 0 & default & 300000000 & 0 & & & & &
+& & 6612 & & & & & & & & & & & & & & 0 & 0 & & & & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 66 & 0 & default & 500000000 & 0 & & & & &
+& & 6608 & & & & & & & & & & & & & & 0 & 0 & & & & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 66 & 0 & default & 600000000 & 0 & & & & &
+& & 66171 & & & & & & & & & & & & & & 0 & 0 & & & & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 66 & 0 & default & & & & & & & & & 66172 &
+& & & & & & & & & & & & & 0 & 0 & 0 & 0 & & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 66 & 0 & default & 0 & 0 & & & & & & &
+6600 & & & & & & & & 0 & & & & & & 0 & 0 & & & & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 66 & 0 & default & 980110000 & & & & & & &
+& 6620 & & & 0 & & & & & & & & & & & 0 & 0 & & & & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 66 & 0 & default & 980210100 & & & & & & &
+& 6620 & & & 0 & & & & & & & & & & & 0 & 0 & & & & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 66 & 0 & default & 980210200 & & & & & & &
+& 6620 & & & 0 & & & & & & & & & & & 0 & 0 & & & & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 66 & 0 & default & 980230000 & & & & & & &
+& 6620 & & & 0 & & & & & & & & & & & 0 & 0 & & & & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 66 & 0 & default & 980220000 & & & & & & &
+& 6620 & & & 0 & & & & & & & & & & & 0 & 0 & & & & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 66 & 0 & default & 980210300 & & & & & & &
+& 6620 & & & 0 & & & & & & & & & & & 0 & 0 & & & & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 66 & 0 & default & 980250100 & & & & & & &
+& 6620 & & & 0 & & & & & & & & & & & 0 & 0 & & & & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 66 & 0 & default & 980110000 & & & & & & &
+& 6621 & & & & 0 & 0 & 0 & 0 & & & & & & & 0 & 0 & & & & 0 & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 66 & 0 & default & 980210100 & & & & & & &
+& 6621 & & & & 0 & 0 & 0 & 0 & & & & & & & 0 & 0 & & & & 0 & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 66 & 0 & default & 980210200 & & & & & & &
+& 6621 & & & & 0 & 0 & 0 & 0 & & & & & & & 0 & 0 & & & & 0 & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 66 & 0 & default & 980230000 & & & & & & &
+& 6621 & & & & 0 & 0 & 0 & 0 & & & & & & & 0 & 0 & & & & 0 & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 66 & 0 & default & 980220000 & & & & & & &
+& 6621 & & & & 0 & 0 & 0 & 0 & & & & & & & 0 & 0 & & & & 0 & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 66 & 0 & default & 980210300 & & & & & & &
+& 6621 & & & & 0 & 0 & 0 & 0 & & & & & & & 0 & 0 & & & & 0 & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 66 & 0 & default & 980250100 & & & & & & &
+& 6621 & & & & 0 & 0 & 0 & 0 & & & & & & & 0 & 0 & & & & 0 & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 66 & 0 & default & 980600300 & & & & & & &
+& 6622 & & & 0 & & & & & & & & & & & 0 & 0 & & & & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 66 & 0 & default & 980600400 & & & & & & &
+& 6622 & & & 0 & & & & & & & & & & & 0 & 0 & & & & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 66 & 0 & default & 980600500 & & & & & & &
+& 6622 & & & 0 & & & & & & & & & & & 0 & 0 & & & & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 66 & 0 & default & 980600200 & & & & & & &
+& 6622 & & & 0 & & & & & & & & & & & 0 & 0 & & & & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 66 & 0 & default & & & & & & & & & 6622 &
+& & & & & & & & & & & & & 0 & 0 & & & & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 66 & 0 & default & 940100322 & & & & & & &
+& 6623 & & & 0 & & & & & & & & & 1 & 0 & 0 & 0 & & & & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 66 & 0 & default & 940100323 & & & & & & &
+& 6623 & & & 0 & & & & & & & & & 1 & 0 & 0 & 0 & & & & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 66 & 0 & default & 940100328 & & & & & & &
+& 6623 & & & 0 & & & & & & & & & 1 & 0 & 0 & 0 & & & & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 66 & 0 & default & 940100334 & & & & & & &
+& 6623 & & & 0 & & & & & & & & & 4 & 0 & 0 & 0 & & & & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 66 & 0 & default & 604002000 & & & & & & &
+& 6624 & & & 0 & & & & & & & & & 4 & 0 & 0 & 0 & & & & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 66 & 0 & default & 604013000 & & & & & & &
+& 6624 & & & 0 & & & & & & & & & 4 & 0 & 0 & 0 & & & & & \\
+316 & 11 & 2024 & 0 & 0 & 0 & 66 & 0 & default & 940100326 & & & & & & &
+& 6624 & & & 0 & & & & & & & & & 4 & 0 & 0 & 0 & & & & & \\
+\end{longtable}
+
+\subsection{Disconnect}\label{disconnect}
+
+Database disconnect
+
+\subsection{Write CSV}\label{write-csv}
+
+No files to write
+
+End script: A00\_CHECK\_SDS\_HH0.
+
+\end{document}

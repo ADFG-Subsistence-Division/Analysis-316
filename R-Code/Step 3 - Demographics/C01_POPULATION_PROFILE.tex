@@ -1,0 +1,310 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+% Set default figure placement to htbp
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{wrapfig}
+\usepackage{float}
+\usepackage{colortbl}
+\usepackage{pdflscape}
+\usepackage{tabu}
+\usepackage{threeparttable}
+\usepackage{threeparttablex}
+\usepackage[normalem]{ulem}
+\usepackage{makecell}
+\usepackage{xcolor}
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  pdftitle={C01\_POPULATION\_PROFILE - (316) NPS Ambler Comprehensive},
+  pdfauthor={Jesse Coleman},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\title{C01\_POPULATION\_PROFILE - (316) NPS Ambler Comprehensive}
+\author{Jesse Coleman}
+\date{2025-08-15}
+
+\begin{document}
+\maketitle
+
+C01\_POPULATION\_PROFILE - (316) NPS Ambler Comprehensive
+
+\section{Population profile}\label{population-profile}
+
+This file uses the population profile file to produce tables and figures
+for the technical report.
+
+\subsection{Change log}\label{change-log}
+
+\subsubsection{Change 1}\label{change-1}
+
+\begin{itemize}
+\tightlist
+\item
+  Programmer: D.S.Koster\\
+\item
+  Date: 05/21/2024\\
+\item
+  Change Description: Updated organization and formatting to be more
+  consistent and provide better feedback/output.\\
+\item
+  Template Update {[}Y\textbar N{]}: Y\\
+\item
+  One-Off: No-include in all future comprehensive templates
+\end{itemize}
+
+\subsubsection{Change 2}\label{change-2}
+
+\begin{itemize}
+\tightlist
+\item
+  Programmer: Jesse Coleman
+\item
+  Date: 03/18/2025
+\item
+  Change Description: Removed source() calls; all functions are included
+  in the library adfgSubs.
+\item
+  Template Update {[}Y\textbar N{]}: Y
+\item
+  One-Off: No-include in all future comprehensive templates
+\end{itemize}
+
+\subsubsection{Change 3}\label{change-3}
+
+\begin{itemize}
+\tightlist
+\item
+  Programmer: Jesse Coleman
+\item
+  Date: 05/07/2025
+\item
+  Change Description: Refactored code to use tidyverse and functional
+  programming principles
+\item
+  Template Update {[}Y\textbar N{]}: Y
+\item
+  One-Off: No-include in all future comprehensive templates
+\end{itemize}
+
+\subsection{Input data}\label{input-data}
+
+\begin{itemize}
+\tightlist
+\item
+  /CSV/03 - Main/REC01\_clean.csv\\
+\item
+  /CSV/03 - Main/sample.csv
+\end{itemize}
+
+\subsection{Output data}\label{output-data}
+
+\begin{itemize}
+\tightlist
+\item
+  /CSV/05 - Final Analysis Output/popProfile(T)\_raw.csv
+\end{itemize}
+
+\emph{Note} popProfile(T)\_raw should be copied and pasted, community by
+community using paste-special `transpose' into the 'popProfile(T)\_raw'
+tab of the `Demographics.xlsx' template file.
+
+\subsection{Background}\label{background}
+
+\subsection{Checklist}\label{checklist}
+
+\begin{itemize}
+\tightlist
+\item
+  Update `Author' to your name\\
+\item
+  Update the project information in `title' to the current project\\
+\item
+  Update the development log with any changes you've made to the
+  template file, including your name\\
+\item
+  Verify percentages add to 100\\
+\item
+  Create Excel table, copy/paste and ensure that results from this file
+  match that output
+\end{itemize}
+
+\subsection{Additional information}\label{additional-information}
+
+\subsubsection{External dependencies}\label{external-dependencies}
+
+\subsection{Required libraries (adjust as
+needed)}\label{required-libraries-adjust-as-needed}
+
+\begin{itemize}
+\tightlist
+\item
+  tidyVerse\\
+\item
+  rio
+\item
+  knitr\\
+\item
+  kableExtr
+\item
+  adfgSubs
+\end{itemize}
+
+\section{Data processing}\label{data-processing}
+
+\subsection{Initialize environment}\label{initialize-environment}
+
+Working on project 316 NPS Ambler Comprehensive - 2024
+
+\subsection{Load data}\label{load-data}
+
+This segment loads data, merges sampling information and produces
+automation lists for later.
+
+REC01\_clean.csv, 181 records loaded.
+
+sample.csv, 1 records loaded.
+
+\subsection{Organize data}\label{organize-data}
+
+Add the age category columns.
+
+\subsubsection{Pop Profile Figure}\label{pop-profile-figure}
+
+{[}{[}1{]}{]}
+\includegraphics{C01_POPULATION_PROFILE_files/figure-latex/pop profile figure-1.pdf}
+
+\subsubsection{Pop profile Table}\label{pop-profile-table}
+
+In this step, please review each table for obvious errors or issues.
+When re-running this data with updates, you can visually compare this
+output to the previous version in excel before pasting the output file
+into the excel template.
+
+{[}{[}1{]}{]}
+
+\begin{table}
+\centering\centering
+\caption{\label{tab:pop profile table}<div class="kableHeader"> Population profile: Ambler, 2024 </div>}
+\centering
+\begin{tabular}[t]{l|l|l|l|l|l|l|l|l|l}
+\hline
+\multicolumn{1}{c|}{ } & \multicolumn{3}{c|}{Male} & \multicolumn{3}{c|}{Female} & \multicolumn{3}{c}{Total} \\
+\cline{2-4} \cline{5-7} \cline{8-10}
+Age & Population & Percentage & Cumulative percent & Population & Percent & Cumulative percent & Population & Percentage & Cumulative percent\\
+\hline
+\cellcolor{gray!10}{0 to 4} & \cellcolor{gray!10}{12.1} & \cellcolor{gray!10}{9.3\%} & \cellcolor{gray!10}{9.3\%} & \cellcolor{gray!10}{15.2} & \cellcolor{gray!10}{11.5\%} & \cellcolor{gray!10}{11.5\%} & \cellcolor{gray!10}{27.3} & \cellcolor{gray!10}{10.4\%} & \cellcolor{gray!10}{10.4\%}\\
+\hline
+5 to 9 & 10.6 & 8.1\% & 17.4\% & 10.6 & 8\% & 19.5\% & 21.2 & 8.1\% & 18.5\%\\
+\hline
+\cellcolor{gray!10}{10 to 14} & \cellcolor{gray!10}{15.2} & \cellcolor{gray!10}{11.6\%} & \cellcolor{gray!10}{29.1\%} & \cellcolor{gray!10}{13.6} & \cellcolor{gray!10}{10.3\%} & \cellcolor{gray!10}{29.9\%} & \cellcolor{gray!10}{28.8} & \cellcolor{gray!10}{11\%} & \cellcolor{gray!10}{29.5\%}\\
+\hline
+15 to 19 & 10.6 & 8.1\% & 37.2\% & 10.6 & 8\% & 37.9\% & 21.2 & 8.1\% & 37.6\%\\
+\hline
+\cellcolor{gray!10}{20 to 24} & \cellcolor{gray!10}{4.5} & \cellcolor{gray!10}{3.5\%} & \cellcolor{gray!10}{40.7\%} & \cellcolor{gray!10}{12.1} & \cellcolor{gray!10}{9.2\%} & \cellcolor{gray!10}{47.1\%} & \cellcolor{gray!10}{16.7} & \cellcolor{gray!10}{6.4\%} & \cellcolor{gray!10}{43.9\%}\\
+\hline
+25 to 29 & 6.1 & 4.7\% & 45.3\% & 1.5 & 1.1\% & 48.3\% & 7.6 & 2.9\% & 46.8\%\\
+\hline
+\cellcolor{gray!10}{30 to 34} & \cellcolor{gray!10}{1.5} & \cellcolor{gray!10}{1.2\%} & \cellcolor{gray!10}{46.5\%} & \cellcolor{gray!10}{9.1} & \cellcolor{gray!10}{6.9\%} & \cellcolor{gray!10}{55.2\%} & \cellcolor{gray!10}{10.6} & \cellcolor{gray!10}{4\%} & \cellcolor{gray!10}{50.9\%}\\
+\hline
+35 to 39 & 12.1 & 9.3\% & 55.8\% & 10.6 & 8\% & 63.2\% & 22.7 & 8.7\% & 59.5\%\\
+\hline
+\cellcolor{gray!10}{40 to 44} & \cellcolor{gray!10}{12.1} & \cellcolor{gray!10}{9.3\%} & \cellcolor{gray!10}{65.1\%} & \cellcolor{gray!10}{15.2} & \cellcolor{gray!10}{11.5\%} & \cellcolor{gray!10}{74.7\%} & \cellcolor{gray!10}{27.3} & \cellcolor{gray!10}{10.4\%} & \cellcolor{gray!10}{69.9\%}\\
+\hline
+45 to 49 & 7.6 & 5.8\% & 70.9\% & 4.5 & 3.4\% & 78.2\% & 12.1 & 4.6\% & 74.6\%\\
+\hline
+\cellcolor{gray!10}{50 to 54} & \cellcolor{gray!10}{7.6} & \cellcolor{gray!10}{5.8\%} & \cellcolor{gray!10}{76.7\%} & \cellcolor{gray!10}{4.5} & \cellcolor{gray!10}{3.4\%} & \cellcolor{gray!10}{81.6\%} & \cellcolor{gray!10}{12.1} & \cellcolor{gray!10}{4.6\%} & \cellcolor{gray!10}{79.2\%}\\
+\hline
+55 to 59 & 7.6 & 5.8\% & 82.6\% & 3 & 2.3\% & 83.9\% & 10.6 & 4\% & 83.2\%\\
+\hline
+\cellcolor{gray!10}{60 to 64} & \cellcolor{gray!10}{6.1} & \cellcolor{gray!10}{4.7\%} & \cellcolor{gray!10}{87.2\%} & \cellcolor{gray!10}{4.5} & \cellcolor{gray!10}{3.4\%} & \cellcolor{gray!10}{87.4\%} & \cellcolor{gray!10}{10.6} & \cellcolor{gray!10}{4\%} & \cellcolor{gray!10}{87.3\%}\\
+\hline
+65 to 69 & 4.5 & 3.5\% & 90.7\% & 4.5 & 3.4\% & 90.8\% & 9.1 & 3.5\% & 90.8\%\\
+\hline
+\cellcolor{gray!10}{70 to 74} & \cellcolor{gray!10}{4.5} & \cellcolor{gray!10}{3.5\%} & \cellcolor{gray!10}{94.2\%} & \cellcolor{gray!10}{3} & \cellcolor{gray!10}{2.3\%} & \cellcolor{gray!10}{93.1\%} & \cellcolor{gray!10}{7.6} & \cellcolor{gray!10}{2.9\%} & \cellcolor{gray!10}{93.6\%}\\
+\hline
+75 to 79 & 0 & 0\% & 94.2\% & 7.6 & 5.7\% & 98.9\% & 7.6 & 2.9\% & 96.5\%\\
+\hline
+\cellcolor{gray!10}{80 to 84} & \cellcolor{gray!10}{0} & \cellcolor{gray!10}{0\%} & \cellcolor{gray!10}{94.2\%} & \cellcolor{gray!10}{1.5} & \cellcolor{gray!10}{1.1\%} & \cellcolor{gray!10}{100\%} & \cellcolor{gray!10}{1.5} & \cellcolor{gray!10}{0.6\%} & \cellcolor{gray!10}{97.1\%}\\
+\hline
+85 to 89 & 4.5 & 3.5\% & 97.7\% & 0 & 0\% & 100\% & 4.5 & 1.7\% & 98.8\%\\
+\hline
+\cellcolor{gray!10}{90 to 94} & \cellcolor{gray!10}{0} & \cellcolor{gray!10}{0\%} & \cellcolor{gray!10}{97.7\%} & \cellcolor{gray!10}{0} & \cellcolor{gray!10}{0\%} & \cellcolor{gray!10}{100\%} & \cellcolor{gray!10}{0} & \cellcolor{gray!10}{0\%} & \cellcolor{gray!10}{98.8\%}\\
+\hline
+95 to 99 & 0 & 0\% & 97.7\% & 0 & 0\% & 100\% & 0 & 0\% & 98.8\%\\
+\hline
+\cellcolor{gray!10}{100 to 104} & \cellcolor{gray!10}{0} & \cellcolor{gray!10}{0\%} & \cellcolor{gray!10}{97.7\%} & \cellcolor{gray!10}{0} & \cellcolor{gray!10}{0\%} & \cellcolor{gray!10}{100\%} & \cellcolor{gray!10}{0} & \cellcolor{gray!10}{0\%} & \cellcolor{gray!10}{98.8\%}\\
+\hline
+Miss & 3 & 2.3\% & 100\% & 0 & 0\% & 100\% & 3 & 1.2\% & 100\%\\
+\hline
+\end{tabular}
+\end{table}
+
+\section{Write CSV files}\label{write-csv-files}
+
+Writing file: ../../CSV/05 - Final Analysis
+Output/popProfile(T)\_raw.csv 2 records to be written
+
+End of Population Profile script.
+
+\end{document}
