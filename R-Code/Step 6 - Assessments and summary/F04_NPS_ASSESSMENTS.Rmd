@@ -453,8 +453,6 @@ print(motorTblOut)
 ```
 ## Motorized Equipment Figure Review
 
-#### TO DO - Fix labels and y scale!!!
-
 Please review figures for any obvious errors or issues. When re-running this data with updates, you can visually compare this output to the previous version in Excel before pasting the output file into the Excel template.
 
 ```{r motorized equipment figure review}
@@ -510,7 +508,7 @@ print(plotOut)
 
 # Filter to the NPS natural materials questions. You may need to change the subRecordCD code
 # or filter by the displayGroups used in the data entry screen.
-natMatData <- filter(NPSData, displayGroup == 6624)
+natMatData <- filter(NPSData, displayGroup %in% c(6624,6623))
 
 # Need to remove one record added for salmonberries picked on NPS lands. Question was about natural materials
 # gathered for handicrafts and should not include harvested subsistence resources. Additionally, record was 
@@ -866,55 +864,65 @@ print(reasonsTblOut)
 ```
 ## Environmental Impact 
 
-```{r environmental impact}
+Note: for Ambler (2024), there were very few responses to environmental impact questions. The responses are reported values rather than coded and summarized values.
+
+```{r environmental impact, eval = FALSE}
+
+# Filter to the environmental impact question.
+environData <- filter(NPSData, displayGroup == 6600)
+
+# Need to aggregate to the HH level here due to multiple records for HHs where multiple resources were added in response to the question "Which resource(s) did you need more of?"
+environData <- group_by(environData, projID, studyear, communty, commname, commhh, samphh,
+                       HHID, environChangesYN) %>%
+              summarize(HHID = max(HHID, na.rm = TRUE))
+
+
+# Replace NA with missing - every household should have been asked question.
+environData$environChangesYN [environData$environChangesYN == -8 | environData$environChangesYN == -7 |
+                              environData$environChangesYN == -6  ] = -9
+
+environData$environChangesYN [is.na(environData$environChangesYN)]= -9
+
+# Initialize variables.
+environData$yes[environData$environChangesYN == 1]= 1
+environData$no[environData$environChangesYN == 0]= 1
+environData$missing[environData$environChangesYN == -9]= 1
+
+# Summarize environmental impact.
+environData <-group_by(environData, projID, studyear, communty, commname, commhh, samphh,
+                       HHID, environChangesYN) %>%
+  summarize (yes = sum(yes,na.rm = TRUE),
+             no = sum(no,na.rm = TRUE),
+             missing = sum(missing, na.rm = TRUE))
+
+#Aggregate to community level.
+environData <-group_by(environData, projID, studyear,communty, commname, commhh, samphh) %>%
+  summarize (yes = sum(yes,na.rm = TRUE),
+             no = sum(no,na.rm = TRUE),
+             missing = sum(missing, na.rm = TRUE))
+
+#Get description of environmental changes for households with 'yes' response.
+environDescData <- NPSData
+
+environDescData <- group_by(environDescData, projID, studyear,communty, commname, commhh, samphh,
+                            HHID, resource, environChangesYN, environChangesDesc)%>%
+                    filter(environChangesYN == 1)
+
+#Aggregate to household level.
+
+environDescData <- group_by(environDescData, projID, studyear,communty, commname, commhh, samphh,
+                       HHID, environChangesDesc)%>%
+                  summarize (environChangesYN = max(environChangesYN, na.rm = TRUE))
+```
+
+```{r environmental impact - sparse data}
 # Filter to the environmental impact question.
 environData <- NPSData %>% select(projID:HHID, environChangesYN:environChangesCD2) %>% 
   filter(environChangesYN == 1) %>% 
-  distinct(HHID,environChangesDesc)
-
-# # Need to aggregate to the HH level here due to multiple records for HHs where multiple resources were added in response to the question "Which resource(s) did you need more of?"
-# environData <-group_by(environData, projID, studyear, communty, commname, commhh, samphh, 
-#                        HHID, environChangesYN) %>%
-#               summarize(HHID = max(HHID, na.rm = TRUE))
-# 
-# 
-# # Replace NA with missing - every household should have been asked question.
-# environData$environChangesYN [environData$environChangesYN == -8 | environData$environChangesYN == -7 |
-#                               environData$environChangesYN == -6  ] = -9
-# 
-# environData$environChangesYN [is.na(environData$environChangesYN)]= -9
-# 
-# # Initialize variables.
-# environData$yes[environData$environChangesYN == 1]= 1
-# environData$no[environData$environChangesYN == 0]= 1
-# environData$missing[environData$environChangesYN == -9]= 1
-# 
-# # Summarize environmental impact.
-# environData <-group_by(environData, projID, studyear, communty, commname, commhh, samphh, 
-#                        HHID, environChangesYN) %>%
-#   summarize (yes = sum(yes,na.rm = TRUE),
-#              no = sum(no,na.rm = TRUE),
-#              missing = sum(missing, na.rm = TRUE))
-# 
-# #Aggregate to community level.
-# environData <-group_by(environData, projID, studyear,communty, commname, commhh, samphh) %>%
-#   summarize (yes = sum(yes,na.rm = TRUE),
-#              no = sum(no,na.rm = TRUE),
-#              missing = sum(missing, na.rm = TRUE))
-# 
-# #Get description of environmental changes for households with 'yes' response.
-# environDescData <- NPSData
-#   
-# environDescData <- group_by(environDescData, projID, studyear,communty, commname, commhh, samphh, 
-#                             HHID, resource, environChangesYN, environChangesDesc)%>%
-#                     filter(environChangesYN == 1)
-# 
-# #Aggregate to household level.
-# 
-# environDescData <- group_by(environDescData, projID, studyear,communty, commname, commhh, samphh, 
-#                        HHID, environChangesDesc)%>%
-#                   summarize (environChangesYN = max(environChangesYN, na.rm = TRUE))
+  distinct(HHID, environChangesDesc) %>% 
+  bind_cols(sampleData %>% select(projID:communty, commname, samphh, commhh),.)
 ```
+
 ### Environmental Changes Table Review
 
 Please review tables for any obvious errors or issues. When re-running this data with updates, you can visually compare this output to the previous version in Excel before pasting the output file into the Excel template.
@@ -935,7 +943,7 @@ tmpEnvironData$missing_pct = paste(as.character(round(tmpEnvironData$missing_pct
 for(comm in commnameList$commname)
 {
 environTblData <- filter (tmpEnvironData, commname == comm) %>% ungroup() %>%
-               select(samphh, yes, yes_pct, no, no_pct, missing, missing_pct) 
+               select(samphh, yes, yes_pct, no, no_pct, missing, missing_pct)
 
 environTblOut <- kbl(environTblData,
                caption=formatTableHeader(str_interp("Environmental conditions affected household ability to access subsistence areas: ${comm}, ${studyear}")),
@@ -958,6 +966,26 @@ print(environTblOut)
 }
 
 tmpEnvironDescData <- environDescData
+
+for(comm in commnameList$commname)
+{
+environDescTblData <- filter (tmpEnvironDescData, commname == comm) %>% ungroup() %>%
+               select(HHID, environChangesDesc) 
+
+environDescTblOut <- kbl(environDescTblData,
+             caption=formatTableHeader(str_interp("Description of environmental conditions affecting household access to subsistence areas: ${comm}, ${studyear}")),
+             col.names = c("Household", 
+                           "Reason"),                         
+               align="l")%>%
+    kable_styling(full_width = F)
+
+print(environDescTblOut)
+}
+
+```
+
+```{r environmental impact table - sparse data}
+tmpEnvironDescData <- environData
 
 for(comm in commnameList$commname)
 {

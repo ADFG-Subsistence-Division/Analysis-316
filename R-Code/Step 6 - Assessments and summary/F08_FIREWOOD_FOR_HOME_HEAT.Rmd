@@ -143,7 +143,7 @@ codesetData$firewoodUseLevel = codesetData$code
 codesetData$firewoodUse = codesetData$codeDescription
 codesetData <- select(codesetData, firewoodUseLevel, firewoodUse)
 
-firewoodData <- filter(rec17Data, resource == 604097000)
+firewoodData <- filter(rec17Data, resource == 604000000)
 firewoodData <- left_join(firewoodData, sampleData, by=c("projID", "studyear", "communty", "strata"))
 firewoodData <- left_join(firewoodData, codesetData, by=c("firewoodUseLevel"))
 

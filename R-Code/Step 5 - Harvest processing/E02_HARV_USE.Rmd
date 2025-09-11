@@ -234,7 +234,9 @@ In this step, please review each table for obvious errors or issues. When re-run
 
 ```{r harv use table}
 
-commnameList <- harvRawData %>% select(commname) %>% distinct()
+commnameList <- harvRawData %>% distinct(commname) %>% pull(commname)
+
+studyearList <- harvRawData %>% select(studyear) %>% distinct(studyear) %>% pull(studyear)
 
 walk(commnameList, function(comm) {
   tempData <- harvRawData %>%
@@ -389,9 +391,9 @@ walk(commnameList, function(comm) {
 
 ## Category figure data
 
-Produce a dataset containing species by category for pie charts by resource category.
+Produce a dataset containing species by category for pie-charts by resource category.
 
-```{r category figure data, message=FALSE}
+```{r category figure data, message = FALSE}
 
 # Group by category and calculate max harvests for use in percent calculations
 harvUseFigData <- commHarvData %>%
@@ -436,6 +438,7 @@ veg_lump <- function(data, resource_range, name, code = NULL) {
 }
 
 
+
 # Special handling for vegetation, we'll lump into sub-categories to start:
 #  Mushrooms, Berries, Other vegetation, seaweed, all other processing will work fine as below (I think).
 
@@ -475,8 +478,7 @@ lumpedSpecies1Data <- harvUseFigData_main %>%
       catCode == 21 ~ "All other large land mammals",
       catCode == 22 ~ "All other small land mammals",
       catCode == 23 ~ "All other feral animals",
-      # catCode %in% c(41, 42, 43) ~ "All other birds and eggs",
-      catCode == 40 ~ "All other birds and eggs",
+      catCode %in% c(41, 42, 43) ~ "All other birds and eggs",
       TRUE ~ "All other"
     ),
     resource = (catCode * 10000000) + 9999999
@@ -492,8 +494,7 @@ lumpedSpecies2Data <- harvUseFigData_main %>%
     resName = case_when(
       catCode == 30 ~ "All other marine mammals",
       catCode == 50 ~ "All other marine invertebrates",
-      # catCode %in% c(41, 42, 43) ~ "All other birds and eggs",
-      catCode == 40 ~ "All other birds and eggs",
+      catCode %in% c(41, 42, 43) ~ "All other birds and eggs",
       TRUE ~ "All other"
     ),
     resource = (catCode * 10000000) + 99999999
@@ -525,92 +526,306 @@ harvUseFigData$resName <- str_trim(harvUseFigData$resName, side = "both")
 
 ```
 
-## Species composition by resource category
+# Species composition by resoure category
 
-```{r Function to create all species composition plots}
+```{r create all species composition plots}
 
 # Helper function for pie plotting
+
 plot_species_pie <- function(data, comm, study_year, cat_code, resource_exclude, 
                              title_prefix, yvar = "percap", 
-                             collapse_all_other = FALSE, n_collapse = 10,
-                             collapse_label) {
-
-  tempData <- filter(data, 
+                             collapse_all_other = FALSE, n_collapse = 10) {
+  
+  tempData <- dplyr::filter(data, 
                      .data$catCode == cat_code,
                      .data$commname == comm,
                      .data$resource != resource_exclude) 
-
-
+  
   # For certain categories, collapse all but top n species
   if (collapse_all_other && nrow(tempData) > n_collapse) {
-    tempData <- select(tempData, resName, percap, estHarvestLbs_sum) %>%
-      arrange(desc(!!sym(yvar)))
+    tempData <- dplyr::select(tempData, resName, percap, estHarvestLbs_sum) %>%
+      dplyr::arrange(desc(!!rlang::sym(yvar)))
     tempData$order <- seq_len(nrow(tempData))
     tempData$order[tempData$order >= n_collapse] <- n_collapse
-    tempData$resName[tempData$order == n_collapse] <- glue("{collapse_label}")
+    tempData$resName[tempData$order == n_collapse] <- "All other species"
     tempData <- tempData %>%
-      group_by(resName) %>%
-      summarise(percap = sum(percap, na.rm = TRUE),
+      dplyr::group_by(resName) %>%
+      dplyr::summarise(percap = sum(percap, na.rm = TRUE),
                 estHarvestLbs_sum = sum(estHarvestLbs_sum, na.rm = TRUE)) %>%
-      ungroup()
+      dplyr::ungroup()
   }
   
   if (nrow(tempData) > 0) {
-    tempData <- arrange(tempData, !!sym(yvar))
+    tempData <- dplyr::arrange(tempData, !!rlang::sym(yvar))
     tempData$resName <- factor(tempData$resName, levels = rev(unique(tempData$resName)))
     colrs <- getColors(nColors = nlevels(tempData$resName))
-        gg_title <- glue("{title_prefix} {comm}, {study_year}.")
+    gg_title <- glue::glue("{title_prefix} {comm}, {study_year}.")
     
-    specPlot <- ggplot(tempData, 
-                       aes(x = "", y = !!sym(yvar), fill = resName)) +
-      ggtitle(gg_title) +
-      geom_bar(width = 1, stat = "identity", color = "white") +
-      coord_polar("y", start = 0, direction = -1) +
-      xlab("") + ylab("") +
-      scale_fill_manual(values = colrs) +
-      theme_void() +
-      theme(legend.title = element_blank(),
-            text = element_text(family = "serif"))
-    print(specPlot)
+    # Calculate percentage and cumulative position for labels
+    tempData <- tempData %>%
+  mutate(
+    percent = !!rlang::sym(yvar) / sum(!!rlang::sym(yvar), na.rm = TRUE),
+    percent_label = paste0(round(percent * 100, 1), "%"),
+    ymax = cumsum(!!rlang::sym(yvar)),
+    ymin = lag(ymax, default = 0),
+    ymid = (ymax + ymin) / 2,
+    x = 1,
+    label = percent_label
+  )
+
+specPlot <- ggplot(tempData, 
+                   aes(x = "", y = !!rlang::sym(yvar), fill = resName)) +
+  ggtitle(gg_title) +
+  geom_bar(width = 1, stat = "identity", color = "white") +
+  coord_polar("y", start = 0, direction = -1) +
+  xlab("") + ylab("") +
+  scale_fill_manual(values = colrs) +
+  theme_void() +
+  theme(legend.title = element_blank(),
+        text = element_text(family = "serif")) +
+  ggrepel::geom_label_repel(
+    aes(x = x, y = ymid, label = label),
+    nudge_x = 1,
+    show.legend = FALSE,
+    size = 4,
+    color = "black",
+    segment.color = "grey30",
+    segment.size = 0.5,
+    box.padding = 0.2,
+    point.padding = 0.4,
+    direction = "y",
+    seed = 123
+  )
+    return(specPlot)
   } else {
-    cat(warningMessage(glue("No {tolower(title_prefix)} data present for {comm}, {study_year}")))
+    cat(warningMessage(glue::glue("No {tolower(title_prefix)} data present for {comm}, {study_year}")))
+    return(NULL)
   }
 }
 
 # List of plots to make, specifying unique settings for each
 pie_plot_settings <- tibble::tribble(
-  ~plot_group,        ~cat_code, ~resource_exclude, ~title_prefix,                    ~yvar,              ~collapse_all_other, ~n_collapse, ~collapse_label,
-  "salmon",           11,       110000000,         "Salmon harvest by species",      "percap",           FALSE,               NA, "All other salmon",
-  "non_salmon_fish",  12,       120000000,         "Non-salmon harvest by species",  "percap",           TRUE,                10, "All other nonsalmon fishes",
-  "large_game",       21,       210000000,         "Large land mammal harvest by species", "percap",    FALSE,               NA, "All other large land mammals",
-  "small_game",       22,       220000000,         "Small land mammal harvest by species", "estHarvestAmt_sum", FALSE,         NA, "All other small land mammals",
-  "feral_game",       23,       230000000,         "Feral land mammal harvest by species", "percap",    FALSE,               NA, "All other feral land mammals",
-  "marine_mammals",   30,       300000000,         "Marine mammal harvest by species", "percap",         FALSE,               NA, "All other marine mammals",
-  "birds",            40,       400000000,         "Bird harvest by species",        "percap",           TRUE,                10, "All other birds and eggs",
-  "marine_invert",    50,       500000000,         "Marine invertebrate harvest by species", "percap",   FALSE,               NA, "All other marine invertebrates",
-  "vegetation",       60,       600000000,         "Vegetation harvest by species",  "percap",           FALSE,               NA, "All other plants and berries"
+  ~plot_group,        ~cat_code, ~resource_exclude, ~title_prefix,                    ~yvar,              ~collapse_all_other, ~n_collapse,
+  "salmon",           11,       110000000,         "Salmon harvest by species",      "percap",           FALSE,               NA,
+  "non_salmon_fish",  12,       120000000,         "Non-salmon harvest by species",  "percap",           TRUE,                10,
+  "large_game",       21,       210000000,         "Large land mammal harvest by species", "percap",    FALSE,               NA,
+  "small_game",       22,       220000000,         "Small land mammal harvest by species", "estHarvestAmt_sum", FALSE,         NA,
+  "feral_game",       23,       230000000,         "Feral land mammal harvest by species", "percap",    FALSE,               NA,
+  "marine_mammals",   30,       300000000,         "Marine mammal harvest by species", "percap",         FALSE,               NA,
+  "birds",            40,       400000000,         "Bird harvest by species",        "percap",           TRUE,                10,
+  "marine_invert",    50,       500000000,         "Marine invertebrate harvest by species", "percap",   FALSE,               NA,
+  "vegetation",       60,       600000000,         "Vegetation harvest by species",  "percap",           FALSE,               NA
 )
 
-# Plot for each community and group
-walk2(
-  rep(pie_plot_settings$plot_group, each = length(commnameList)),
-  rep(commnameList, times = nrow(pie_plot_settings)),
-  function(group, comm) {
-    setting <- pie_plot_settings %>% filter(.data$plot_group == group)
+
+# Get all combinations of plot_group and comm
+plot_combos <- expand.grid(
+  plot_group = pie_plot_settings$plot_group,
+  comm = commnameList,
+  studyear = studyearList,
+  stringsAsFactors = FALSE
+)
+# Join the settings onto plot_combos
+combo_settings <- left_join(plot_combos, pie_plot_settings, by = "plot_group")
+
+# For each, find the setting and call the plotting function
+plot_list <- pmap(
+  combo_settings,
+  function(plot_group, comm, studyear, cat_code, resource_exclude, title_prefix, yvar, collapse_all_other, n_collapse, ...) {
     plot_species_pie(
       data = harvUseFigData,
       comm = comm,
       study_year = studyear,
-      cat_code = setting$cat_code,
-      resource_exclude = setting$resource_exclude,
-      title_prefix = setting$title_prefix,
-      yvar = setting$yvar,
-      collapse_all_other = setting$collapse_all_other,
-      n_collapse = setting$n_collapse %||% 10,
-      collapse_label = setting$collapse_label
+      cat_code = cat_code,
+      resource_exclude = resource_exclude,
+      title_prefix = title_prefix,
+      yvar = yvar,
+      collapse_all_other = collapse_all_other,
+      n_collapse = if (!is.na(n_collapse)) n_collapse else 10
     )
   }
 )
+
+# Name the list items for easy access
+names(plot_list) <- paste0(
+  plot_combos$plot_group, "_",
+  plot_combos$comm, "_",
+  plot_combos$studyear, "_SpeciesPieFig"
+)
+
+
+# Plot for each community and group
+# walk2(
+#   rep(pie_plot_settings$plot_group, each = length(commnameList)),
+#   rep(commnameList, times = nrow(pie_plot_settings)),
+#   function(group, comm) {
+#     setting <- pie_plot_settings %>% filter(.data$plot_group == group)
+#     plot_species_pie(
+#       data = harvUseFigData,
+#       comm = comm,
+#       study_year = studyear,
+#       cat_code = setting$cat_code,
+#       resource_exclude = setting$resource_exclude,
+#       title_prefix = setting$title_prefix,
+#       yvar = setting$yvar,
+#       collapse_all_other = setting$collapse_all_other,
+#       n_collapse = setting$n_collapse %||% 10
+#     )
+#   }
+# )
+```
+
+## Salmon
+
+```{r salmon species pie }
+
+pwalk(
+  unique(plot_combos[c("comm", "studyear")]), 
+  function(comm, studyear) {
+    plot_name <- paste0("salmon", "_", comm, "_", studyear, "_SpeciesPieFig")
+    if (!is.null(plot_list[[plot_name]])) {
+      print(plot_list[[plot_name]])
+    }
+  }
+)
+
+
+```
+
+## Non Salmon fish  
+  
+```{r nonsalmon species pie}
+
+pwalk(
+  unique(plot_combos[c("comm", "studyear")]), 
+  function(comm, studyear) {
+    plot_name <- paste0("non_salmon_fish", "_", comm, "_", studyear, "_SpeciesPieFig")
+    if (!is.null(plot_list[[plot_name]])) {
+      print(plot_list[[plot_name]])
+    }
+  }
+)
+
+
+```
+
+## Large game
+
+```{r large game species pie}
+
+pwalk(
+  unique(plot_combos[c("comm", "studyear")]), 
+  function(comm, studyear) {
+    plot_name <- paste0("large_game", "_", comm, "_", studyear, "_SpeciesPieFig")
+    if (!is.null(plot_list[[plot_name]])) {
+      print(plot_list[[plot_name]])
+    }
+  }
+)
+
+
+```
+
+## Small game / furbearers
+
+```{r small land mammals species pie}
+
+pwalk(
+  unique(plot_combos[c("comm", "studyear")]), 
+  function(comm, studyear) {
+    plot_name <- paste0("small_game", "_", comm, "_", studyear, "_SpeciesPieFig")
+    if (!is.null(plot_list[[plot_name]])) {
+      print(plot_list[[plot_name]])
+    }
+  }
+)
+
+
+```
+
+## Feral game
+
+```{r feral land mammals species pie}
+
+pwalk(
+  unique(plot_combos[c("comm", "studyear")]), 
+  function(comm, studyear) {
+    plot_name <- paste0("feral_game", "_", comm, "_", studyear, "_SpeciesPieFig")
+    if (!is.null(plot_list[[plot_name]])) {
+      print(plot_list[[plot_name]])
+    }
+  }
+)
+
+
+```
+
+## Marine Mammals
+
+```{r marine mammals species pie}
+
+pwalk(
+  unique(plot_combos[c("comm", "studyear")]), 
+  function(comm, studyear) {
+    plot_name <- paste0("marine_mammals", "_", comm, "_", studyear, "_SpeciesPieFig")
+    if (!is.null(plot_list[[plot_name]])) {
+      print(plot_list[[plot_name]])
+    }
+  }
+)
+
+
+```
+
+## Birds
+
+```{r bird species pie}
+
+pwalk(
+  unique(plot_combos[c("comm", "studyear")]), 
+  function(comm, studyear) {
+    plot_name <- paste0("birds", "_", comm, "_", studyear, "_SpeciesPieFig")
+    if (!is.null(plot_list[[plot_name]])) {
+      print(plot_list[[plot_name]])
+    }
+  }
+)
+
+
+```
+
+## Marine Invertebrate
+
+```{r marine invertebrates species pie}
+
+pwalk(
+  unique(plot_combos[c("comm", "studyear")]), 
+  function(comm, studyear) {
+    plot_name <- paste0("marine_invert", "_", comm, "_", studyear, "_SpeciesPieFig")
+    if (!is.null(plot_list[[plot_name]])) {
+      print(plot_list[[plot_name]])
+    }
+  }
+)
+
+
+```
+
+## Vegetation
+
+```{r large land mammals species pie}
+
+pwalk(
+  unique(plot_combos[c("comm", "studyear")]), 
+  function(comm, studyear) {
+    plot_name <- paste0("vegetation", "_", comm, "_", studyear, "_SpeciesPieFig")
+    if (!is.null(plot_list[[plot_name]])) {
+      print(plot_list[[plot_name]])
+    }
+  }
+)
+
+
 ```
 
 # Final Error review

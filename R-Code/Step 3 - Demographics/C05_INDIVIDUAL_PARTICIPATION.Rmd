@@ -161,7 +161,7 @@ cat(formatValueList(participationQuestions))
 allNpsQuestionList = c("buildFishTrapsYN",
                     "buildDogSleds", "sewSkinsCloth",
                     "cookWildFoods", "makeHandicrafts",
-                    "buildShelter")
+                    "shelterYN")
 
 npsQuestionList = intersect(names(REC01Data), allNpsQuestionList)
 

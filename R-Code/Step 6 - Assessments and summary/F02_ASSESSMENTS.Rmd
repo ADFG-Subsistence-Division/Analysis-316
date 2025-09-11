@@ -801,7 +801,7 @@ tempMoreData <- filter(moreTempData, commname == comm &
 
 ## Reasons for more or less use - network figures
 
-```{r More reasons network figure}
+```{r More reasons network figure, eval = FALSE}
 moreReasonsLong <- moreReasonsData %>%  
   pivot_longer(cols = c(10:ncol(.)),
                names_to = "moreReason",
@@ -870,7 +870,7 @@ print(plotOut)
 
 ```
 
-```{r Less reasons network figure}
+```{r Less reasons network figure, eval = FALSE}
 lessReasonsLong <- lessReasonsData %>%  
   pivot_longer(cols = c(10:ncol(.)),
                names_to = "lessReason",
@@ -938,16 +938,25 @@ print(plotOut)
 
 ## Heat tables
 
-```{r, eval = FALSE}
+```{r Heat table - more reasons}
+ 
+combinations <- moreReasonsData %>% ungroup() %>%
+  select(commname, studyear) %>%
+  distinct()
 
-moreReasonsHeat <- moreReasonsLong %>%
- group_by(resName) %>% 
- mutate(
+moreReasonsHeat <- 
+  moreReasonsData %>%  
+  pivot_longer(cols = c(10:ncol(.)),
+               names_to = "moreReason",
+               values_to = "numResponses") %>% 
+  mutate(numResponses = if_else(is.na(numResponses),0,numResponses)) %>% 
+  group_by(resName) %>% 
+  mutate(
     row_max = max(numResponses, na.rm = TRUE),
-    fill_alpha = ifelse(row_max == 0, 0, moreUse / row_max), # avoid div by zero
-    fill_col = scales::alpha("red", fill_alpha)              # alpha sets transparency
-  ) %>%
-  ungroup()
+    fill_alpha = ifelse(row_max == 0, NA, numResponses / row_max),
+    fill_col = if_else(fill_alpha == 0, NA, scales::alpha("red", fill_alpha)),
+    text_col = if_else(is.na(fill_col), "lightgray","black")
+  )
 
 pwalk(
   .l = combinations,
@@ -956,16 +965,84 @@ pwalk(
     
  print(df_filt)
  
- plotOut <- ggplot(df_filt, aes(x = moreReason, y = resName)) +
-   geom_tile(aes(fill = fill_col, alpha = fill_alpha), color = "white", na.rm = TRUE) +
-   geom_text(aes(label = numResponses), color = "black", fontface = "bold") +
-   scale_fill_identity() +
+ plotOut <- ggplot(df_filt, aes(x = moreReason, 
+                                y = as.factor(resName))) +
+   geom_tile(aes(fill = fill_col, 
+                 alpha = fill_alpha), 
+             color = "white", na.rm = TRUE) +
+   geom_text(aes(label = numResponses,
+                 color = text_col), 
+             family = "serif", 
+             size = 10, 
+             size.unit = "pt") +
+   scale_fill_identity(guide = "none") +
+   scale_color_identity(guide = "none") +
+   scale_x_discrete(labels = function(x) str_wrap(x, width = 10)) +
+   scale_y_discrete(drop = FALSE) +
+   labs(x = "Reasons for more use", 
+        y = "Resource name", 
+        title = paste0("Reasons given for more use by resource category, ",commname_val,", ",studyear_val)) +
    theme_minimal(base_size = 12, base_family = "serif") +
    theme(
      axis.text.x = element_text(angle = 45, hjust = 1),
-     panel.grid = element_blank()
-   ) +
-   labs(x = "Reasons for more use", y = "Resource Name", title = paste0("Reasons for more use by resource category, ",commname_val,", ",studyear_val))
+     panel.grid = element_blank(),
+     legend.position = "none",
+     plot.title = element_text(hjust = 0))
+   
+ 
+ print(plotOut)
+ 
+  }
+)
+```
+
+```{r Heat table - less reasons}
+ 
+lessReasonsHeat <- 
+  lessReasonsData %>%  
+  pivot_longer(cols = c(10:ncol(.)),
+               names_to = "lessReason",
+               values_to = "numResponses") %>% 
+  mutate(numResponses = if_else(is.na(numResponses),0,numResponses)) %>% 
+  group_by(resName) %>% 
+  mutate(
+    row_max = max(numResponses, na.rm = TRUE),
+    fill_alpha = ifelse(row_max == 0, NA, numResponses / row_max),
+    fill_col = if_else(fill_alpha == 0, NA, scales::alpha("red", fill_alpha)),
+    text_col = if_else(is.na(fill_col), "lightgray","black")
+  )
+
+pwalk(
+  .l = combinations,
+  .f = function(commname_val, studyear_val) {
+    df_filt <- lessReasonsHeat %>% filter(commname == commname_val, studyear == studyear_val)
+    
+ print(df_filt)
+ 
+ plotOut <- ggplot(df_filt, aes(x = lessReason, 
+                                y = as.factor(resName))) +
+   geom_tile(aes(fill = fill_col, 
+                 alpha = fill_alpha), 
+             color = "white", na.rm = TRUE) +
+   geom_text(aes(label = numResponses,
+                 color = text_col), 
+             family = "serif", 
+             size = 10, 
+             size.unit = "pt") +
+   scale_fill_identity(guide = "none") +
+   scale_color_identity(guide = "none") +
+   scale_x_discrete(labels = function(x) str_wrap(x, width = 10)) +
+   scale_y_discrete(drop = FALSE) +
+   labs(x = "Reasons for less use", 
+        y = "Resource name", 
+        title = paste0("Reasons given for less use by resource category, ",commname_val,", ",studyear_val)) +
+   theme_minimal(base_size = 12, base_family = "serif") +
+   theme(
+     axis.text.x = element_text(angle = 45, hjust = 1),
+     panel.grid = element_blank(),
+     legend.position = "none",
+     plot.title = element_text(hjust = 0))
+   
  
  print(plotOut)
  
