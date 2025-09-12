@@ -1,7 +1,7 @@
 ---
-title: "D05_MAKE_RAW_DATA_FILES - (316) NPS Ambler Comprehensive"
+title: "D05_MAKE_RAW_DATA_FILES - (294) Yukon Comprehensives 2024"
 author: "Jesse Coleman"
-date: "2025-08-15"
+date: "2025-08-11"
 output:
   html_document:
     theme: null
@@ -12,7 +12,7 @@ output:
 ---
 <div class="title-container">
   <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
-  <div class="title">D05_MAKE_RAW_DATA_FILES - (316) NPS Ambler Comprehensive</div>
+  <div class="title">D05_MAKE_RAW_DATA_FILES - (294) Yukon Comprehensives 2024</div>
 </div>
 
 # Make Raw employment data files
@@ -78,14 +78,14 @@ Change 3
 - adfgSubs
 
 ```{r setup, echo=FALSE}
-
 # Set some knit options and functions for formatting data.
-knitr::opts_chunk$set(echo = FALSE)
-knitr::opts_chunk$set(include = TRUE)
-knitr::opts_chunk$set(results='asis')
+knitr::opts_chunk$set(echo = FALSE,
+                      include = TRUE,
+                      message = FALSE,
+                      warning = FALSE,
+                      results='asis')
 
 options(knitr.kable.NA = '')
-
 ```
 
 # Data processing
@@ -282,13 +282,10 @@ weeksEmployData <- group_by(employMonthsData, projID, studyear,
             validWeeks = sum(validWeeks, na.rm=TRUE),
             nCases = n(),
             minMonthsEmplAdults = min(minMonthsEmplAdults, na.rm=TRUE),
-            maxMonthsEmplAdults = max(maxMonthsEmplAdults, na.rm=TRUE), .groups = "drop") %>% 
-  
+            maxMonthsEmplAdults = max(maxMonthsEmplAdults, na.rm=TRUE)) %>% 
   mutate(estWeeksEmploy = weeksEmployed * (nCases/validWeeks) * strataWt,
          estYrRound = yrRound * (nCases/validWeeks) * strataWt) %>% 
-  
   group_by(projID, studyear, communty) %>% 
-  
   summarize(estWeeksEmploy = sum(estWeeksEmploy, na.rm=TRUE),
             estYrRound = sum(estYrRound, na.rm=TRUE),
             minMonthsEmplAdults = min(minMonthsEmplAdults, na.rm=TRUE),
@@ -296,7 +293,7 @@ weeksEmployData <- group_by(employMonthsData, projID, studyear,
             .groups = "drop")
 
 # tidy-up a bit.
-# rm(employMonthsData)
+rm(employMonthsData)
 
 ```
 
@@ -821,7 +818,8 @@ estByIndustry <- estIncData %>%
       paste0("     ", incsrceDesc),
       incCategoryDesc
     )
-  )
+  ) 
+  
 
 # Prepare tmpEstByIndustry for output table
 tmpEstByIndustry <- estByIndustry %>%
@@ -833,49 +831,15 @@ tmpEstByIndustry <- estByIndustry %>%
     pctIncome = paste0(round(pctIncome * 100, 1), "%")
   ) %>%
   # Select only the columns needed for the final table
-  select(commname, indent, incsrceDesc, pctJobs, pctHHs, pctPerson, pctIncome)
-
-
-# estByIndustry <- filter(estIncData, incsrce >= 1000)
-# 
-# # Calculate percentages.
-# estByIndustry <- group_by(estByIndustry, projID, studyear, communty) %>%
-#   mutate(estJobCount_max = max(estJobCount_mean, na.rm=TRUE),
-#          estHHCount_max = max(estHHCount_mean, na.rm=TRUE),
-#          estPersonCount_max = max(estPersonCount_mean, na.rm=TRUE), 
-#          estIncome_max = max(estIncome_mean)) %>% 
+  select(commname, indent, incsrceDesc, pctJobs, pctHHs, pctPerson, pctIncome) 
+# %>% 
+#   group_by(commname) %>% 
+#   mutate(sort_key = case_when(str_detect(incsrceDesc, "Industry not specified") ~ 0,
+#     TRUE ~ 1)) %>% # Assign 0 to row 2 for sorting
+#   arrange(commname, sort_key) %>%
+#   select(-sort_key) %>% 
 #   ungroup()
-# 
-# estByIndustry$pctJobs = estByIndustry$estJobCount_mean / estByIndustry$estJobCount_max
-# estByIndustry$pctHHs = estByIndustry$estHHCount_mean / estByIndustry$estHHCount_max
-# estByIndustry$pctPerson = estByIndustry$estPersonCount_mean / estByIndustry$estPersonCount_max
-# estByIndustry$pctIncome = estByIndustry$estIncome_mean / estByIndustry$estIncome_max
-# 
-# 
-# estByIndustry <- select(estByIndustry, projID, studyear, communty, commname, Nhouseholds, NPopulation, 
-#                         incCategoryDesc, incsrceDesc, estJobCount_mean, estHHCount_mean, 
-#                         estPersonCount_mean, estIncome_mean, pctJobs, pctHHs, pctPerson, pctIncome)
-# 
-# # Indent and labelling for output table.
-# estByIndustry$indent = 1
-# estByIndustry$incsrceDesc[estByIndustry$incsrceDesc != 'All Occupations'] <- paste('     ', estByIndustry$incsrceDesc[estByIndustry$incsrceDesc != 'All Occupations'], sep='')
-# estByIndustry$indent[estByIndustry$incsrceDesc == 'All Occupations'] = 0
-# estByIndustry$incsrceDesc[estByIndustry$incsrceDesc == 'All Occupations'] = estByIndustry$incCategoryDesc[estByIndustry$incsrceDesc == 'All Occupations']
-# 
-# tmpEstByIndustry <- estByIndustry
-# estByIndustry <- select(estByIndustry, -indent)
-# 
-# #tmpEstByIndustry$indent = 1
-# #tmpEstByIndustry$indent[tmpEstByIndustry$incsrceDesc == 'All Occupations'] = 0
-# #tmpEstByIndustry$incCategoryDesc[tmpEstByIndustry$incCategoryDesc == 'All Occupations'] = 'Estimated total number'
-# #tmpEstByIndustry$incsrceDesc[tmpEstByIndustry$incsrceDesc == 'All Occupations'] = #tmpEstByIndustry$incCategoryDesc[tmpEstByIndustry$incsrceDesc == 'All Occupations']
-# 
-# tmpEstByIndustry$pctJobs = paste(as.character(round(tmpEstByIndustry$pctJobs * 100, 1)), '%', sep='')
-# tmpEstByIndustry$pctHHs = paste(as.character(round(tmpEstByIndustry$pctHHs * 100, 1)), '%', sep='')
-# tmpEstByIndustry$pctPerson = paste(as.character(round(tmpEstByIndustry$pctPerson * 100, 1)), '%', sep='')
-# tmpEstByIndustry$pctIncome = paste(as.character(round(tmpEstByIndustry$pctIncome * 100, 1)), '%', sep='')
-# 
-# tmpEstByIndustry <- select(tmpEstByIndustry, commname, indent, incsrceDesc, pctJobs, pctHHs, pctPerson, pctIncome)
+
 
 
 for(comm in commnameList$commname)
@@ -1005,21 +969,29 @@ acsMedIncData <-
          upper_medIncome = estIncome_median + DP03_0062M) %>% 
   select(-geog, - DP03_0062M)
 
-plotMedIncData <- bind_rows(medianEmployData, acsMedIncData)
+plotMedIncData <- bind_rows(medianEmployData, acsMedIncData) %>% 
+ mutate(projID = max(projID, na.rm = TRUE),
+        studyear = max(studyear, na.rm = TRUE))
+
 
 # Plot
-ggplot(plotMedIncData, aes(x = factor(commname, 
-                                      levels = c("United States", "Alaska", setdiff(unique(commname), c("United States", "Alaska")))), 
-                           y = estIncome_median)) +
-  geom_col(fill = "steelblue") +
-  geom_errorbar(aes(ymin = lower_medIncome, ymax = upper_medIncome), width = 0.2) +
-  ggtitle(str_c("Median Income ", str_c(medianEmployData$commname, collapse = ", "), ", ", medianEmployData$studyear)) +
-  labs(
-    x = "",
-    y = "Median Income (USD)"
-  ) +
-  scale_y_continuous(labels = scales::label_dollar(accuracy = 1, big.mark = ",", decimal.mark = ".", prefix = "$")) +
-  theme_minimal(base_family = "serif")
+
+plotMedIncData %>% 
+    ggplot(aes(x = factor(commname), 
+               y = estIncome_median)) +
+    geom_col(fill = "steelblue") +
+    geom_errorbar(aes(ymin = lower_medIncome, ymax = upper_medIncome), width = 0.2) +
+    ggtitle(glue::glue_collapse("Median Income")) +
+    labs(
+      x = "",
+      y = "Median Income (USD)"
+    ) +
+    scale_y_continuous(labels = scales::label_dollar(accuracy = 1, big.mark = ",", decimal.mark = ".", prefix = "$")) +
+    theme_minimal()
+
+
+  
+    
 ```
 
 ## Write CSV files
