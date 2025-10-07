@@ -530,7 +530,7 @@ naturalMatData <-group_by(natMatData, projID, studyear,communty, commname, commh
 naturalMatData$resYN = naturalMatData$resYN * (naturalMatData$commhh / naturalMatData$samphh)
 naturalMatData$amountHarv = naturalMatData$amountHarv * (naturalMatData$commhh / naturalMatData$samphh)
 
-
+natMatLocations <- NPSData %>% select(resource, resName, locationDesc) %>% filter(!is.na(locationDesc))
 ```
 
 ## Natural Materials Table Review
@@ -553,7 +553,7 @@ natMatTblData <- filter (tmpNatMatData, commname == comm) %>% ungroup() %>%
                       amountHarv, units) 
 
 NatMatTblOut <- kbl(natMatTblData,
-             caption=formatTableHeader(str_interp("Natural materials used for making handicrafts: ${comm}, ${studyear}")),
+             caption=formatTableHeader(str_interp("Natural materials collected for making handicrafts: ${comm}, ${studyear}")),
              col.names = c("Material", 
                            "Sample",
                            "Number", 
@@ -584,36 +584,39 @@ resHealthData$filterq == -6] = -9
 resHealthData$filterq [is.na(resHealthData$filterq)]= -9
 
 # Initialize variables.
-resHealthData$missing [resHealthData$filterq == -9]= 1
-resHealthData$unknown [resHealthData$filterq == -8]= 1
-resHealthData$no [resHealthData$filterq == 0]= 1 
-resHealthData$yes [resHealthData$filterq == 1]= 1
+resHealthData$missing[resHealthData$filterq == -9]= 1
+resHealthData$unknown[resHealthData$filterq == -8]= 1
+resHealthData$no[resHealthData$filterq == 0]= 1 
+resHealthData$yes[resHealthData$filterq == 1]= 1
 
-#Aggregrate to HH level.
+# Aggregate to HH level.
 resHealthData <-group_by(resHealthData, projID, studyear,communty, commname, commhh, samphh, HHID, resource, resName) %>%
-                summarize(no = sum(no,na.rm = TRUE),
-                          yes = sum(yes,na.rm = TRUE),
-                          unknown = sum(unknown,na.rm = TRUE),
-                          missing = sum(missing, na.rm = TRUE))
+  summarize(no = sum(no,na.rm = TRUE),
+            yes = sum(yes,na.rm = TRUE),
+            unknown = sum(unknown,na.rm = TRUE),
+            missing = sum(missing, na.rm = TRUE))
 
 #Aggregate to community level.
 resHealthData <-group_by(resHealthData, projID, studyear,communty, commname, commhh, samphh, resource,resName) %>%
-                summarize (no = sum(no,na.rm = TRUE),
-                           yes = sum(yes,na.rm = TRUE),
-                           unknown = sum(unknown,na.rm = TRUE),
-                           missing = sum(missing, na.rm = TRUE))
+  summarize (no = sum(no,na.rm = TRUE),
+             yes = sum(yes,na.rm = TRUE),
+             unknown = sum(unknown,na.rm = TRUE),
+             missing = sum(missing, na.rm = TRUE))
 
-# # Filter to resources households avoided and reasons why.
-# resHealthDescData <- filter(NPSData, displayGroup == 6619)
-# 
-# # Aggregate to HH level.
-# resHealthDescData <- group_by(resHealthDescData, projID, studyear,communty, commname, commhh, samphh, HHID, resource, resName, resWhy) %>%
-#   summarize(filterq = sum(filterq, na.rm = TRUE))
-# 
-# # Aggregate to community level.
-# resHealthDescData <-group_by(resHealthDescData, projID, studyear,communty, commname, commhh, samphh, 
-#                              resource, resName, resWhy) %>%
-#                     summarize (filterq = sum(filterq,na.rm = TRUE))
+# Filter to resources households avoided and reasons why.
+resHealthDescData <- resHealthData_raw
+
+# Aggregate to HH level.
+resHealthDescData <- resHealthData_raw %>% 
+  mutate(commname = "Ambler",
+         commhh = unique(NPSData$commhh),
+         samphh = unique(NPSData$samphh)) %>% 
+  group_by(projID, studyear,communty, commname, commhh, samphh, HHID, resource, resSafeDesc) %>%
+  summarize(filterq = sum(filterq, na.rm = TRUE)) %>% 
+  filter(!is.na(resource)) %>% 
+  left_join(resNameData, by = c("resource")) %>% 
+  select(communty:resource,resName,resSafeDesc)
+
 ```
 
 ## Resource Health Table Review
@@ -866,7 +869,7 @@ print(reasonsTblOut)
 
 Note: for Ambler (2024), there were very few responses to environmental impact questions. The responses are reported values rather than coded and summarized values.
 
-```{r environmental impact, eval = FALSE}
+```{r environmental impact}
 
 # Filter to the environmental impact question.
 environData <- filter(NPSData, displayGroup == 6600)
@@ -917,7 +920,7 @@ environDescData <- group_by(environDescData, projID, studyear,communty, commname
 
 ```{r environmental impact - sparse data}
 # Filter to the environmental impact question.
-environData <- NPSData %>% select(projID:HHID, environChangesYN:environChangesCD2) %>% 
+environData2 <- NPSData %>% select(projID:HHID, environChangesYN:environChangesCD2) %>% 
   filter(environChangesYN == 1) %>% 
   distinct(HHID, environChangesDesc) %>% 
   bind_cols(sampleData %>% select(projID:communty, commname, samphh, commhh),.)
@@ -985,7 +988,7 @@ print(environDescTblOut)
 ```
 
 ```{r environmental impact table - sparse data}
-tmpEnvironDescData <- environData
+tmpEnvironDescData <- environData2
 
 for(comm in commnameList$commname)
 {
@@ -1036,6 +1039,15 @@ print(environDescTblOut)
   # For 2023; we are, by default, working exclusively with R code..
   rio::export(naturalMatData, fName)
   
+  
+      fName = str_interp('../../CSV/05 - Final Analysis Output/naturalMaterialLocations_raw.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(natMatLocations), ' records to be written', sep='')))
+  
+  # For 2023; we are, by default, working exclusively with R code..
+  rio::export(natMatLocations, fName)
+  
     fName = str_interp('../../CSV/05 - Final Analysis Output/resourceHealth(T)_raw.csv')
   cat(formatSummaryBlock(
     paste('Writing file: ', fName,
@@ -1043,15 +1055,15 @@ print(environDescTblOut)
 
   # For 2023; we are, by default, working exclusively with R code..
   rio::export(resHealthData, fName)
- 
-  #    fName = str_interp('../../CSV/05 - Final Analysis Output/resourceHealthReasons_raw.csv')
-  # cat(formatSummaryBlock(
-  #   paste('Writing file: ', fName, 
-  #         ' ', nrow(resHealthDescData), ' records to be written', sep='')))
-  # 
-  # # For 2023; we are, by default, working exclusively with R code..
-  # rio::export(resHealthDescData, fName)
-  # 
+
+     fName = str_interp('../../CSV/05 - Final Analysis Output/resourceHealthReasons_raw.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName,
+          ' ', nrow(resHealthDescData), ' records to be written', sep='')))
+
+  # For 2023; we are, by default, working exclusively with R code..
+  rio::export(resHealthDescData, fName)
+
     fName = str_interp('../../CSV/05 - Final Analysis Output/firewoodUse(T)_raw.csv')
   cat(formatSummaryBlock(
     paste('Writing file: ', fName, 
@@ -1087,10 +1099,10 @@ print(environDescTblOut)
      fName = str_interp('../../CSV/05 - Final Analysis Output/environComments_raw.csv')
   cat(formatSummaryBlock(
     paste('Writing file: ', fName, 
-          ' ', nrow(environData), ' records to be written', sep='')))
+          ' ', nrow(environDescTblData), ' records to be written', sep='')))
   
   # For 2023; we are, by default, working exclusively with R code..
-  rio::export(environData, fName)  
+  rio::export(environDescTblData, fName)
 
 ```
 
