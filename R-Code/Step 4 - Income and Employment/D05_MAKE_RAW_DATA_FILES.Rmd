@@ -587,154 +587,154 @@ In the tables below, evaluate that results to determined whether or not those ar
 
 ```{r Estimated earned and other income}
 
-# 4.1–4.3 - Copy, fix, compute, filter, sort, select, and create summaries all in a single pipeline
-estEarnOtherData <- estIncData %>%
-  # If incTypeCD is 1, set incsrceDesc to incCategoryDesc
-  mutate(
-    incsrceDesc = if_else(incTypeCD == 1, incCategoryDesc, incsrceDesc),
-    # If incTypeCD is 1, set incCategoryDesc to 'All sources of income'
-    incCategoryDesc = if_else(incTypeCD == 1, "All sources of income", incCategoryDesc),
-    # Set incTypeCD for sorting purposes
-    incTypeCD = case_when(
-      incCategory == -2 ~ 3,
-      incCategory == -1 ~ 2.5,
-      incCategory == 1000 ~ 1.5,
-      TRUE ~ as.numeric(incTypeCD)
-    ),
-    # Rename variables for clarity
-    nPerson = estPersonCount_mean,
-    nHH = estHHCount_mean,
-    estIncome = estIncome_mean,
-    # Calculate mean household earnings
-    hhMeanEarn = estIncome_mean / Nhouseholds
-  ) %>%
-  # Filter for relevant income sources and categories
-  filter(incsrce <= 1000 & !(incsrce == 0 & incCategory > 0)) %>%
-  # Arrange for output
-  arrange(projID, studyear, communty, incTypeCD, desc(estIncome_mean)) %>%
-  # Select relevant columns for the output table
-  select(
-    projID, studyear, communty, commname, incTypeCD, Nhouseholds, NPopulation,
-    incCategoryDesc, incsrceDesc, nPerson, nHH, estIncome,
-    lower_estIncome, upper_estIncome, hhMeanEarn
-  ) %>%
-  # Group for summary calculations
-  group_by(projID, studyear, communty, commname) %>%
-  # Add totalIncome column for percent calculations
-  mutate(totalIncome = max(estIncome)) %>%
-  ungroup() %>%
-  # Calculate percent of total earnings per row
-  mutate(pctTotalEarn = estIncome / totalIncome) %>%
-  # Remove helper column now that percent is calculated
-  select(-totalIncome) %>%
-  # Indent source descriptions for main and subtotal rows
-  mutate(
-    incsrceDesc = if_else(
-      incTypeCD %in% c(1, 2),
-      paste0("     ", incsrceDesc),
-      incsrceDesc
-    ),
-    # If nHH and estIncome are zero, set upper_estIncome to 0
-    upper_estIncome = if_else(nHH == 0 & estIncome == 0, 0, upper_estIncome)
-  )
-
-# Prepare for output table and format values
-tmpEarnOtherData <- estEarnOtherData %>%
-  # For certain rows, set nPerson to NA
-  mutate(nPerson = if_else(incTypeCD %in% c(2, 2.5), NA_real_, nPerson)) %>%
-  # Round and format all numeric columns as needed
-  mutate(
-    nPerson = round(nPerson, 1),
-    nHH = round(nHH, 1),
-    estIncome = round(estIncome, 0),
-    lower_estIncome = round(lower_estIncome, 0),
-    upper_estIncome = round(upper_estIncome, 0),
-    hhMeanEarn = round(hhMeanEarn, 1),
-    # Format percent of total earnings as a percent string
-    pctTotalEarn = paste0(as.character(round(pctTotalEarn * 100, 1)), "%"),
-    # Create confidence interval string
-    CL = paste0(lower_estIncome, "–", upper_estIncome)
-  ) %>%
-  # Select and order columns for output table
-  select(
-    commname, incsrceDesc, nPerson, nHH, estIncome,
-    CL, hhMeanEarn, pctTotalEarn
-  ) %>%
-  # Relabel subtotal/total rows for printout
-  mutate(
-    incsrceDesc = case_when(
-      incsrceDesc == "All industries" ~ "Earned income subtotal",
-      incsrceDesc == "All other sources of income" ~ "Other income subtotal",
-      incsrceDesc == "All income sources" ~ "Community income total",
-      TRUE ~ incsrceDesc
-    )
-  )
-
-# # 4.1 - Copy of the main data frame to work with
-# estEarnOtherData <- estIncData
-# 
-# # Fix the issue with income source and category being different things 
-# estEarnOtherData$incsrceDesc[estEarnOtherData$incTypeCD == 1] = estEarnOtherData$incCategoryDesc[estEarnOtherData$incTypeCD == 1]
-# estEarnOtherData$incCategoryDesc[estEarnOtherData$incTypeCD == 1] = 'All sources of income'
-# 
-# # Deal with sorting for output table, but properly.
-# estEarnOtherData$incTypeCD[estEarnOtherData$incCategory == -2] = 3
-# estEarnOtherData$incTypeCD[estEarnOtherData$incCategory == -1] = 2.5
-# estEarnOtherData$incTypeCD[estEarnOtherData$incCategory == 1000] = 1.5
-# 
-# 
-# # 4.2 - Renaming of variables to clarify contents slightly better.
-# estEarnOtherData$nPerson = estEarnOtherData$estPersonCount_mean
-# estEarnOtherData$nHH = estEarnOtherData$estHHCount_mean
-# estEarnOtherData$estIncome = estEarnOtherData$estIncome_mean
-# 
-# estEarnOtherData$hhMeanEarn = estEarnOtherData$estIncome_mean / estEarnOtherData$Nhouseholds
-# 
-# # 4.3 - final summary.
-# estEarnOtherData <- filter(estEarnOtherData, incsrce <= 1000 & !(incsrce == 0 & incCategory > 0)) %>%
+# # 4.1–4.3 - Copy, fix, compute, filter, sort, select, and create summaries all in a single pipeline
+# estEarnOtherData <- estIncData %>%
+#   # If incTypeCD is 1, set incsrceDesc to incCategoryDesc
+#   mutate(
+#     incsrceDesc = if_else(incTypeCD == 1, incCategoryDesc, incsrceDesc),
+#     # If incTypeCD is 1, set incCategoryDesc to 'All sources of income'
+#     incCategoryDesc = if_else(incTypeCD == 1, "All sources of income", incCategoryDesc),
+#     # Set incTypeCD for sorting purposes
+#     incTypeCD = case_when(
+#       incCategory == -2 ~ 3,
+#       incCategory == -1 ~ 2.5,
+#       incCategory == 1000 ~ 1.5,
+#       TRUE ~ as.numeric(incTypeCD)
+#     ),
+#     # Rename variables for clarity
+#     nPerson = estPersonCount_mean,
+#     nHH = estHHCount_mean,
+#     estIncome = estIncome_mean,
+#     # Calculate mean household earnings
+#     hhMeanEarn = estIncome_mean / Nhouseholds
+#   ) %>%
+#   # Filter for relevant income sources and categories
+#   filter(incsrce <= 1000 & !(incsrce == 0 & incCategory > 0)) %>%
+#   # Arrange for output
 #   arrange(projID, studyear, communty, incTypeCD, desc(estIncome_mean)) %>%
-#   select(projID,	studyear,	communty,	commname,	
-#          incTypeCD,	Nhouseholds, NPopulation,	incCategoryDesc, incsrceDesc, nPerson, 
-#          nHH, estIncome, lower_estIncome, upper_estIncome, hhMeanEarn) %>%
-#   ungroup()
-# 
-# estEarnOtherData <- group_by(estEarnOtherData, projID,	studyear,	communty,	commname) %>%
+#   # Select relevant columns for the output table
+#   select(
+#     projID, studyear, communty, commname, incTypeCD, Nhouseholds, NPopulation,
+#     incCategoryDesc, incsrceDesc, nPerson, nHH, estIncome,
+#     lower_estIncome, upper_estIncome, hhMeanEarn
+#   ) %>%
+#   # Group for summary calculations
+#   group_by(projID, studyear, communty, commname) %>%
+#   # Add totalIncome column for percent calculations
 #   mutate(totalIncome = max(estIncome)) %>%
-#   ungroup()
+#   ungroup() %>%
+#   # Calculate percent of total earnings per row
+#   mutate(pctTotalEarn = estIncome / totalIncome) %>%
+#   # Remove helper column now that percent is calculated
+#   select(-totalIncome) %>%
+#   # Indent source descriptions for main and subtotal rows
+#   mutate(
+#     incsrceDesc = if_else(
+#       incTypeCD %in% c(1, 2),
+#       paste0("     ", incsrceDesc),
+#       incsrceDesc
+#     ),
+#     # If nHH and estIncome are zero, set upper_estIncome to 0
+#     upper_estIncome = if_else(nHH == 0 & estIncome == 0, 0, upper_estIncome)
+#   )
 # 
-# estEarnOtherData$pctTotalEarn = estEarnOtherData$estIncome / estEarnOtherData$totalIncome
-# estEarnOtherData <- select(estEarnOtherData, -totalIncome)
-# 
-# # Final output table formatting
-# estEarnOtherData$incsrceDesc[estEarnOtherData$incTypeCD %in% c(1,2)] =  paste('     ', estEarnOtherData$incsrceDesc[estEarnOtherData$incTypeCD %in% c(1,2)],sep='')
-# 
-# # The bootstrapping procedure forces a 1 into the upper CI for income sources 
-# # not reported, make this a 0 for reporting purposes.
-# estEarnOtherData$upper_estIncome[estEarnOtherData$nHH == 0 & 
-#                                    estEarnOtherData$estIncome == 0] = 0
-# 
-# # Prepare for output tables.
-# tmpEarnOtherData <- estEarnOtherData
-# tmpEarnOtherData$nPerson[tmpEarnOtherData$incTypeCD == 2 | tmpEarnOtherData$incTypeCD == 2.5] = NA
-# 
-# # Formatting.
-# tmpEarnOtherData$nPerson = round(tmpEarnOtherData$nPerson, 1)
-# tmpEarnOtherData$nHH = round(tmpEarnOtherData$nHH, 1)
-# tmpEarnOtherData$estIncome = round(tmpEarnOtherData$estIncome, 0)
-# tmpEarnOtherData$lower_estIncome = round(tmpEarnOtherData$lower_estIncome, 0)
-# tmpEarnOtherData$upper_estIncome = round(tmpEarnOtherData$upper_estIncome, 0)
-# tmpEarnOtherData$hhMeanEarn = round(tmpEarnOtherData$hhMeanEarn, 1)
-# tmpEarnOtherData$pctTotalEarn = paste(as.character(round(tmpEarnOtherData$pctTotalEarn * 100, 1)), '%', sep='')
-# 
-# tmpEarnOtherData$CL = paste(tmpEarnOtherData$lower_estIncome, "–", tmpEarnOtherData$upper_estIncome)
-# # Organize file
-# tmpEarnOtherData <- select(tmpEarnOtherData, commname, incsrceDesc, nPerson, 
-#          nHH, estIncome, CL, hhMeanEarn, pctTotalEarn)
-# 
-# # Re-label for print out.
-# tmpEarnOtherData$incsrceDesc[which(tmpEarnOtherData$incsrceDesc == 'All industries')] = 'Earned income subtotal'
-# tmpEarnOtherData$incsrceDesc[which(tmpEarnOtherData$incsrceDesc == 'All other sources of income')] = 'Other income subtotal'
-# tmpEarnOtherData$incsrceDesc[which(tmpEarnOtherData$incsrceDesc == 'All income sources')] = 'Community income total'
+# # Prepare for output table and format values
+# tmpEarnOtherData <- estEarnOtherData %>%
+#   # For certain rows, set nPerson to NA
+#   mutate(nPerson = if_else(incTypeCD %in% c(2, 2.5), NA_real_, nPerson)) %>%
+#   # Round and format all numeric columns as needed
+#   mutate(
+#     nPerson = round(nPerson, 1),
+#     nHH = round(nHH, 1),
+#     estIncome = round(estIncome, 0),
+#     lower_estIncome = round(lower_estIncome, 0),
+#     upper_estIncome = round(upper_estIncome, 0),
+#     hhMeanEarn = round(hhMeanEarn, 1),
+#     # Format percent of total earnings as a percent string
+#     pctTotalEarn = paste0(as.character(round(pctTotalEarn * 100, 1)), "%"),
+#     # Create confidence interval string
+#     CL = paste0(lower_estIncome, "–", upper_estIncome)
+#   ) %>%
+#   # Select and order columns for output table
+#   select(
+#     commname, incsrceDesc, nPerson, nHH, estIncome,
+#     CL, hhMeanEarn, pctTotalEarn
+#   ) %>%
+#   # Relabel subtotal/total rows for printout
+#   mutate(
+#     incsrceDesc = case_when(
+#       incsrceDesc == "All industries" ~ "Earned income subtotal",
+#       incsrceDesc == "All other sources of income" ~ "Other income subtotal",
+#       incsrceDesc == "All income sources" ~ "Community income total",
+#       TRUE ~ incsrceDesc
+#     )
+#   )
+
+# 4.1 - Copy of the main data frame to work with
+estEarnOtherData <- estIncData
+
+# Fix the issue with income source and category being different things
+estEarnOtherData$incsrceDesc[estEarnOtherData$incTypeCD == 1] = estEarnOtherData$incCategoryDesc[estEarnOtherData$incTypeCD == 1]
+estEarnOtherData$incCategoryDesc[estEarnOtherData$incTypeCD == 1] = 'All sources of income'
+
+# Deal with sorting for output table, but properly.
+estEarnOtherData$incTypeCD[estEarnOtherData$incCategory == -2] = 3
+estEarnOtherData$incTypeCD[estEarnOtherData$incCategory == -1] = 2.5
+estEarnOtherData$incTypeCD[estEarnOtherData$incCategory == 1000] = 1.5
+
+
+# 4.2 - Renaming of variables to clarify contents slightly better.
+estEarnOtherData$nPerson = estEarnOtherData$estPersonCount_mean
+estEarnOtherData$nHH = estEarnOtherData$estHHCount_mean
+estEarnOtherData$estIncome = estEarnOtherData$estIncome_mean
+
+estEarnOtherData$hhMeanEarn = estEarnOtherData$estIncome_mean / estEarnOtherData$Nhouseholds
+
+# 4.3 - final summary.
+estEarnOtherData <- filter(estEarnOtherData, incsrce <= 1000 & !(incsrce == 0 & incCategory > 0)) %>%
+  arrange(projID, studyear, communty, incTypeCD, desc(estIncome_mean)) %>%
+  select(projID,	studyear,	communty,	commname,
+         incTypeCD,	Nhouseholds, NPopulation,	incCategoryDesc, incsrceDesc, nPerson,
+         nHH, estIncome, lower_estIncome, upper_estIncome, hhMeanEarn) %>%
+  ungroup()
+
+estEarnOtherData <- group_by(estEarnOtherData, projID,	studyear,	communty,	commname) %>%
+  mutate(totalIncome = max(estIncome)) %>%
+  ungroup()
+
+estEarnOtherData$pctTotalEarn = estEarnOtherData$estIncome / estEarnOtherData$totalIncome
+estEarnOtherData <- select(estEarnOtherData, -totalIncome)
+
+# Final output table formatting
+estEarnOtherData$incsrceDesc[estEarnOtherData$incTypeCD %in% c(1,2)] =  paste('     ', estEarnOtherData$incsrceDesc[estEarnOtherData$incTypeCD %in% c(1,2)],sep='')
+
+# The bootstrapping procedure forces a 1 into the upper CI for income sources
+# not reported, make this a 0 for reporting purposes.
+estEarnOtherData$upper_estIncome[estEarnOtherData$nHH == 0 &
+                                   estEarnOtherData$estIncome == 0] = 0
+
+# Prepare for output tables.
+tmpEarnOtherData <- estEarnOtherData
+tmpEarnOtherData$nPerson[tmpEarnOtherData$incTypeCD == 2 | tmpEarnOtherData$incTypeCD == 2.5] = NA
+
+# Formatting.
+tmpEarnOtherData$nPerson = round(tmpEarnOtherData$nPerson, 1)
+tmpEarnOtherData$nHH = round(tmpEarnOtherData$nHH, 1)
+tmpEarnOtherData$estIncome = round(tmpEarnOtherData$estIncome, 0)
+tmpEarnOtherData$lower_estIncome = round(tmpEarnOtherData$lower_estIncome, 0)
+tmpEarnOtherData$upper_estIncome = round(tmpEarnOtherData$upper_estIncome, 0)
+tmpEarnOtherData$hhMeanEarn = round(tmpEarnOtherData$hhMeanEarn, 1)
+tmpEarnOtherData$pctTotalEarn = paste(as.character(round(tmpEarnOtherData$pctTotalEarn * 100, 1)), '%', sep='')
+
+tmpEarnOtherData$CL = paste(tmpEarnOtherData$lower_estIncome, "–", tmpEarnOtherData$upper_estIncome)
+# Organize file
+tmpEarnOtherData <- select(tmpEarnOtherData, commname, incsrceDesc, nPerson,
+         nHH, estIncome, CL, hhMeanEarn, pctTotalEarn)
+
+# Re-label for print out.
+tmpEarnOtherData$incsrceDesc[which(tmpEarnOtherData$incsrceDesc == 'All industries')] = 'Earned income subtotal'
+tmpEarnOtherData$incsrceDesc[which(tmpEarnOtherData$incsrceDesc == 'All other sources of income')] = 'Other income subtotal'
+tmpEarnOtherData$incsrceDesc[which(tmpEarnOtherData$incsrceDesc == 'All income sources')] = 'Community income total'
 
 # set up final formatting community by community.
 for(comm in commnameList$commname) 

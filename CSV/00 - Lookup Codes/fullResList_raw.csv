@@ -1,9 +1,23 @@
 resource,resName,specList
 111000000,   Chum salmon,1
 112000000,   Coho salmon,1
+112020000,    Coho salmon (fingerling),1
 113000000,   Chinook salmon,1
 114000000,   Pink salmon,1
 115000000,   Sockeye salmon,1
+115002000,    Sockeye salmon (early run),1
+115004000,    Sockeye salmon (late run),1
+116000000,   Landlocked salmon,1
+117010000,    Spawning chum salmon,1
+117020000,    Spawning coho salmon,1
+117040000,    Spawning pink salmon,1
+117050000,    Spawning sockeye salmon,1
+117090000,    Unspecified salmon spawnouts,1
+118001000,    Salmon roe - chum,1
+118002000,    Salmon roe - coho,1
+118003000,    Salmon roe - Chinook,1
+118004000,    Salmon roe - pink,1
+118005000,    Salmon roe - sockeye,1
 119000000,   Unspecified salmon,1
 120200000,   Pacific herring,1
 120302000,"    Pacific herring roe, unspecified type",1
@@ -16,7 +30,9 @@ resource,resName,specList
 120406000,    Rainbow smelt,1
 120408000,    Surf smelt,1
 120410000,    Silver smelt,1
+120499000,    Unspecified smelts,1
 120602000,    Sea bass,1
+120699000,    Unspecified bass,1
 120800000,   Blenny,1
 121002000,    Arctic cod,1
 121004000,    Pacific (gray) cod,1
@@ -24,15 +40,18 @@ resource,resName,specList
 121008000,    Pacific tomcod,1
 121010000,    Saffron cod,1
 121012000,    Walleye pollock (whiting),1
+121099000,    Unspecified cods,1
 121200000,   Unspecified eels,1
 121401000,    Arctic flounder,1
 121402000,    Arrowtooth flounder (turbot),1
 121404000,    Greenland halibut (greenland turbot),1
 121406000,    Starry flounder,1
+121499000,    Unspecified flounders,1
 121602000,    Atka mackerel,1
 121604000,    Kelp greenling,1
 121606000,    Lingcod,1
 121608000,    Rock greenling,1
+121699000,    Unspecified greenlings,1
 121700000,   Greenling roe,1
 121800000,   Pacific halibut,1
 122000000,   Arctic lamprey,1
@@ -85,42 +104,61 @@ resource,resName,specList
 123002000,    Buffalo sculpin,1
 123004000,    Bullhead sculpin,1
 123006020,     Red Irish lord,1
+123006990,     Unspecified Irish lords,1
 123008000,    Yellow sculpin,1
+123099000,    Unspecified sculpins,1
 123202000,    Dogfish,1
 123204000,    Salmon shark,1
+123299000,    Unspecified sharks,1
 123602000,    Rex sole,1
 123604000,    Rock sole,1
 123606000,    Yellowfin sole,1
+123699000,    Unspecified soles,1
 123800000,   Stickleback (needlefish),1
 124002000,    Pacific bluefin tuna,1
+124099000,    Unspecified tuna/mackerel,1
 124200000,   Wolffishes,1
 124402000,    Dwarf wrymouth,1
 124402002,     Dwarf wrymouth [rod and reel],1
 124404000,    Giant wrymouth,1
+124499000,    Unspecified wrymouths,1
 124600000,   Alaska blackfish,1
 124800000,   Burbot,1
 125002000,    Arctic char,1
 125004000,    Brook trout,1
 125006000,    Dolly Varden,1
+125006010,"     Dolly Varden, freshwater",1
+125006020,"     Dolly Varden, saltwater",1
+125006030,"     Dolly Varden, Togiak trout",1
+125006990,"     Dolly Varden, unknown type",1
+125008000,    Dolly Varden–fingerling,1
 125010000,    Lake trout,1
 125012000,    Arctic char/Dolly Varden,1
+125099000,    Unspecified chars,1
 125200000,   Arctic grayling,1
+125402000,    Northern pike (large),1
+125404000,"    Northern pike (small, pickle)",1
+125499000,    Northern pike,1
 125500000,   Northern pike,1
 125600000,   Sheefish,1
 125802000,    Green sturgeon,1
 125804000,    White sturgeon,1
+125899000,    Unspecified sturgeons,1
 126000000,   Longnose sucker,1
 126202000,    Cutthroat trout,1
 126204000,    Rainbow trout,1
 126206000,    Steelhead,1
+126299000,    Unspecified trouts,1
 126402000,    Alaska whitefish,1
 126404000,    Broad whitefish,1
 126406020,     Arctic cisco,1
 126406040,     Bering cisco,1
 126406060,     Least cisco,1
+126406990,     Unspecified ciscoes,1
 126408000,    Humpback whitefish,1
 126410000,    Lake whitefish,1
 126412000,    Round whitefish,1
+126499000,    Unspecified whitefishes,1
 126599000,    Unspecified whitefish eggs,1
 126600000,   Mahi-mahi,1
 126800000,   Swordfish,1
@@ -138,6 +176,7 @@ resource,resName,specList
 212000000,   Common muskox,1
 212200000,   Dall sheep,1
 212400000,   Antelope,1
+219900000,   Unspecified large land mammals,1
 220200000,   Beaver,1
 220400000,   Coyote,1
 220800000,   Foxes,1
@@ -151,6 +190,7 @@ resource,resName,specList
 221004000,    Snowshoe hare,1
 221006000,    Alaska hare,1
 221008000,    Arctic hare,1
+221099000,    Unspecified hares,1
 221200000,   River otter,1
 221400000,   Lemmings,1
 221600000,   Lynx,1
@@ -163,9 +203,11 @@ resource,resName,specList
 222802000,    Arctic ground squirrel,1
 222804000,    Red squirrel,1
 222806000,    Northern flying squirrel,1
+222899000,    Unspecified squirrels,1
 223000000,   Weasels,1
 223200000,   Gray wolf,1
 223400000,   Wolverine,1
+229900000,   Unspecified small land mammals or furbearers,1
 230200000,"   Bison, feral",1
 230400000,"   Cattle, feral",1
 230600000,"   Rabbit, feral",1
@@ -173,16 +215,27 @@ resource,resName,specList
 231000000,"   Sheep, feral",1
 290000000,  Unspecified land mammals,1
 300202000,    Bottlenose dolphin,1
+300299000,    Unspecified dolphins,1
 300400000,   Polar bear,1
 300602000,    Dall porpoise,1
 300604000,    Harbor porpoise,1
+300699000,    Unspecified porpoises,1
 300802000,    Bearded seal,1
+300802020,     Young bearded seal,1
+300802040,     Adult bearded seal,1
+300802990,"     Bearded seal, unknown age",1
 300804000,    Northern fur seal,1
+300804020,"     Northern fur seal, communal",1
+300804040,"     Northern fur seal, other",1
 300806000,    Harbor seal,1
+300806020,"     Harbor seal, freshwater",1
+300806040,"     Harbor seal, saltwater",1
+300806990,"     Harbor seal, unknown location",1
 300808000,    Ribbon seal,1
 300810000,    Ringed seal,1
 300812000,    Spotted seal,1
 300888000,    Unspecified seal oil,1
+300899000,    Unspecified seals,1
 301000000,   Sea otter,1
 301200000,   Steller sea lion,1
 301400000,   Walrus,1
@@ -201,36 +254,46 @@ resource,resName,specList
 301626000,    North Pacific right whale,1
 301628000,    Sei whale,1
 301630000,    Sperm whale,1
+301699000,    Unspecified whales,1
+309900000,   Unspecified marine mammals,1
 410202000,    Bufflehead,1
 410204000,    Canvasback,1
 410206020,     Common eider,1
 410206040,     King eider,1
 410206060,     Spectacled eider,1
 410206080,     Steller's eider,1
+410206990,     Unspecified eiders,1
 410208000,    Gadwall,1
 410210000,    Goldeneyes,1
 410210020,     Barrow's goldeneye,1
 410210040,     Common goldeneye,1
+410210990,     Unspecified goldeneyes,1
 410212000,    Harlequin duck,1
 410214000,    Mallard,1
 410216020,     Common merganser,1
 410216040,     Red-breasted merganser,1
+410216990,     Unspecified mergansers,1
 410218000,    Long-tailed duck,1
 410220000,    Northern pintail,1
 410222000,    Redhead,1
 410224000,    Ring-necked duck,1
 410226020,     Greater scaup,1
 410226040,     Lesser scaup,1
+410226990,     Unspecified scaups,1
 410228020,     Black scoter,1
 410228040,     Surf scoter,1
 410228060,     White-winged scoter,1
+410228990,     Unspecified scoters,1
 410230000,    Northern shoveler,1
 410232020,     Baikal teal,1
 410232040,     Eurasian teal,1
 410232060,     Green-winged teal,1
+410232990,     Unspecified teals,1
 410234000,    Tufted duck,1
 410236020,     American wigeon,1
 410236040,     Eurasian wigeon,1
+410236990,     Unspecified wigeons,1
+410299000,    Unspecified ducks,1
 410402000,    Brant,1
 410404000,    Canada/cackling geese,1
 410404020,     Aleutian cackling goose,1
@@ -238,23 +301,31 @@ resource,resName,specList
 410404060,     Dusky Canada goose,1
 410404080,     Canada goose,1
 410404100,     Vancouver Canada goose,1
+410404990,     Unspecified Canada/cackling geese,1
 410406000,    Emperor goose,1
 410408000,    Snow goose,1
 410410000,    Greater white-fronted goose,1
+410499000,    Unspecified geese,1
 410602000,    Trumpeter swan,1
 410604000,    Tundra (whistling) swan,1
 410606000,    Whooper swan,1
+410699000,    Unspecified swans,1
 410802000,    Sandhill crane,1
+410899000,    Unspecified cranes,1
 411002000,    Wilson's snipe,1
 411004000,    Black oystercatcher,1
 411006020,     Golden/black-bellied plovers,1
 411006040,     Semipalmated plover,1
+411006990,     Unspecified plovers,1
 411008020,     Least sandpiper,1
 411008040,     Rock sandpiper,1
+411008990,     Unspecified sandpipers,1
 411009020,     Bristle-thighed curlew,1
 411009040,     Whimbrel,1
 411010020,     Black turnstone,1
 411010040,     Ruddy turnstone,1
+411010990,     Unspecified turnstones,1
+411099000,    Unspecified shorebirds,1
 411099010,     Unspecified small shorebirds,1
 411099020,     Unspecified large shorebirds,1
 411202020,     Cassin's auklet,1
@@ -262,51 +333,75 @@ resource,resName,specList
 411202060,     Least auklet,1
 411202080,     Parakeet auklet,1
 411202100,     Whiskered auklet,1
+411202990,     Unspecified auklets,1
 411204020,     Double-crested cormorant,1
 411204040,     Pelagic cormorant,1
 411204060,     Red-faced cormorant,1
+411204990,     Unspecified cormorants,1
 411206020,     Northern fulmar,1
+411206990,     Northern fulmar,1
 411208020,     Horned grebe,1
 411208040,     Red-necked grebe,1
+411208990,     Unspecified grebes,1
 411210020,     Black guillemot,1
 411210040,     Pigeon guillemot,1
+411210990,     Unspecified guillemots,1
 411212020,     Glaucous gull,1
 411212040,     Glaucous-winged gull,1
 411212060,     Herring gull,1
 411212080,     Mew gull,1
 411212100,     Sabine's gull,1
 411212970,     Large gull,1
+411212990,     Unspecified gulls,1
 411214020,     Black-legged kittiwake,1
 411214040,     Red-legged kittiwake,1
+411214990,     Unspecified kittiwakes,1
 411216020,     Pacific/Arctic loons,1
 411216040,     Common loon,1
 411216060,     Red-throated loon,1
 411216080,     Yellow-billed loon,1
+411216990,     Unspecified loons,1
 411218020,     Common murre,1
 411218040,     Thick-billed murre,1
+411218990,     Unspecified murres,1
 411220020,     Ancient murrelet,1
 411220040,     Kittlitz's murrelet,1
 411220060,     Marbled murrelet,1
+411220990,     Unspecified murrelets,1
 411222020,     Horned puffin,1
 411222040,     Tufted puffin,1
+411222990,     Unspecified puffins,1
 411224020,     Short-tailed shearwater,1
 411224040,     Sooty shearwater,1
+411224990,     Unspecified shearwaters,1
 411226020,     Aleutian tern,1
 411226040,     Arctic tern,1
+411226990,     Unspecified terns,1
+411299000,    Unspecified seabirds,1
 411402000,    Great blue heron,1
+411499000,    Unspecified herons,1
 411602000,    Gray-crowned rosy-finch,1
+411699000,    Unspecified songbirds,1
+417700000,   Unspecified migratory birds,1
 421802020,     Spruce grouse,1
 421802040,     Sharp-tailed grouse,1
 421802060,     Ruffed grouse,1
+421802990,     Unspecified grouses,1
 421804020,     Rock ptarmigan,1
 421804040,     Willow ptarmigan,1
 421804060,     White-tailed ptarmigan,1
+421804990,     Unspecified ptarmigans,1
 422002000,    Snowy owl,1
 422004000,    Great horned owl,1
+422099000,    Unspecified owls,1
+428800000,   Unspecified other birds,1
+430202000,    Bufflehead eggs,1
+430204000,    Canvasback eggs,1
 430206020,     Common eider eggs,1
 430206040,     King eider eggs,1
 430206060,     Spectacled eider eggs,1
 430206080,     Steller's eider eggs,1
+430206990,     Unspecified eider eggs,1
 430212000,    Harlequin duck eggs,1
 430214000,    Mallard eggs,1
 430216020,     Common merganser eggs,1
@@ -315,23 +410,34 @@ resource,resName,specList
 430218000,    Long-tailed duck eggs,1
 430220000,    Northern pintail eggs,1
 430226020,     Greater scaup eggs,1
+430226990,     Unspecified scaup eggs,1
 430228020,     Black scoter eggs,1
 430228040,     Surf scoter eggs,1
 430228060,     White-winged scoter eggs,1
+430228990,     Unspecified scoter eggs,1
+430230000,    Northern shoveler eggs,1
 430232060,     Green-winged teal eggs,1
+430232990,     Unspecified teal eggs,1
 430236020,     American wigeon eggs,1
+430236990,     Unspecified wigeon eggs,1
+430299000,    Unspecified duck eggs,1
 430402000,    Brant eggs,1
 430404000,    Canada/cackling goose eggs,1
 430404040,     Cackling goose eggs,1
 430404080,     Canada goose eggs,1
+430404990,     Unspecified Canada/cackling goose eggs,1
 430406000,    Emperor goose eggs,1
 430408000,    Snow goose eggs,1
 430410000,    Greater white-fronted goose eggs,1
+430499000,    Unspecified goose eggs,1
 430604000,    Tundra swan eggs,1
+430699000,    Unspecified swan eggs,1
 430802000,    Sandhill crane eggs,1
+430899000,    Unspecified crane eggs,1
 431002000,    Wilson's snipe eggs,1
 431004000,    Black oystercatcher eggs,1
 431006020,     Golden/black-bellied plover eggs,1
+431006990,     Unspecified plover eggs,1
 431009020,     Bristle-thighed curlew eggs,1
 431009040,     Whimbrel eggs,1
 431011000,    Godwit eggs,1
@@ -339,34 +445,50 @@ resource,resName,specList
 431099020,     Unspecified large shorebird eggs,1
 431202040,     Crested auklet eggs,1
 431202060,     Least auklet eggs,1
+431202990,     Unspecified auklet eggs,1
 431204040,     Pelagic cormorant eggs,1
 431204060,     Red-faced cormorant eggs,1
+431204990,     Unspecified cormorant eggs,1
 431206020,     Northern fulmar eggs,1
+431206990,     Unspecified fulmar eggs,1
 431208020,     Horned grebe eggs,1
 431210020,     Black guillemot eggs,1
 431210040,     Pigeon guillemot eggs,1
+431210990,     Unspecified guillemot eggs,1
 431212020,     Glaucous gull eggs,1
 431212040,     Glaucous-winged gull eggs,1
 431212060,     Herring gull eggs,1
 431212080,     Mew gull eggs,1
 431212100,     Sabine's gull eggs,1
 431212970,     Large gull eggs,1
+431212990,     Unspecified gull eggs,1
 431214020,     Black-legged kittiwake eggs,1
 431214040,     Red-legged kittiwake eggs,1
+431214990,     Unspecified kittiwake eggs,1
 431216020,     Pacific/Arctic loon eggs,1
 431216040,     Common loon eggs,1
 431216060,     Red-throated loon eggs,1
 431216080,     Yellow-billed loon eggs,1
+431216990,     Unspecified loon eggs,1
 431218020,     Common murre eggs,1
 431218040,     Thick-billed murre eggs,1
+431218990,     Unspecified murre eggs,1
 431220020,     Ancient murrelet eggs,1
+431220990,     Unspecified murrelet eggs,1
 431222020,     Horned puffin eggs,1
 431222040,     Tufted puffin eggs,1
+431222990,     Unspecified puffin eggs,1
 431226020,     Aleutian tern eggs,1
 431226040,     Arctic tern eggs,1
+431226990,     Unspecified tern eggs,1
+431299000,    Unspecified seabird eggs,1
+431800000,   Upland game bird eggs,1
 431802020,     Spruce grouse eggs,1
 431802990,     Unspecified grouse eggs,1
+431804990,     Unspecified ptarmigan eggs,1
 432002000,    Snowy owl eggs,1
+432099000,    Unspecified owl eggs,1
+439900000,   Unspecified eggs,1
 441202040,"     Crested auklet, nestlings",1
 441202060,"     Least auklet, nestlings",1
 441202990,"     Unknown auklets, nestlings",1
@@ -377,6 +499,7 @@ resource,resName,specList
 500200000,   Pinto abalone,1
 500404000,    Red (large) chiton,1
 500408000,    Black (small) chiton,1
+500499000,    Unspecified chitons,1
 500602000,    Butter clam,1
 500604000,    Freshwater clams,1
 500606000,    Horse clam,1
@@ -384,8 +507,10 @@ resource,resName,specList
 500610000,    Pinkneck clam,1
 500612000,    Razor clam,1
 500614000,    Softshell clam,1
+500699000,    Unspecified clams,1
 500802000,    Basket cockles,1
 500804000,    Heart cockles,1
+500899000,    Unspecified cockles,1
 501002000,    Box crab,1
 501004000,    Dungeness crab,1
 501006000,    Hair crab,1
@@ -394,34 +519,43 @@ resource,resName,specList
 501008080,     Red king crab,1
 501008100,     Red king crab eggs,1
 501008300,     Hanasaki crab,1
+501008990,     Unspecified king crabs,1
 501010000,    Korean horse hair crab,1
 501012020,"     Tanner crab, bairdi",1
 501012040,"     Tanner crab, opillio",1
 501012990,     Unspecified Tanner crabs,1
+501099000,    Unspecified crabs,1
 501200000,   Geoduck,1
 501400000,   Giant scale worm,1
 501500000,   Pacific lugworm,1
 501600000,   Jingles,1
 501602000,    Rock jingle,1
+501699000,    Unspecified jingles,1
 501800000,   Limpet,1
 502002000,    Blue mussel,1
 502004000,    Brown mussels,1
+502099000,    Unspecified mussels,1
 502200000,   Octopus,1
 502402000,    Rock oyster,1
+502499000,    Unspecified oysters,1
 502602000,    Weathervane scallop,1
 502604000,    Rock scallop,1
+502699000,    Unspecified scallops,1
 502800000,   Sea anemones,1
 503002000,    Football sea cucumber,1
 503004000,    Yein sea cucumber,1
 503006000,    Red sea cucumber,1
+503099000,    Unspecified sea cucumbers,1
 503202000,    Green sea urchin,1
 503204000,    Red sea urchin,1
 503206000,    Purple sea urchin,1
 503208000,    Black sea urchin,1
+503299000,    Unspecified sea urchins,1
 503600000,   Snails,1
 503700000,   Starfishes,1
 503800000,   Squid,1
 504000000,   Whelk,1
+509900000,   Unspecified marine invertebrates,1
 601002000,    Blueberry,1
 601003000,    Boysenberry,1
 601004000,    Lowbush cranberry,1
@@ -441,12 +575,15 @@ resource,resName,specList
 601030000,    Blackberry,1
 601031000,    Dogwood berry,1
 601032000,    Twisted stalk berry (watermelon berry),1
+601034000,    Serviceberry,1
 601036000,    Bearberry,1
 601037000,    Juniper berry,1
+601099000,    Other wild berries,1
 602002000,    Beach asparagus,1
 602004000,    Goose tongue,1
 602006000,    Wild rhubarb,1
 602009000,    Wild potato,1
+602010000,    Other beach greens,1
 602012000,    Devil's club,1
 602014000,    Fiddlehead ferns,1
 602016000,    Nettles,1
@@ -480,7 +617,9 @@ resource,resName,specList
 602046040,     Chaga,1
 602046090,     Unspecified fungus,1
 602047000,    Meankin grasses,1
+602048000,    Unspecified greens from land,1
 602049000,    Sea lovage,1
+602050000,    Unspecified greens from sea,1
 602051000,    Beach greens,1
 602052000,    Wild chive,1
 602060000,    Mousefoods,1
@@ -493,6 +632,8 @@ resource,resName,specList
 603012000,    Alarias,1
 603014000,    Red lavers (dulse),1
 603016000,    Bladder wrack,1
+603090000,    Seaweeds/kelps used for fertilizer,1
+603099000,    Unspecified seaweeds,1
 604000000,   Wood,1
 604002000,    Bark,1
 604004000,    Roots,1
@@ -511,7 +652,10 @@ resource,resName,specList
 604013000,    Willows,1
 604014000,    Birch sap,1
 604097000,    Firewood,1
+604098000,    Unspecified wood,1
+604099000,    Other wood,1
 605000000,   Coal,1
+609000000,   Unspecified vegetation,1
 0,All resources,2
 100000000, Fish,2
 100000001,  Fish [CF retention],2
@@ -989,7 +1133,6 @@ resource,resName,specList
 112000001,    Coho salmon [CF retention],3
 112000002,    Coho salmon [rod and reel],3
 112000003,    Coho salmon [other gear],3
-112020000,    Coho salmon (fingerling),3
 112020001,     Coho salmon (fingerling) [CF retention],3
 112020002,     Coho salmon (fingerling) [rod and reel],3
 112020003,     Coho salmon (fingerling) [other gear],3
@@ -1002,37 +1145,24 @@ resource,resName,specList
 115000001,    Sockeye salmon [CF retention],3
 115000002,    Sockeye salmon [rod and reel],3
 115000003,    Sockeye salmon [other gear],3
-115002000,    Sockeye salmon (early run),3
-115004000,    Sockeye salmon (late run),3
-116000000,   Landlocked salmon,3
 116000001,    Landlocked salmon [CF retention],3
 116000002,    Landlocked salmon [rod and reel],3
 116000003,    Landlocked salmon [other gear],3
-117010000,    Spawning chum salmon,3
 117010001,     Spawning chum salmon [CF retention],3
 117010002,     Spawning chum salmon [rod and reel],3
 117010003,     Spawning chum salmon [other gear],3
-117020000,    Spawning coho salmon,3
 117020001,     Spawning coho salmon [CF retention],3
 117020002,     Spawning coho salmon [rod and reel],3
 117020003,     Spawning coho salmon [other gear],3
-117040000,    Spawning pink salmon,3
 117040001,     Spawning pink salmon [CF retention],3
 117040002,     Spawning pink salmon [rod and reel],3
 117040003,     Spawning pink salmon [other gear],3
-117050000,    Spawning sockeye salmon,3
 117050001,     Spawning sockeye salmon [CF retention],3
 117050002,     Spawning sockeye salmon [rod and reel],3
 117050003,     Spawning sockeye salmon [other gear],3
-117090000,    Unspecified salmon spawnouts,3
 117090001,     Unspecified salmon spawnouts [CF retention],3
 117090002,     Unspecified salmon spawnouts [rod and reel],3
 117090003,     Unspecified salmon spawnouts [other gear],3
-118001000,    Salmon roe - chum,3
-118002000,    Salmon roe - coho,3
-118003000,    Salmon roe - Chinook,3
-118004000,    Salmon roe - pink,3
-118005000,    Salmon roe - sockeye,3
 119000001,    Unspecified salmon [CF retention],3
 119000002,    Unspecified salmon [rod and reel],3
 119000003,    Unspecified salmon [other gear],3
@@ -1072,14 +1202,12 @@ resource,resName,specList
 120410001,     Silver smelt [CF retention],3
 120410002,     Silver smelt [rod and reel],3
 120410003,     Silver smelt [other gear],3
-120499000,    Unspecified smelts,3
 120499001,     Unspecified smelts [CF retention],3
 120499002,     Unspecified smelts [rod and reel],3
 120499003,     Unspecified smelts [other gear],3
 120602001,     Sea bass [CF retention],3
 120602002,     Sea Bass [rod and reel],3
 120602003,     Sea bass [other gear],3
-120699000,    Unspecified bass,3
 120699001,     Unspecified bass [CF retention],3
 120699002,     Unspecified bass [rod and reel],3
 120699003,     Unspecified bass [other gear],3
@@ -1104,7 +1232,6 @@ resource,resName,specList
 121012001,     Walleye pollock (whiting) [CF retention],3
 121012002,     Walleye pollock (whiting) [rod and reel],3
 121012003,     Walleye pollock (whiting) [other gear],3
-121099000,    Unspecified cods,3
 121099001,     Unspecified cods [CF retention],3
 121099002,     Unspecified cods [rod and reel],3
 121099003,     Unspecified cods [other gear],3
@@ -1123,7 +1250,6 @@ resource,resName,specList
 121406001,     Starry flounder [CF retention],3
 121406002,     Starry flounder [rod and reel],3
 121406003,     Starry flounder [other gear],3
-121499000,    Unspecified flounders,3
 121499001,     Unspecified flounders [CF retention],3
 121499002,     Unspecified flounders [rod and reel],3
 121499003,     Unspecified flounders [other gear],3
@@ -1139,7 +1265,6 @@ resource,resName,specList
 121608001,     Rock greenling [CF retention],3
 121608002,     Rock greenling [rod and reel],3
 121608003,     Rock greenling [other gear],3
-121699000,    Unspecified greenlings,3
 121699001,     Unspecified greenlings [CF retention],3
 121699002,     Unspecified greenlings [rod and reel],3
 121699003,     Unspecified greenlings [other gear],3
@@ -1302,14 +1427,12 @@ resource,resName,specList
 123006021,Red Irish lord [CF retention],3
 123006022,Red Irish lord [rod and reel],3
 123006023,Red Irish lord [other gear],3
-123006990,     Unspecified Irish lords,3
 123006991,Unspecified Irish lords [CF retention],3
 123006992,Unspecified Irish lords [rod and reel],3
 123006993,Unspecified Irish lords [other gear],3
 123008001,     Yellow sculpin [CF retention],3
 123008002,     Yellow sculpin [rod and reel],3
 123008003,     Yellow sculpin [other gear],3
-123099000,    Unspecified sculpins,3
 123099001,     Unspecified sculpins [CF retention],3
 123099002,     Unspecified sculpins [rod and reel],3
 123099003,     Unspecified sculpins [other gear],3
@@ -1319,7 +1442,6 @@ resource,resName,specList
 123204001,     Salmon shark [CF retention],3
 123204002,     Salmon shark [rod and reel],3
 123204003,     Salmon shark [other gear],3
-123299000,    Unspecified sharks,3
 123299001,     Unspecified sharks [CF retention],3
 123299002,     Unspecified sharks [rod and reel],3
 123299003,     Unspecified sharks [other gear],3
@@ -1332,7 +1454,6 @@ resource,resName,specList
 123606001,     Yellowfin sole [CF retention],3
 123606002,     Yellowfin sole [rod and reel],3
 123606003,     Yellowfin sole [other gear],3
-123699000,    Unspecified soles,3
 123699001,     Unspecified soles [CF retention],3
 123699002,     Unspecified soles [rod and reel],3
 123699003,     Unspecified soles [other gear],3
@@ -1342,7 +1463,6 @@ resource,resName,specList
 124002001,     Pacific bluefin tuna [CF retention],3
 124002002,     Pacific bluefin tuna [rod and reel],3
 124002003,     Pacific bluefin tuna [other gear],3
-124099000,    Unspecified tuna/mackerel,3
 124099001,     Unspecified tuna/mackerel [CF retention],3
 124099002,     Unspecified tuna/mackerel [rod and reel],3
 124099003,     Unspecified tuna/mackerel [other gear],3
@@ -1354,7 +1474,6 @@ resource,resName,specList
 124404001,     Giant wrymouth [CF retention],3
 124404002,     Giant wrymouth [rod and reel],3
 124404003,     Giant wrymouth [other gear],3
-124499000,    Unspecified wrymouths,3
 124499001,     Unspecified wrymouths [CF retention],3
 124499002,     Unspecified wrymouths [rod and reel],3
 124499003,     Unspecified wrymouths [other gear],3
@@ -1373,23 +1492,18 @@ resource,resName,specList
 125006001,     Dolly Varden [CF retention],3
 125006002,     Dolly Varden [rod and reel],3
 125006003,     Dolly Varden [other gear],3
-125006010,"     Dolly Varden, freshwater",3
 125006011,"Dolly Varden, freshwater [CF retention]",3
 125006012,"Dolly Varden, freshwater [rod and reel]",3
 125006013,"Dolly Varden, freshwater [other gear]",3
-125006020,"     Dolly Varden, saltwater",3
 125006021,"Dolly Varden, saltwater [CF retention]",3
 125006022,"Dolly Varden, saltwater [rod and reel]",3
 125006023,"Dolly Varden, saltwater [other gear]",3
-125006030,"     Dolly Varden, Togiak trout",3
 125006031,"Dolly Varden, Togiak trout [CF retention]",3
 125006032,"Dolly Varden, Togiak trout [rod and reel]",3
 125006033,"Dolly Varden, Togiak trout [other gear]",3
-125006990,"     Dolly Varden, unknown type",3
 125006991,"Dolly Varden, unknown type [CF retention]",3
 125006992,"Dolly Varden, unknown type [rod and reel]",3
 125006993,"Dolly Varden, unknown type [other gear]",3
-125008000,    Dolly Varden–fingerling,3
 125008001,     Dolly Varden–fingerling [CF retention],3
 125008002,     Dolly Varden–fingerling [rod and reel],3
 125008003,     Dolly Varden–fingerling [other gear],3
@@ -1399,22 +1513,18 @@ resource,resName,specList
 125012001,     Arctic char/Dolly Varden [CF Retention],3
 125012002,     Arctic char/Dolly Varden [Rod and Reel],3
 125012003,     Arctic char/Dolly Varden [Other Gear],3
-125099000,    Unspecified chars,3
 125099001,     Unspecified chars [CF retention],3
 125099002,     Unspecified chars [rod and reel],3
 125099003,     Unspecified chars [other gear],3
 125200001,    Arctic grayling [CF retention],3
 125200002,    Arctic grayling [rod and reel],3
 125200003,    Arctic grayling [other gear],3
-125402000,    Northern pike (large),3
 125402001,     Northern pike (large) [CF retention],3
 125402002,     Northern pike (large) [rod and reel],3
 125402003,     Northern pike (large) [other gear],3
-125404000,"    Northern pike (small, pickle)",3
 125404001,"     Northern pike (small, pickle) [CF retention]",3
 125404002,"     Northern pike (small, pickle) [rod and reel]",3
 125404003,"     Northern pike (small, pickle) [other gear]",3
-125499000,    Northern pike,3
 125499001,     Northern pike [CF retention],3
 125499002,     Northern pike [rod and reel],3
 125499003,     Northern pike [other gear],3
@@ -1430,7 +1540,6 @@ resource,resName,specList
 125804001,     White sturgeon [CF retention],3
 125804002,     White sturgeon [rod and reel],3
 125804003,     White sturgeon [other gear],3
-125899000,    Unspecified sturgeons,3
 125899001,     Unspecified sturgeons [CF retention],3
 125899002,     Unspecified sturgeons [rod and reel],3
 125899003,     Unspecified sturgeons [other gear],3
@@ -1449,7 +1558,6 @@ resource,resName,specList
 126206001,     Steelhead [CF retention],3
 126206002,     Steelhead [rod and reel],3
 126206003,     Steelhead [other gear],3
-126299000,    Unspecified trouts,3
 126299001,     Unspecified trouts [CF retention],3
 126299002,     Unspecified trouts [rod and reel],3
 126299003,     Unspecified trouts [other gear],3
@@ -1468,7 +1576,6 @@ resource,resName,specList
 126406061,Least cisco [CF retention],3
 126406062,Least cisco [rod and reel],3
 126406063,Least cisco [other gear],3
-126406990,     Unspecified ciscoes,3
 126406991,Unspecified ciscoes [CF retention],3
 126406992,Unspecified ciscoes [rod and reel],3
 126406993,Unspecified ciscoes [other gear],3
@@ -1481,7 +1588,6 @@ resource,resName,specList
 126412001,     Round whitefish [CF retention],3
 126412002,     Round whitefish [rod and reel],3
 126412003,     Round whitefish [other gear],3
-126499000,    Unspecified whitefishes,3
 126499001,     Unspecified whitefishes [CF retention],3
 126499002,     Unspecified whitefishes [rod and reel],3
 126499003,     Unspecified whitefishes [other gear],3
@@ -1533,13 +1639,9 @@ resource,resName,specList
 212400001,"    Antelope, male",3
 212400002,"    Antelope, female",3
 212400009,"    Antelope, unknown sex",3
-219900000,   Unspecified large land mammals,3
 219900001,"    Unspecified large land mammals, male",3
 219900002,"    Unspecified large land mammals, female",3
 219900009,"    Unspecified large land mammals, unknown sex",3
-221099000,    Unspecified hares,3
-222899000,    Unspecified squirrels,3
-229900000,   Unspecified small land mammals or furbearers,3
 230400001,"    Cattle - feral, male",3
 230400002,"    Cattle - feral, female",3
 230400009,"    Cattle - feral, unknown sex",3
@@ -1549,7 +1651,6 @@ resource,resName,specList
 300202001,"     Bottlenose dolphin, male",3
 300202002,"     Bottlenose dolphin, female",3
 300202009,"     Bottlenose dolphin, unknown sex",3
-300299000,    Unspecified dolphins,3
 300299001,"     Unspecified dolphins, male",3
 300299002,"     Unspecified dolphins, female",3
 300299009,"     Unspecified dolphins, unknown sex",3
@@ -1562,48 +1663,39 @@ resource,resName,specList
 300604001,"     Harbor porpoise, male",3
 300604002,"     Harbor porpoise, female",3
 300604009,"     Harbor porpoise, unknown sex",3
-300699000,    Unspecified porpoises,3
 300699001,"     Unspecified porpoises, male",3
 300699002,"     Unspecified porpoises, female",3
 300699009,"     Unspecified porpoises, unknown sex",3
 300802001,"     Bearded seal, male",3
 300802002,"     Bearded seal, female",3
 300802009,"     Bearded seal, unknown sex",3
-300802020,     Young bearded seal,3
 300802021,"Young bearded seal, male",3
 300802022,"Young bearded seal, female",3
 300802029,"Young bearded seal, unknown sex",3
-300802040,     Adult bearded seal,3
 300802041,"Adult bearded seal, male",3
 300802042,"Adult bearded seal, female",3
 300802049,"Adult bearded seal, unknown sex",3
-300802990,"     Bearded seal, unknown age",3
 300802991,"Bearded seal, unknown age, male",3
 300802992,"Bearded seal, unknown age, female",3
 300802999,"Bearded seal, unknown age/sex",3
 300804001,"     Northern fur seal, male",3
 300804002,"     Northern fur seal, female",3
 300804009,"     Northern fur seal, unknown sex",3
-300804020,"     Northern fur seal, communal",3
 300804021,"Northern fur seal, communal, male",3
 300804022,"Northern fur seal, communal, female",3
 300804029,"Northern fur seal, communal, unknown sex",3
-300804040,"     Northern fur seal, other",3
 300804041,"Northern fur seal, other, male",3
 300804042,"Northern fur seal, other, female",3
 300804049,"Northern fur seal, other, unknown sex",3
 300806001,"     Harbor seal, male",3
 300806002,"     Harbor seal, female",3
 300806009,"     Harbor seal, unknown sex",3
-300806020,"     Harbor seal, freshwater",3
 300806021,"Harbor seal, freshwater, male",3
 300806022,"Harbor seal, freshwater, female",3
 300806029,"Harbor seal, freshwater, unknown sex",3
-300806040,"     Harbor seal, saltwater",3
 300806041,"Harbor seal, saltwater, male",3
 300806042,"Harbor seal, saltwater, female",3
 300806049,"Harbor seal, saltwater, unknown sex",3
-300806990,"     Harbor seal, unknown location",3
 300806991,"Harbor seal, unknown location, male",3
 300806992,"Harbor seal, unknown location, female",3
 300806999,"Harbor seal, unknown location/sex",3
@@ -1619,7 +1711,6 @@ resource,resName,specList
 300888001,"     Unspecified seal oil, male",3
 300888002,"     Unspecified seal oil, female",3
 300888009,"     Unspecified seal oil, unknown sex",3
-300899000,    Unspecified seals,3
 300899001,"     Unspecified seals, male",3
 300899002,"     Unspecified seals, female",3
 300899009,"     Unspecified seals, unknown sex",3
@@ -1677,11 +1768,9 @@ resource,resName,specList
 301630001,"     Sperm whale, male",3
 301630002,"     Sperm whale, female",3
 301630009,"     Sperm whale, unknown sex",3
-301699000,    Unspecified whales,3
 301699001,"     Unspecified whales, male",3
 301699002,"     Unspecified whales, female",3
 301699009,"     Unspecified whales, unknown sex",3
-309900000,   Unspecified marine mammals,3
 309900001,"    Unspecified marine mammals, male",3
 309900002,"    Unspecified marine mammals, female",3
 309900009,"    Unspecified marine mammals, unknown sex",3
@@ -1720,7 +1809,6 @@ resource,resName,specList
 410206083,"Steller's eider, fall",3
 410206084,"Steller's eider, winter",3
 410206089,"Steller's eider, unknown season",3
-410206990,     Unspecified eiders,3
 410206991,"Unspecified eiders, spring",3
 410206992,"Unspecified eiders, summer",3
 410206993,"Unspecified eiders, fall",3
@@ -1746,7 +1834,6 @@ resource,resName,specList
 410210043,"Common goldeneye, fall",3
 410210044,"Common goldeneye, winter",3
 410210049,"Common goldeneye, unknown season",3
-410210990,     Unspecified goldeneyes,3
 410210991,"Unspecified goldeneyes, spring",3
 410210992,"Unspecified goldeneyes, summer",3
 410210993,"Unspecified goldeneyes, fall",3
@@ -1772,7 +1859,6 @@ resource,resName,specList
 410216043,"Red-breasted merganser, fall",3
 410216044,"Red-breasted merganser, winter",3
 410216049,"Red-breasted merganser, unknown season",3
-410216990,     Unspecified mergansers,3
 410216991,"Unspecified mergansers, spring",3
 410216992,"Unspecified mergansers, summer",3
 410216993,"Unspecified mergansers, fall",3
@@ -1808,7 +1894,6 @@ resource,resName,specList
 410226043,"Lesser scaup, fall",3
 410226044,"Lesser scaup, winter",3
 410226049,"Lesser scaup, unknown season",3
-410226990,     Unspecified scaups,3
 410226991,"Unspecified scaups, spring",3
 410226992,"Unspecified scaups, summer",3
 410226993,"Unspecified scaups, fall",3
@@ -1829,7 +1914,6 @@ resource,resName,specList
 410228063,"White-winged scoter, fall",3
 410228064,"White-winged scoter, winter",3
 410228069,"White-winged scoter, unknown season",3
-410228990,     Unspecified scoters,3
 410228991,"Unspecified scoters, spring",3
 410228992,"Unspecified scoters, summer",3
 410228993,"Unspecified scoters, fall",3
@@ -1855,7 +1939,6 @@ resource,resName,specList
 410232063,"Green-winged teal, fall",3
 410232064,"Green-winged teal, winter",3
 410232069,"Green-winged teal, unknown season",3
-410232990,     Unspecified teals,3
 410232991,"Unspecified teals, spring",3
 410232992,"Unspecified teals, summer",3
 410232993,"Unspecified teals, fall",3
@@ -1876,7 +1959,6 @@ resource,resName,specList
 410236043,"Eurasian wigeon, fall",3
 410236044,"Eurasian wigeon, winter",3
 410236049,"Eurasian wigeon, unknown season",3
-410236990,     Unspecified wigeons,3
 410236991,"Unspecified wigeons, spring",3
 410236992,"Unspecified wigeons, summer",3
 410236993,"Unspecified wigeons, fall",3
@@ -1887,7 +1969,6 @@ resource,resName,specList
 410238003,"     Sea ducks, fall",3
 410238004,"     Sea ducks, winter",3
 410238009,"     Sea ducks, unknown season",3
-410299000,    Unspecified ducks,3
 410299001,"     Unspecified ducks, spring",3
 410299002,"     Unspecified ducks, summer",3
 410299003,"     Unspecified ducks, fall",3
@@ -1928,7 +2009,6 @@ resource,resName,specList
 410404103,"Vancouver Canada goose, fall",3
 410404104,"Vancouver Canada goose, winter",3
 410404109,"Vancouver Canada goose, unknown season",3
-410404990,     Unspecified Canada/cackling geese,3
 410404991,"Unspecified Canada/cackling geese, spring",3
 410404992,"Unspecified Canada/cackling geese, summer",3
 410404993,"Unspecified Canada/cackling geese, fall",3
@@ -1949,7 +2029,6 @@ resource,resName,specList
 410410003,"     Greater white-fronted goose, fall",3
 410410004,"     Greater white-fronted goose, winter",3
 410410009,"     Greater white-fronted goose, unknown season",3
-410499000,    Unspecified geese,3
 410499001,"     Unspecified geese, spring",3
 410499002,"     Unspecified geese, summer",3
 410499003,"     Unspecified geese, fall",3
@@ -1970,7 +2049,6 @@ resource,resName,specList
 410606003,"     Whooper swan, fall",3
 410606004,"     Whooper swan, winter",3
 410606009,"     Whooper swan, unknown season",3
-410699000,    Unspecified swans,3
 410699001,"     Unspecified swans, spring",3
 410699002,"     Unspecified swans, summer",3
 410699003,"     Unspecified swans, fall",3
@@ -1981,7 +2059,6 @@ resource,resName,specList
 410802003,"     Sandhill crane, fall",3
 410802004,"     Sandhill crane, winter",3
 410802009,"     Sandhill crane, unknown season",3
-410899000,    Unspecified cranes,3
 410899001,"     Unspecified cranes, spring",3
 410899002,"     Unspecified cranes, summer",3
 410899003,"     Unspecified cranes, fall",3
@@ -2007,7 +2084,6 @@ resource,resName,specList
 411006043,"Semipalmated plover, fall",3
 411006044,"Semipalmated plover, winter",3
 411006049,"Semipalmated plover, unknown season",3
-411006990,     Unspecified plovers,3
 411006991,"Unspecified plovers, spring",3
 411006992,"Unspecified plovers, summer",3
 411006993,"Unspecified plovers, fall",3
@@ -2023,7 +2099,6 @@ resource,resName,specList
 411008043,"Rock sandpiper, fall",3
 411008044,"Rock sandpiper, winter",3
 411008049,"Rock sandpiper, season unknown",3
-411008990,     Unspecified sandpipers,3
 411008991,"Unspecified sandpipers, spring",3
 411008992,"Unspecified sandpipers, summer",3
 411008993,"Unspecified sandpipers, fall",3
@@ -2048,13 +2123,11 @@ resource,resName,specList
 411010043,"Ruddy turnstone, fall",3
 411010044,"Ruddy turnstone, winter",3
 411010049,"Ruddy turnstone, unknown season",3
-411010990,     Unspecified turnstones,3
 411010991,"Unspecified turnstones, spring",3
 411010992,"Unspecified turnstones, summer",3
 411010993,"Unspecified turnstones, fall",3
 411010994,"Unspecified turnstones, winter",3
 411010999,"Unspecified turnstones, unknown season",3
-411099000,    Unspecified shorebirds,3
 411099001,"     Unspecified shorebirds, spring",3
 411099002,"     Unspecified shorebirds, summer",3
 411099003,"     Unspecified shorebirds, fall",3
@@ -2093,7 +2166,6 @@ resource,resName,specList
 411202103,"Whiskered auklet, fall",3
 411202104,"Whiskered auklet, winter",3
 411202109,"Whiskered auklet, unknown season",3
-411202990,     Unspecified auklets,3
 411202991,"Unspecified auklets, spring",3
 411202992,"Unspecified auklets, summer",3
 411202993,"Unspecified auklets, fall",3
@@ -2114,7 +2186,6 @@ resource,resName,specList
 411204063,"Red-faced cormorant, fall",3
 411204064,"Red-faced cormorant, winter",3
 411204069,"Red-faced cormorant, unknown season",3
-411204990,     Unspecified cormorants,3
 411204991,"Unspecified cormorants, spring",3
 411204992,"Unspecified cormorants, summer",3
 411204993,"Unspecified cormorants, fall",3
@@ -2125,7 +2196,6 @@ resource,resName,specList
 411206023,"Northern fulmar, fall",3
 411206024,"Northern fulmar, winter",3
 411206029,"Northern fulmar, unknown season",3
-411206990,     Northern fulmar,3
 411206991,"Northern fulmar, spring",3
 411206992,"Northern fulmar, summer",3
 411206993,"Northern fulmar, fall",3
@@ -2141,7 +2211,6 @@ resource,resName,specList
 411208043,"Red-necked grebe, fall",3
 411208044,"Red-necked grebe, winter",3
 411208049,"Red-necked grebe, unknown season",3
-411208990,     Unspecified grebes,3
 411208991,"Unspecified grebes, spring",3
 411208992,"Unspecified grebes, summer",3
 411208993,"Unspecified grebes, fall",3
@@ -2157,7 +2226,6 @@ resource,resName,specList
 411210043,"Pigeon guillemot, fall",3
 411210044,"Pigeon guillemot, winter",3
 411210049,"Pigeon guillemot, unknown season",3
-411210990,     Unspecified guillemots,3
 411210991,"Unspecified guillemots, spring",3
 411210992,"Unspecified guillemots, summer",3
 411210993,"Unspecified guillemots, fall",3
@@ -2193,7 +2261,6 @@ resource,resName,specList
 411212973,Large Gull - Fall,3
 411212974,Large Gull - Winter,3
 411212979,Large Gull - Season Unknown,3
-411212990,     Unspecified gulls,3
 411212991,"Unspecified gulls, spring",3
 411212992,"Unspecified gulls, summer",3
 411212993,"Unspecified gulls, fall",3
@@ -2209,7 +2276,6 @@ resource,resName,specList
 411214043,"Red-legged kittiwake, fall",3
 411214044,"Red-legged kittiwake, winter",3
 411214049,"Red-legged kittiwake, unknown season",3
-411214990,     Unspecified kittiwakes,3
 411214991,"Unspecified kittiwakes, spring",3
 411214992,"Unspecified kittiwakes, summer",3
 411214993,"Unspecified kittiwakes, fall",3
@@ -2235,7 +2301,6 @@ resource,resName,specList
 411216083,"Yellow-billed loon, fall",3
 411216084,"Yellow-billed loon, winter",3
 411216089,"Yellow-billed loon, unknown season",3
-411216990,     Unspecified loons,3
 411216991,"Unspecified loons, spring",3
 411216992,"Unspecified loons, summer",3
 411216993,"Unspecified loons, fall",3
@@ -2251,7 +2316,6 @@ resource,resName,specList
 411218043,"Thick-billed murre, fall",3
 411218044,"Thick-billed murre, winter",3
 411218049,"Thick-billed murre, unknown season",3
-411218990,     Unspecified murres,3
 411218991,"Unspecified murres, spring",3
 411218992,"Unspecified murres, summer",3
 411218993,"Unspecified murres, fall",3
@@ -2272,7 +2336,6 @@ resource,resName,specList
 411220063,"Marbled murrelet, fall",3
 411220064,"Marbled murrelet, winter",3
 411220069,"Marbled murrelet, unknown season",3
-411220990,     Unspecified murrelets,3
 411220991,"Unspecified murrelets, spring",3
 411220992,"Unspecified murrelets, summer",3
 411220993,"Unspecified murrelets, fall",3
@@ -2288,7 +2351,6 @@ resource,resName,specList
 411222043,"Tufted puffin, fall",3
 411222044,"Tufted puffin, winter",3
 411222049,"Tufted puffin, unknown season",3
-411222990,     Unspecified puffins,3
 411222991,"Unspecified puffins, spring",3
 411222992,"Unspecified puffin, summer",3
 411222993,"Unspecified puffins, fall",3
@@ -2304,7 +2366,6 @@ resource,resName,specList
 411224043,"Sooty shearwater, fall",3
 411224044,"Sooty shearwater, winter",3
 411224049,"Sooty shearwater, unknown season",3
-411224990,     Unspecified shearwaters,3
 411224991,"Unspecified shearwaters, spring",3
 411224992,"Unspecified shearwaters, summer",3
 411224993,"Unspecified shearwaters, fall",3
@@ -2320,13 +2381,11 @@ resource,resName,specList
 411226043,"Arctic tern, fall",3
 411226044,"Arctic tern, winter",3
 411226049,"Arctic tern, unknown season",3
-411226990,     Unspecified terns,3
 411226991,"Unspecified terns, spring",3
 411226992,"Unspecified terns, summer",3
 411226993,"Unspecified terns, fall",3
 411226994,"Unspecified terns, winter",3
 411226999,"Unspecified terns, unknown season",3
-411299000,    Unspecified seabirds,3
 411299001,"     Unspecified seabirds, spring",3
 411299002,"     Unspecified seabirds, summer",3
 411299003,"     Unspecified seabirds, fall",3
@@ -2337,7 +2396,6 @@ resource,resName,specList
 411402003,"     Great blue heron, fall",3
 411402004,"     Great blue heron, winter",3
 411402009,"     Great blue heron, unknown season",3
-411499000,    Unspecified herons,3
 411499001,"     Unspecified herons, spring",3
 411499002,"     Unspecified herons, summer",3
 411499003,"     Unspecified herons, fall",3
@@ -2348,13 +2406,11 @@ resource,resName,specList
 411602003,"     Gray-crowned rosy-finch, fall",3
 411602004,"     Gray-crowned rosy-finch, winter",3
 411602009,"     Gray-crowned rosy-finch, season unknown",3
-411699000,    Unspecified songbirds,3
 411699001,"     Unspecified songbirds, spring",3
 411699002,"     Unspecified songbirds, summer",3
 411699003,"     Unspecified songbirds, fall",3
 411699004,"     Unspecified songbirds, winter",3
 411699009,"     Unspecified songbirds, season unknown",3
-417700000,   Unspecified migratory birds,3
 417700001,"    Unspecified migratory birds, spring",3
 417700002,"    Unspecified migratory birds, summer",3
 417700003,"    Unspecified migratory birds, fall",3
@@ -2375,7 +2431,6 @@ resource,resName,specList
 421802063,"Ruffed grouse, fall",3
 421802064,"Ruffed grouse, winter",3
 421802069,"Ruffed grouse, unknown season",3
-421802990,     Unspecified grouses,3
 421802991,"Unspecified grouses, spring",3
 421802992,"Unspecified grouses, summer",3
 421802993,"Unspecified grouses, fall",3
@@ -2396,7 +2451,6 @@ resource,resName,specList
 421804063,"White-tailed ptarmigan, fall",3
 421804064,"White-tailed ptarmigan, winter",3
 421804069,"White-tailed ptarmigan, unknown season",3
-421804990,     Unspecified ptarmigans,3
 421804991,"Unspecified ptarmigans, spring",3
 421804992,"Unspecified ptarmigans, summer",3
 421804993,"Unspecified ptarmigans, fall",3
@@ -2412,55 +2466,22 @@ resource,resName,specList
 422004003,"     Great horned owl, fall",3
 422004004,"     Great horned owl, winter",3
 422004009,"     Great horned owl, unknown season",3
-422099000,    Unspecified owls,3
 422099001,"     Unspecified owls, spring",3
 422099002,"     Unspecified owls, summer",3
 422099003,"     Unspecified owls, fall",3
 422099004,"     Unspecified owls, winter",3
 422099009,"     Unspecified owls, unknown season",3
-428800000,   Unspecified other birds,3
 428800001,"    Unspecified other birds, spring",3
 428800002,"    Unspecified other birds, summer",3
 428800003,"    Unspecified other birds, fall",3
 428800004,"    Unspecified other birds, winter",3
 428800009,"    Unspecified other birds, unknown season",3
-430202000,    Bufflehead eggs,3
-430204000,    Canvasback eggs,3
-430206990,     Unspecified eider eggs,3
-430226990,     Unspecified scaup eggs,3
-430228990,     Unspecified scoter eggs,3
-430230000,    Northern shoveler eggs,3
-430232990,     Unspecified teal eggs,3
-430236990,     Unspecified wigeon eggs,3
-430299000,    Unspecified duck eggs,3
-430404990,     Unspecified Canada/cackling goose eggs,3
-430499000,    Unspecified goose eggs,3
-430699000,    Unspecified swan eggs,3
-430899000,    Unspecified crane eggs,3
-431006990,     Unspecified plover eggs,3
-431202990,     Unspecified auklet eggs,3
-431204990,     Unspecified cormorant eggs,3
-431206990,     Unspecified fulmar eggs,3
-431210990,     Unspecified guillemot eggs,3
-431212990,     Unspecified gull eggs,3
-431214990,     Unspecified kittiwake eggs,3
-431216990,     Unspecified loon eggs,3
-431218990,     Unspecified murre eggs,3
-431220990,     Unspecified murrelet eggs,3
-431222990,     Unspecified puffin eggs,3
-431226990,     Unspecified tern eggs,3
-431299000,    Unspecified seabird eggs,3
-431800000,   Upland game bird eggs,3
-431804990,     Unspecified ptarmigan eggs,3
-432099000,    Unspecified owl eggs,3
-439900000,   Unspecified eggs,3
 500200001,    Pinto abalone [CF retention],3
 500200002,    Pinto abalone [noncommercial gear],3
 500404001,     Red (large) chiton [CF retention],3
 500404002,     Red (large) chiton [noncommercial gear],3
 500408001,     Black (small) chiton [CF retention],3
 500408002,     Black (small) chiton [noncommercial gear],3
-500499000,    Unspecified chitons,3
 500499001,     Unspecified chitons [CF retention],3
 500499002,     Unspecified chitons [noncommercial gear],3
 500602001,     Butter clam [CF retention],3
@@ -2477,14 +2498,12 @@ resource,resName,specList
 500612002,     Razor clam [noncommercial gear],3
 500614001,     Softshell clam [CF retention],3
 500614002,     Softshell clam [noncommercial gear],3
-500699000,    Unspecified clams,3
 500699001,     Unspecified clams [CF retention],3
 500699002,     Unspecified clams [noncommercial gear],3
 500802001,     Basket cockles [CF retention],3
 500802002,     Basket cockles [noncommercial gear],3
 500804001,     Heart cockles [CF retention],3
 500804002,     Heart cockles [noncommercial gear],3
-500899000,    Unspecified cockles,3
 500899001,     Unspecified cockles [CF retention],3
 500899002,     Unspecified cockles [noncommercial gear],3
 501002001,     Box crab [CF retention],3
@@ -2503,7 +2522,6 @@ resource,resName,specList
 501008102,Red king crab eggs [non commercial gear],3
 501008301,Hanasaki crab [CF retention],3
 501008302,Hanasaki crab [noncommercial gear],3
-501008990,     Unspecified king crabs,3
 501008991,Unspecified king crabs [CF retention],3
 501008992,Unspecified king crabs [noncommercial gear],3
 501010001,     Korean horse hair crab [CF retention],3
@@ -2514,7 +2532,6 @@ resource,resName,specList
 501012042,"Tanner crab, opillio [noncommercial gear]",3
 501012991,Unspecified Tanner crabs [CF retention],3
 501012992,Unspecified Tanner crabs [noncommercial gear],3
-501099000,    Unspecified crabs,3
 501099001,     Unspecified crabs [CF retention],3
 501099002,     Unspecified crabs [noncommercial gear],3
 501200001,    Geoduck [CF retention],3
@@ -2525,7 +2542,6 @@ resource,resName,specList
 501600002,    Jingles [noncommercial gear],3
 501602001,     Rock jingle [CF retention],3
 501602002,     Rock jingle [noncommercial gear],3
-501699000,    Unspecified jingles,3
 501699001,     Unspecified jingles [CF retention],3
 501699002,     Unspecified jingles [noncommercial gear],3
 501800001,    Limpet [CF retention],3
@@ -2534,21 +2550,18 @@ resource,resName,specList
 502002002,     Blue mussel [noncommercial gear],3
 502004001,     Brown mussels [CF retention],3
 502004002,     Brown mussels [noncommercial gear],3
-502099000,    Unspecified mussels,3
 502099001,     Unspecified mussels [CF retention],3
 502099002,     Unspecified mussels [noncommercial gear],3
 502200001,    Octopus [CF retention],3
 502200002,    Octopus [noncommercial gear],3
 502402001,     Rock oyster [CF retention],3
 502402002,     Rock oyster [noncommercial gear],3
-502499000,    Unspecified oysters,3
 502499001,     Unspecified oysters [CF retention],3
 502499002,     Unspecified oysters [noncommercial gear],3
 502602001,     Weathervane scallop [CF retention],3
 502602002,     Weathervane scallop [noncommercial gear],3
 502604001,     Rock scallop [CF retention],3
 502604002,     Rock scallop [noncommercial gear],3
-502699000,    Unspecified scallops,3
 502699001,     Unspecified scallops [CF retention],3
 502699002,     Unspecified scallops [noncommercial gear],3
 502800001,    Sea anemones [CF retention],3
@@ -2559,7 +2572,6 @@ resource,resName,specList
 503004002,     Yein sea cucumber [noncommercial gear],3
 503006001,     Red sea cucumber [CF retention],3
 503006002,     Red sea cucumber [noncommercial gear],3
-503099000,    Unspecified sea cucumbers,3
 503099001,     Unspecified sea cucumbers [CF retention],3
 503099002,     Unspecified sea cucumbers [noncommercial gear],3
 503202001,     Green sea urchin [CF retention],3
@@ -2570,7 +2582,6 @@ resource,resName,specList
 503206002,     Purple sea urchin [noncommercial gear],3
 503208001,     Black sea urchin [CF retention],3
 503208002,     Black sea urchin [noncommercial gear],3
-503299000,    Unspecified sea urchins,3
 503299001,     Unspecified sea urchins [CF retention],3
 503299002,     Unspecified sea urchins [noncommercial gear],3
 503600001,    Snails [CF retention],3
@@ -2581,7 +2592,6 @@ resource,resName,specList
 503800002,    Squid [noncommercial gear],3
 504000001,    Whelk [CF retention],3
 504000002,    Whelk [noncommercial gear],3
-509900000,   Unspecified marine invertebrates,3
 509900001,    Unspecified marine invertebrates [CF retention],3
 509900002,    Unspecified marine invertebrates [noncommercial gear],3
 601002001,     Blueberry [commercial],3
@@ -2622,12 +2632,10 @@ resource,resName,specList
 601031002,     Dogwood berry [noncommercial],3
 601032001,     Twisted stalk berry (watermelon berry) [commercial],3
 601032002,     Twisted stalk berry (watermelon berry) [noncommercial],3
-601034000,    Serviceberry,3
 601036001,     Bearberry [commercial],3
 601036002,     Bearberry [noncommercial],3
 601037001,     Juniper berry [commercial],3
 601037002,     Juniper berry [non commercial],3
-601099000,    Other wild berries,3
 601099001,     Other wild berries [commercial],3
 601099002,     Other wild berries [noncommercial],3
 602002001,     Beach asparagus [commercial],3
@@ -2638,7 +2646,6 @@ resource,resName,specList
 602006002,     Wild rhubarb [noncommercial],3
 602009001,     Wild potato [commercial],3
 602009002,     Wild potato [noncommercial],3
-602010000,    Other beach greens,3
 602010001,     Other beach greens [commercial],3
 602010002,     Other beach greens [noncommercial],3
 602012001,     Devil's club [commercial],3
@@ -2697,10 +2704,8 @@ resource,resName,specList
 602045002,     Lupine [noncommercial],3
 602047001,     Meankin grasses [commercial],3
 602047002,     Meankin grasses [noncommercial],3
-602048000,    Unspecified greens from land,3
 602048001,     Unspecified greens from land [commercial],3
 602048002,     Unspecified greens from land [noncommercial],3
-602050000,    Unspecified greens from sea,3
 602050001,     Unspecified greens from sea [commercial],3
 602050002,     Unspecified greens from sea [noncommercial],3
 602051001,     Beech greens [commercial],3
@@ -2725,10 +2730,8 @@ resource,resName,specList
 603014002,     Red lavers (dulse) [noncommercial],3
 603016001,     bladder wrack [commercial],3
 603016002,     Bladder wrack [noncommercial],3
-603090000,    Seaweeds/kelps used for fertilizer,3
 603090001,     Seaweeds/kelps used for fertilizer [commercial],3
 603090002,     Seaweeds/kelps used for fertilizer [noncommercial],3
-603099000,    Unspecified seaweeds,3
 603099001,     Unspecified seaweeds [commercial],3
 603099002,     Unspecified seaweeds [noncommercial],3
 604000001,    Wood [commercial],3
@@ -2743,13 +2746,10 @@ resource,resName,specList
 604006002,     Hemlock branches for herring eggs [noncommercial],3
 604007001,     Hemlock sap [commercial],3
 604007002,     Hemlock sap [noncommercial],3
-604098000,    Unspecified wood,3
-604099000,    Other wood,3
 604099001,     Other wood [commercial],3
 604099002,     Other wood [noncommercial],3
 605000001,    Coal [commercial],3
 605000002,    Coal [noncommercial],3
-609000000,   Unspecified vegetation,3
 609000001,    Unspecified vegetation [commercial],3
 609000002,    Unspecified vegetation [noncommercial],3
 980600300,     Chainsaw,1

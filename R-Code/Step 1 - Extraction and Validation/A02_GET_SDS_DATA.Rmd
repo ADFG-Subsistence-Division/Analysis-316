@@ -379,6 +379,32 @@ cat(formatSummaryBlock(paste("SQL Extract:", strSQL ,", ",
 
 ```
 
+### Extract defined display group names
+
+```{r extract defined display group names}
+
+# Get defined data columns - report information later for better output organization.
+strSQL = sql(str_interp('SELECT [projID]
+                        ,[studyear]
+                        ,[communty]
+                        ,[commname]
+                        ,[displayGroup]
+                        ,[displayGroupDesc]
+                        ,[page]
+                        ,[order]
+                        FROM [Sub_SDS].[dbo].[vw_displayGroupsByCommunity]
+                        WHERE projID = 0 OR (projID = ${projID} AND studyear = ${studyear})'))
+
+lookupCodeSets[['definedDisplayGroups']] <- odbc::dbGetQuery(conn, strSQL)
+
+count <- nrow(lookupCodeSets[['definedDisplayGroups']])
+cat(formatSummaryBlock(paste("SQL Extract:", strSQL ,", ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+```
+
+
 ### Extract survey page definition
 
 ```{r survey page definition}
