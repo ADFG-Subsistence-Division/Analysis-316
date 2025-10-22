@@ -130,16 +130,16 @@ cat(formatSummaryBlock(str_interp('Combined harvest record types resulting in ${
 
 resData <- read.csv(str_interp('../../CSV/00 - Lookup Codes/fullResList_raw.csv'), 
                     na = '', header = TRUE, strip.white = TRUE)
+
 count <- nrow(resData)
 cat(formatSummaryBlock(paste("Opening file: fullResList_raw.csv, ", 
                              count, 
                              " records loaded.", sep="")))
 
-# Read raw conversion factor file data.
-convFactData_raw <- read.csv(str_interp('../../CSV/03 - Main/convFact.csv'), 
-                         na = '', header = TRUE, strip.white = TRUE) 
+# Load original conversion factor file
+convFactData_raw <- read_csv('../../CSV/03 - Main/convFact.csv') 
 
-# Load data for calculations & attempt to merge.
+# Bind original and calculated conversion factors into '_final' data frame.
 convFactData_final <- tryCatch(
   {
     # Load csv files with calculated conversion factors.
@@ -148,7 +148,7 @@ convFactData_final <- tryCatch(
                  pattern = "^REC\\d{2}_calc_convFact\\.csv$", 
                  full.names = TRUE) %>% 
       lapply(function(f) {
-        read_csv(f,col_types = c("cicciddddc"))
+        read_csv(f,col_types = c("iiiciddddc"))
       }) %>% 
       bind_rows()
     
@@ -156,8 +156,9 @@ convFactData_final <- tryCatch(
     
     bind_rows(calcConvFact %>% 
               rename(Source = source) %>% 
-              mutate(Source = "Calculated"),
-              convFactData_raw)
+              mutate(Source = "Calculated",
+                     projID = as.numeric(projID)),
+              convFactData_raw %>% filter(!resName %in% calcConvFact$resName))
 
   },
     # If we fail here, there is nothing to bind from the calc file, so just use
@@ -167,15 +168,13 @@ convFactData_final <- tryCatch(
   })
 
 # Reduce the final conversion factor file to just the essentials for data 
-#   processing.
-
+#   processing. Need to retain rows with no conversion factor for later processing.
 convFactData <- convFactData_final %>% 
-        select(projID, studyear, communty, resource, units, convFact, defaultUnits) 
+        select(projID, studyear, communty, resource, units, convFact, defaultUnits)
 
 cat(formatSummaryBlock(paste("Opening file: convFact.csv, ", 
                              nrow(convFactData), 
                              " records loaded.", sep="")))
-
 
 ```
 

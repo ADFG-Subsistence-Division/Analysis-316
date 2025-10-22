@@ -175,7 +175,7 @@ Set lists of subsistence gear type names. Make sure these are in the order you w
 # Full standard list of names; sub-set as needed.
 allSubsGearList = c("amtDriftGillNet", "amtSetGillNet", "amtUnspecifiedGillNet", "amtSeine", 
                  "amtUnspecifiedSubsistenceNet", "amtFishTrap", "amtFishWheel", 
-                 "amtJigHandLine", "amtHookUnderIce", "amtTrotLine", "amtFishTrapUnderIce", 
+                 "amtJigHandLine", "amtHookUnderIce", "amtTrotLine", "amtFishTrapUnderIce", "amtNetUnderIce", 
                  "amtUnspecifiedIceFishing", "amtLongLineSkate", "amtSpearGaff", 
                  "amtCastNet", "amtOtherGear")
 
@@ -209,14 +209,31 @@ fullGearList = c(cfHarvList, subsGearList, otherGearList)
 fullGearData <- syms(fullGearList)
 
 #Cross reference for gear-column name to label
-gearLabelData <- data.frame(gearType = c("amtGavetoCrew", "amtGaveOthers", "removeOwnUse", 
-                                         "amtCFHarv","amtSubsHarv",
-                                         "amtDriftGillNet", "amtSetGillNet", "amtUnspecifiedGillNet", "amtSeine", 
-                                         "amtUnspecifiedSubsistenceNet", "amtFishTrap", "amtFishWheel", 
-                                         "amtJigHandLine", "amtHookUnderIce", "amtTrotLine", "amtFishTrapUnderIce", 
-                                         "amtUnspecifiedIceFishing", "amtLongLineSkate", "amtSpearGaff", 
-                                         "amtCastNet", "amtOtherGear",
-                                         "amtDipNet", "amtTrolling", "amtRodReel"),
+gearLabelData <- data.frame(gearType = c("amtGavetoCrew", 
+                                         "amtGaveOthers", 
+                                         "removeOwnUse", 
+                                         "amtCFHarv", 
+                                         "amtSubsHarv",
+                                         "amtDriftGillNet", 
+                                         "amtSetGillNet", 
+                                         "amtUnspecifiedGillNet", 
+                                         "amtSeine", 
+                                         "amtUnspecifiedSubsistenceNet", 
+                                         "amtFishTrap", 
+                                         "amtFishWheel", 
+                                         "amtJigHandLine", 
+                                         "amtHookUnderIce", 
+                                         "amtTrotLine", 
+                                         "amtFishTrapUnderIce", 
+                                         "amtNetUnderIce",
+                                         "amtUnspecifiedIceFishing", 
+                                         "amtLongLineSkate", 
+                                         "amtSpearGaff", 
+                                         "amtCastNet", 
+                                         "amtOtherGear",
+                                         "amtDipNet", 
+                                         "amtTrolling", 
+                                         "amtRodReel"),
                             gearName = c("Commercial-Gave to crew", 
                                          "Commercial-Gave to others", 
                                          "Commercial-Remove own use",
@@ -233,12 +250,15 @@ gearLabelData <- data.frame(gearType = c("amtGavetoCrew", "amtGaveOthers", "remo
                                          "Hook Under Ice", 
                                          "Trot line", 
                                          "Fish trap under ice", 
+                                         "Net under ice",
                                          "Ice fishing", 
                                          "Long line/skate", 
                                          "Spear/gaff", 
                                          "Cast net", 
                                          "Other Gear",
-                                         "Dip net", "Trolling", "Rod & reel"))
+                                         "Dip net",
+                                         "Trolling", 
+                                         "Rod & reel"))
 
 
 # Initalize the final output list.
@@ -332,7 +352,23 @@ finalHarvByGearData <- amtByGearData %>%
   # Calculate total amounts for commercial and subsistence harvests
   rowwise() %>%
   mutate(amtCFHarv = sum(across(all_of(cfHarvList)), na.rm=TRUE),
-         amtSubsHarv = sum(across(all_of(subsGearList)), na.rm=TRUE)) %>%
+         
+         # In the Kotzebue district, rod and reel is only legal gear for salmon in marine waters; assuming that salmon taken with rod and reel are being harvested near the community of Ambler (upriver from Kotzebue Sound by many, many miles). Rod and reel is legal gear for nonsalmon fish though.
+         amtSubsHarv = if (resource < 12000000) {
+           sum(c_across(all_of(subsGearList)), na.rm = TRUE)
+         } else if (resource >= 12000000) {
+           sum(c_across(c("amtSeine",
+                          "amtOtherGear",
+                          "amtUnspecifiedGillNet",
+                          "amtUnspecifiedSubsistenceNet",
+                          "amtHookUnderIce",
+                          "amtNetUnderIce",
+                          "amtLongLineSkate",
+                          "amtRodReel")), na.rm = TRUE)
+         } else {
+           NA
+         }
+  )%>%
   ungroup() %>%
   
   # Calculate pounds; new columns will simply be given 'lbs_' to distinguish
