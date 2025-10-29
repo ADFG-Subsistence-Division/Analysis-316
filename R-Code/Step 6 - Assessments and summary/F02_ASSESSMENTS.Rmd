@@ -49,6 +49,14 @@ yourself") principles.
 - Template Update [Y|N]: Y
 - One-Off: No - include in all future comprehensive templates
 
+### Change 5
+- Programmer: Jesse Coleman
+- Date: 09/05/2025
+- Change Description: Added heat tables (good) and network figures (not great) for
+more/less reasons
+- Template Update [Y|N]: Y
+- One-Off: No - include in all future comprehensive templates
+
 ## Input data
   
 - /CSV/01 - Database Extract/REC66_raw.csv  
@@ -86,9 +94,11 @@ yourself") principles.
 ```{r setup, echo=FALSE}
 
 # Set some knit options and functions for formatting data.
-knitr::opts_chunk$set(echo = FALSE)
-knitr::opts_chunk$set(include = TRUE)
-knitr::opts_chunk$set(results='asis')
+knitr::opts_chunk$set(echo = FALSE,
+                      include = TRUE,
+                      results='asis',
+                      warning = FALSE,
+                      message = FALSE)
 
 options(knitr.kable.NA = '')
 
@@ -195,9 +205,9 @@ mutate(across(all_of(c("whyDiffCD1","whyDiffCD2")),
 # May require adjustment according to the data collected for this survey or if display
 #   groups weren't properly assigned.
 lsmDisplayGroups <- c('6600', '6604', '6606', '6608', '6610', '6612', 
-                      '6614', '6615', '66171')
+                      '6614', '6615', '66171', '6618')
 
-# REC66Data <- REC66Data %>% filter(displayGroup %in% lsmDisplayGroups)
+REC66Data <- REC66Data %>% filter(displayGroup %in% lsmDisplayGroups)
 
 lsmCodeList <- codeSetData %>% 
   filter(codeSetID == 6) %>%
@@ -298,15 +308,13 @@ Multiple resource may have been offered as being 'needed', aggregate just the Le
 ```{r LSM data}
 
 # Recode (-) codes for LSM so that they're only -9 for 'missing'.
-
-REC66LSMData <- REC66Data %>% 
-  filter(displayGroup %in% lsmDisplayGroups) %>% 
-  mutate(histUse = if_else(histUse < 0 | is.na(histUse) , -9, histUse)) %>% 
+REC66Data <- REC66Data %>% 
+  mutate(histUse = if_else(histUse < 0 | is.na(histUse) , -9, histUse)) 
 
 # Merge in histUse codes for pivoting later on. -- remove NPS-Specific assessments.
-  left_join(lsmCodeList, by = c("histUse")) %>% 
-  
-  mutate(hhRept = 1)
+REC66LSMData <- REC66Data %>% left_join(lsmCodeList, by = c("histUse")) %>% 
+  mutate(hhRept = 1) #%>%
+  #filter(displayGroup %in% lsmDisplayGroups)
 
 lsmCols <- unique(REC66LSMData$histUseDesc)
 
@@ -400,23 +408,23 @@ print(tableOut)
 #  reason is at least -9; rows for reason code 2 will be removed
 #  after files are stacked in a later step.
 
-REC66LSMData$whyDiffCD1[which(REC66LSMData$histUse == 1 & is.na(REC66LSMData$whyDiffCD1))] = -9
-REC66LSMData$whyDiffCD1[which(REC66LSMData$histUse == 3 & is.na(REC66LSMData$whyDiffCD1))] = -9
+REC66Data$whyDiffCD1[which(REC66Data$histUse == 1 & is.na(REC66Data$whyDiffCD1))] = -9
+REC66Data$whyDiffCD1[which(REC66Data$histUse == 3 & is.na(REC66Data$whyDiffCD1))] = -9
 
-REC66LSMData$whyDiffCD1[which(REC66LSMData$histUse == 1 & REC66LSMData$whyDiffCD1 < 0)] = -9
-REC66LSMData$whyDiffCD1[which(REC66LSMData$histUse == 3 & REC66LSMData$whyDiffCD1 < 0)] = -9
+REC66Data$whyDiffCD1[which(REC66Data$histUse == 1 & REC66Data$whyDiffCD1 < 0)] = -9
+REC66Data$whyDiffCD1[which(REC66Data$histUse == 3 & REC66Data$whyDiffCD1 < 0)] = -9
 
 # 'Missing' cannot be a second reason code; also if a 0 worked it's way in, let's 
 #   also make sure that's handled properly.
-REC66LSMData$whyDiffCD2[which(REC66LSMData$histUse == 1 & REC66LSMData$whyDiffCD2 < 1)] = NA
-REC66LSMData$whyDiffCD2[which(REC66LSMData$histUse == 3 & REC66LSMData$whyDiffCD2 < 1)] = NA
+REC66Data$whyDiffCD2[which(REC66Data$histUse == 1 & REC66Data$whyDiffCD2 < 1)] = NA
+REC66Data$whyDiffCD2[which(REC66Data$histUse == 3 & REC66Data$whyDiffCD2 < 1)] = NA
 
 # Make an 'any resource'
 REC66AnyData <- REC66Data
 REC66AnyData$resource = -1
 REC66AnyData$resName = 'Any resource'
 
-REC66ReasonData <- dplyr::bind_rows(REC66AnyData, REC66LSMData)
+REC66ReasonData <- dplyr::bind_rows(REC66AnyData, REC66Data)
 
 # Ensure that all resource categories asked about pop-up on the output data.
 keyData <- distinct(REC66ReasonData, projID, studyear, communty, 
@@ -444,7 +452,6 @@ lessReason1Data <- select(REC66LessData, projID, studyear, communty,
                          whyDiffCD1) %>%
                ungroup() %>%
                rename(reasonCD = whyDiffCD1)
-
 lessReason2Data <- select(REC66LessData, projID, studyear, communty, 
                          commname, resource, resName, HHID, lessUse,
                          whyDiffCD2) %>%
@@ -941,12 +948,8 @@ print(plotOut)
 
 ## Heat tables
 
-```{r Heat table - more reasons}
+```{r Heat table - more reasons, eval = FALSE}
  
-combinations <- moreReasonsData %>% ungroup() %>%
-  select(commname, studyear) %>%
-  distinct()
-
 moreReasonsHeat <- 
   moreReasonsData %>%  
   pivot_longer(cols = c(10:ncol(.)),
@@ -999,7 +1002,7 @@ pwalk(
 )
 ```
 
-```{r Heat table - less reasons}
+```{r Heat table - less reasons, eval = FALSE}
  
 lessReasonsHeat <- 
   lessReasonsData %>%  
@@ -1053,89 +1056,89 @@ pwalk(
 )
 ```
 
-### Get enough/ Impact
+## Get enough/ Impact
 
 This portion of the assessment section addresses if households got enough of a resource category and the impact to the household if they did not. The same resource categories listed under the Less/Same/More section are also asked about in this section. If the household responds 'No' to the get enough question for any resource category, a follow up question is asked regarding the impact to the household of not getting enough. The impact question responses are on a scale from 'not noticeable' to 'severe'. Historically a 4 point scale was used, but recently an additional point (moderate) was added. Ascertain which scale was used in the data entry screen. You may need to remove 'moderate' from the column list. 
 
 ```{r get enough and impact data}
 
 # Recode (-) codes to provide only one 'unknown' column rather than multiples.
-REC66EnoughData <- REC66Data %>%
-  filter(displayGroup %in% lsmDisplayGroups) %>% 
+REC66Data <- REC66Data %>%
   mutate(
-    validEnough = if_else(histUse <= 0, 0, 1), # If resource wasn't used, not a valid response
-    validEnough = if_else(getEnough %in% c(0, 1), 1, validEnough), # If HH got enough or did not get enough, valid response
-    impact = if_else(impact < 0 | is.na(impact), -9, impact), # If impact wasn't given, -9 it
-    
-    # Provide an additional impact code to distinguish between 'no use' and missing.
+    validEnough = 0,
+    validEnough = if_else(histUse == 0, 1, validEnough),
+    validEnough = if_else(getEnough %in% c(0, 1), 1, validEnough),
+    impact = if_else(impact < 0, -9, impact),
+    # Provide an additional impact code to distingush between 'no use' and missing.
     impact = if_else(histUse == 0, -10, impact)
     )
 
-# Develop 'any resource' code using -1 as the rescode so that we get proper sorting.
-REC66EnoughAnyData <- REC66EnoughData %>% 
-  mutate(resource = -1,
-         resName = 'Any resource')
+#REC66Data$validEnough = 0
 
-REC66EnoughData <- bind_rows(REC66EnoughData, REC66EnoughAnyData) %>% 
-  mutate(notEnough = case_when(getEnough == 0 ~ 1,
-                               getEnough == 1 ~ 0,
-                               TRUE ~ NA))
+#REC66Data$validEnough[which(REC66Data$histUse == 0)] = 1
+#REC66Data$validEnough[which(REC66Data$getEnough %in% c(0,1))] = 1
+# Provide an additional impact code to distingush between 'no use' and missing.
+#REC66Data$impact[which(REC66Data$histUse == 0)] = -10
+
+
+# Develop 'any resource' code using -1 as the rescode so that we get proper sorting.
+REC66EnoughAnyData <- REC66Data
+REC66EnoughAnyData$resource = -1
+REC66EnoughAnyData$resName = 'Any resource'
+
+REC66EnoughData <- dplyr::bind_rows(REC66Data, REC66EnoughAnyData)
+REC66EnoughData$notEnough = 0
+# Differentiate between not enough and do not use. Depending on how the data entry 
+#   screen was set up this may or not may be necessary.
+REC66EnoughData$notEnough[which(REC66EnoughData$getEnough == 0 & REC66EnoughData$histUse > 0)] = 1
+
+# Now we've established the response for got enough, recode 'getEnough' to 0 for all
+#   instances where it might be missing to ensure proper aggregation.
+REC66EnoughData$getEnough[which(is.na(REC66EnoughData$getEnough) | REC66EnoughData$getEnough < 0)] = 0
 
 # Set instances of NA for impact to -9 if enough has been marked as 0.
 REC66EnoughData$impact[which(REC66EnoughData$notEnough == 1 & is.na(REC66EnoughData$impact))] = -9
 
 # Get enough has to be tabulated separately from impact to simplify the pivot.
-tmpREC66ImpactData <- select(REC66EnoughData, projID, studyear, communty, 
+REC66ImpactData <- select(REC66EnoughData, projID, studyear, communty, 
                          commname, resource, resName, 
                          impact, HHID)
 
 # Impacts for 'not enough' only, and also omit 'any' and 'overall' - these are not particularly insightful.
-tmpREC66ImpactFrequencyData <- select(REC66EnoughData, projID, studyear, communty, 
+REC66ImpactFrequencyData <- select(REC66EnoughData, projID, studyear, communty, 
                                    commname, resource, resName, 
                                    notEnough, impact, HHID) %>%
                             filter(resource > 0 & notEnough == 1)
 
 # Add in no-use for frequency summaries.
-REC66EnoughData <- REC66EnoughData %>% 
-  mutate(noUse = if_else(histUse == 0, 1, 0)) %>% 
-  select(projID, studyear, communty, 
-         commname, resource, resName, noUse, validEnough, getEnough,
-         notEnough, HHID)
+REC66EnoughData$noUse = 0
+REC66EnoughData$noUse[which(REC66Data$histUse == 0)] = 1
+REC66EnoughData <- select(REC66EnoughData, projID, studyear, communty, 
+                         commname, resource, resName, noUse, validEnough, getEnough,
+                         notEnough, HHID)
+REC66EnoughFrequencyData <- filter(REC66EnoughData, resource > 0)
 
-tmpREC66EnoughFrequencyData <- REC66EnoughData %>% 
-  filter(resource > 0)
+REC66EnoughData <- group_by(REC66EnoughData, projID, studyear, communty,
+                            commname, resource, resName, HHID) %>%
+                   summarize(validEnough = max(validEnough, na.rm=TRUE),
+                             getEnough = max(getEnough, na.rm=TRUE),
+                             notEnough = max(notEnough, na.rm=TRUE)) %>%
+                   summarize(validEnough = sum(validEnough, na.rm=TRUE),
+                             getEnough = sum(getEnough, na.rm=TRUE),
+                             notEnough = sum(notEnough, na.rm=TRUE)) %>%
+                   ungroup()
 
-REC66EnoughData <- REC66EnoughData %>% 
-  filter(!is.na(validEnough),
-         !is.na(getEnough),
-         !is.na(notEnough)) %>% 
-  group_by(projID, studyear, communty,
-           commname, resource, resName, HHID) %>%
-  summarize(validEnough = sum(validEnough, na.rm=TRUE),
-            getEnough = sum(getEnough, na.rm=TRUE),
-            notEnough = sum(notEnough, na.rm=TRUE)) %>% 
-  mutate(across(all_of(c("validEnough","getEnough","notEnough")), 
-                ~ case_when(resName %in% c("Any resource", "All resources") & . >= 1 ~ 1,
-                            TRUE ~ .))) %>% 
-  group_by(projID, studyear, communty, commname, resource, resName) %>% 
-  summarize(validEnough = sum(validEnough, na.rm=TRUE),
-            getEnough = sum(getEnough, na.rm=TRUE),
-            notEnough = sum(notEnough, na.rm=TRUE)) %>% 
-  ungroup()
-
-tmpREC66ImpactData$number = 1
-
-REC66ImpactData <- left_join(tmpREC66ImpactData, impactCodeList,
-                            by=c("impact")) %>%
-  group_by(projID, studyear, communty,
-           commname, resource, resName, impactDesc, HHID) %>%
-  summarize(number = max(number, na.rm=TRUE)) %>% 
-  summarize(number = sum(number, na.rm=TRUE)) %>%View()
-  ungroup() %>%
-  filter(!is.na(impactDesc)) %>%
-  pivot_wider(names_from="impactDesc", values_from="number",
-              names_sort=TRUE)
-
+REC66ImpactData$number = 1
+REC66ImpactData <- left_join(REC66ImpactData, impactCodeList,
+                            by=c("impact"))
+REC66ImpactData <- group_by(REC66ImpactData,  projID, studyear, communty,
+                            commname, resource, resName, impactDesc, HHID) %>%
+                   summarize(number = max(number, na.rm=TRUE)) %>%
+                   summarize(number = sum(number, na.rm=TRUE)) %>%
+                   ungroup() %>%
+                   filter(!is.na(impactDesc)) %>%
+                   pivot_wider(names_from="impactDesc", values_from="number",
+                               names_sort=TRUE)
 
 getEnoughTableData <- left_join(keyData, REC66EnoughData, by=c('projID', 'studyear', 'communty', 
                                   'commname', 'resource', 'resName')) %>% 
@@ -1153,36 +1156,31 @@ getEnoughTableData <- left_join(keyData, REC66EnoughData, by=c('projID', 'studye
 
 # Get to HHID/Resource (one row per), then sum # resources per HH. This will
 #   stay at the HH level in order to produce box and whisker plots.
-REC66EnoughFrequencyData <- tmpREC66EnoughFrequencyData %>% 
-  mutate(getEnough = if_else(getEnough == -9, NA, getEnough)) %>% 
-  group_by(projID, studyear, communty,
-           commname, HHID, resource) %>%
-  summarize(getEnough = max(getEnough, na.rm=TRUE),
-            noUse = max(noUse, na.rm=TRUE),
-            notEnough = max(notEnough, na.rm=TRUE)) %>% 
-  mutate(across(everything(), ~replace(.x, .x == -Inf, NA))) %>% 
-  summarize(getEnough = sum(getEnough, na.rm=TRUE),
-            noUse = sum(noUse, na.rm=TRUE),
-            notEnough = sum(notEnough, na.rm=TRUE)) %>%
-  ungroup() 
+REC66EnoughFrequencyData <- group_by(REC66EnoughFrequencyData, projID, studyear, communty,
+                            commname, HHID, resource) %>%
+                   summarize(getEnough = max(getEnough, na.rm=TRUE),
+                             noUse = max(noUse, na.rm=TRUE),
+                             notEnough = max(notEnough, na.rm=TRUE)) %>%
+                   summarize(getEnough = sum(getEnough, na.rm=TRUE),
+                             noUse = sum(noUse, na.rm=TRUE),
+                             notEnough = sum(notEnough, na.rm=TRUE)) %>%
+                   ungroup()
 
-tmpREC66ImpactFrequencyData$number = 1
-
-REC66ImpactFrequencyData <- left_join(tmpREC66ImpactFrequencyData, impactCodeList,
-                            by=c("impact")) %>% 
-  group_by(projID, studyear, communty,
+REC66ImpactFrequencyData$number = 1
+REC66ImpactFrequencyData <- left_join(REC66ImpactFrequencyData, impactCodeList,
+                            by=c("impact"))
+REC66ImpactFrequencyData <- group_by(REC66ImpactFrequencyData,  projID, studyear, communty,
                             commname, impactDesc, HHID, resource) %>%
-  summarize(number = max(number, na.rm=TRUE)) %>%
-  summarize(number = sum(number, na.rm=TRUE)) %>%
-  ungroup() %>%
-  mutate(across(everything(), ~replace(.x, .x == -Inf, NA))) %>%
-  filter(!is.na(impactDesc)) %>%
-  pivot_wider(names_from="impactDesc", 
-              values_from="number",
-              names_sort = TRUE) %>%
-  select(projID, studyear, communty, commname, HHID,
-         any_of(c("Missing", "Not noticable", "Minor", 
-                  "Moderate", "Major", "Severe")))
+                   summarize(number = max(number, na.rm=TRUE)) %>%
+                   summarize(number = sum(number, na.rm=TRUE)) %>%
+                   ungroup() %>%
+                   filter(!is.na(impactDesc)) %>%
+                   pivot_wider(names_from="impactDesc", 
+                                values_from="number",
+                                names_sort = TRUE) %>%
+                   select(projID, studyear, communty, commname, HHID,
+                          any_of(c("Missing", "Not noticable", "Minor", 
+                                   "Moderate", "Major", "Severe")))
 
 # Enforce 0-values in the pivoted data; because we know what the first 5 values ought
 #   to be we can just skip those - they shouldn't be blank at this point.
@@ -1200,6 +1198,7 @@ for(ii in 5:length(REC66ImpactFrequencyData))
 print(tableOut)
 
 ```
+
 ## Get Enough Table Review
 In this step, please review each table for obvious errors or issues. When re-running this data with updates, you can visually compare this output to the previous version in excel before pasting the output file into the excel template.
 

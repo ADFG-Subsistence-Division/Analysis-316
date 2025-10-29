@@ -159,6 +159,13 @@ The code chunk below (echoed for clarity), filters the record type 04 so only ha
 
 #REC06Data <- filter(REC06Data, subRecordCD == 0)
 
+# `Dolly Varden, unknown type`, `Arctic char`, and `Arctic char/Dolly Varden` were 
+# reported. We are unable to differentiate/identify them to species, so we will code 
+# them all as 125099000, `Unspecified chars`. 
+
+REC06Data <- REC06Data %>% 
+  mutate(resource = case_when(resource %in% c(125002000,125006990,125012000) ~ 125099000, 
+                              TRUE ~ resource))
 ```
 
 ## Create lists for automation
@@ -331,6 +338,7 @@ Evaluate columns of data used for development of tables and figures. Recode miss
 - Recode all variables named in recodeColList to -8 if they are coded as any negative code.  
 - For any resource added to any household that goes beyond the defaults on the printed survey, we need to add that to all other households. Note that the code allows us to retain certain key information, but it isn't required. By standardizing the resource list in this manner, summary statistics can be reliably computed using built-in R functions such as sd() and mean().  
 - Recode variables to ensure proper handling of missing data. We interpret empty or missing data as 0 or NO. The reason for this is partially one of expediency in data processing, and also a matter of ensuring that when collected data is reviewed, it has been VERIFIED as some type of 'unknown' data.  
+
 ```{r standarize coding, message=FALSE}
 
 # #############################################################################
@@ -569,6 +577,7 @@ if(nrow(REC06StdData) == 0)
 
 ```
 ## Conversion factors for unspecified resources
+
 Resources are often reported as 'unspecified', in cases where the survey respondent
 was unsure of the species harvested or received. To calculate the edible weight of 
 unspecified resources harvested, similar resources and the amounts/weights harvested
@@ -579,7 +588,8 @@ develop a list of resources to use in this calculation for each unspecified reso
 
 unspecTable <- REC06StdData %>% filter(str_detect(resName, "Unspecified") & harvestq == 1) %>% 
   ungroup() %>% 
-  select(commname, resource, resName) 
+  select(commname, resource, resName) %>%
+  distinct(commname, resource, resName)
 
 unspecTable %>% 
   kable(caption = 'Unspecified resources that were harvested',
