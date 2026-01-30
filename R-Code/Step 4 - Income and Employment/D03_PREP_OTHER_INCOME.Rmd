@@ -194,7 +194,7 @@ REC24Data <- REC24Data %>%
 
 ## Missing data replacement
 
-Replace missing data by starting with the income source, if no non-0 mean is found for that source, then do this by income category. Again, if there is no mean, then take the mean of any resource. Note here that we also evaluate whether or not the income source was present in another strata group before doing the whole community mean. This is rarely going to be applied.
+Replace missing data by starting with the income source, if no non-0 mean is found for that source, then do this by income category. Again, if there is no mean, then take the mean of any source. Note here that we also evaluate whether or not the income source was present in another strata group before doing the whole community mean. This is rarely going to be applied.
 
 ```{r missing data replacement}
 

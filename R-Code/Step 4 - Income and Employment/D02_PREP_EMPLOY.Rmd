@@ -178,7 +178,8 @@ We need to merge the files such that all households, regardless of employment st
 
 Some notes and enforced logic:  
 - If a household lacks employment information AND person age information, all of this is removed and the HH is treated as unknown for employment completely.  
-- Create an additional imputation step for later that will be used to account for people missing valid employment records altogether. - We assume that if no months worked has been checked that this value is just 'unknown'  
+- Create an additional imputation step for later that will be used to account for people missing valid employment records altogether. 
+- We assume that if no months worked has been checked that this value is just 'unknown'.
 
 
 ```{r set up files for analysis}
@@ -315,6 +316,45 @@ employData <- left_join(employData, sampData, by=c("projID", "communty", "studye
 
 ```
 
+```{r summary of missing data}
+
+missingSummary <- REC23Data %>%
+  filter(samp == 0) %>% 
+  rowwise() %>%
+  mutate(
+    earnFL = case_when(earnings < -6 ~ 1, 
+                       is.na(earnings) ~ 0,
+                       TRUE ~ 0),
+    sicFL = if_else(SIC < -6, 1, 0),
+    socFL = if_else(SOC < -6, 1, 0),
+    schedFL = if_else(schedule %in% c(-7,-8), 1, 0),
+    # monthsFL = if_else(any(c_across(janWork:decWork) < 0), 1, 0),
+    isJob = if_else(!SIC %in% c(-2,0), 0, 1)
+  ) %>%
+  ungroup() %>% 
+  summarize(
+    earnFL_sum = round(sum(earnFL), 0),
+    sicFL_sum = round(sum(sicFL), 0),
+    socFL_sum = round(sum(socFL), 0),
+    schedFL_sum = round(sum(schedFL), 0),
+    # monthsFL_sum = sum(monthsFL),
+    jobsN = round(sum(isJob), 0),
+    recordsN = n()
+  ) %>% 
+  mutate(earnFL_pct = round(earnFL_sum/jobsN, 2),
+         sicFL_pct = round(sicFL_sum/jobsN, 2),
+         socFL_pct = round(socFL_sum/jobsN, 2),
+         schedFL_pct = round(schedFL_sum/jobsN,  2),
+         nonjobN = recordsN-jobsN
+         # monthsFL_pct = monthsFL_sum/jobsN
+  ) %>% 
+  select(recordsN, jobsN, nonjobN, everything()) %>% 
+pivot_longer(everything(), names_to = "variable", values_to = "value")
+
+missingSummary
+```
+
+
 ## Missing data replacements
 
 In this block of code, we will use mean replacement for 'employed adults' in the event a household has declined to share employment information. This is also applied to the number of 'months employed'. However, for earnings, the following rules are applied:  
@@ -324,11 +364,14 @@ In this block of code, we will use mean replacement for 'employed adults' in the
 - Missing monthly earned income is replaced with **MEDIAN** as follows: First by SOC/SIC/schedule, then by SIC/SOC, then by SIC, finally, if still no non-zero income has been calculated, use the median of ANY job and use that value.   
 
 ```{r missing data replacements}
+
 # Mean replace for JUST employed adults (standard functions won't work here, just use this).
 #   Thinking about employment characteristics, always use the strata-level means,
 #   we should not have an instance where the strata does not contain enough non-zero 
 #   information to provide a mean.
-employData <- employData %>% 
+
+employData <-
+  employData %>% 
   
   # Grouping variables; probably don't need `employedAdult` here because it is 
   #   handled in each mutate call. 
@@ -347,16 +390,17 @@ employData <- employData %>%
   # Calculate median earnings per month by variable groupings (fine-scale to 
   #   coarse-scale)
   group_by(projID, samp, studyear, communty, strata, employedAdult, SIC, SOC, schedule) %>%
-  mutate(medBySched = median(earnPerMonth, na.rm=TRUE)) %>% 
+  mutate(medBySched = median(earnPerMonth, na.rm=TRUE)) %>%
   group_by(projID, samp, studyear, communty, strata, employedAdult, SIC, SOC) %>%
-  mutate(medBySOC = median(earnPerMonth, na.rm=TRUE)) %>% 
+  mutate(medBySOC = median(earnPerMonth, na.rm=TRUE)) %>%
   group_by(projID, samp, studyear, communty, strata, employedAdult, SIC) %>%
-  mutate(medBySIC = median(earnPerMonth, na.rm=TRUE)) %>% 
+  mutate(medBySIC = median(earnPerMonth, na.rm=TRUE)) %>%
   group_by(projID, samp, studyear, communty, employedAdult, strata) %>%
   mutate(medByAny = median(earnPerMonth, na.rm=TRUE),
         
          # Replace NAs in median columns with zeros
-         across(c("medBySched","medBySOC","medBySIC", "medByAny"), ~if_else(is.na(.x), 0, .x)),
+         across(c("medBySched","medBySOC","medBySIC", 
+                  "medByAny"), ~if_else(is.na(.x), 0, .x)),
          
          # If earnPerMonth is not missing, keep it.
          #  Else, if medBySched > 0, use that.

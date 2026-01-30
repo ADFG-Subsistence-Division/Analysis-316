@@ -125,26 +125,26 @@ If you have not run these files yourself, you will need to do that. If you notic
 ```{r load data}
 
 # Load data from intermediate files.
-REC24Data <- fread(str_interp('${bootSampPath}/REC24_FULL_CLEAN_BOOT.csv'), 
+REC24Data_raw <- fread(str_interp('${bootSampPath}/REC24_FULL_CLEAN_BOOT.csv'), 
                       na = '', 
                       header = TRUE, 
                       strip.white = TRUE)
-count <- nrow(REC24Data)
+count <- nrow(REC24Data_raw)
 cat(formatSummaryBlock(paste("Opening file: REC24_FULL_CLEAN_BOOT.csv, ", 
                              count, 
                              " records loaded.", sep="")))
 
-REC23Data <- fread(str_interp('${bootSampPath}/REC23_FULL_CLEAN_BOOT.csv'), 
+REC23Data_raw <- fread(str_interp('${bootSampPath}/REC23_FULL_CLEAN_BOOT.csv'), 
                       na = '', 
                       header = TRUE, 
                       strip.white = TRUE)
-count <- nrow(REC23Data)
+count <- nrow(REC23Data_raw)
 cat(formatSummaryBlock(paste("Opening file: REC23_FULL_CLEAN_BOOT.csv', ", 
                              count, 
                              " records loaded.", sep="")))
 
 # 1.2 - Tidy up column names for consistency later on.
-REC23Data$estIncome = REC23Data$imputedEarnings
+REC23Data_raw$estIncome = REC23Data_raw$imputedEarnings
 
 
 # 1.3 - sample data.
@@ -188,18 +188,26 @@ This section develops basic summary statistics at various levels of detail and s
 
 # Create a place-holder to simplify the HH income information. We will need
 #   non-imputed values for calculating median income.
-REC23Data <- REC23Data %>% 
+REC23Data <- REC23Data_raw %>%
   mutate(SIC = if_else(SIC == -8, -9, SIC),
          SOC = if_else(SOC == -8, -9, SOC),
          incomeAmount_MR = earnings_MR,
          # Need year-round employment estimates.
          yrRoundEmpl = as.numeric(monthsWorked == 12) * strataWt)
 
+# REC23Data <- REC23Data_raw %>% 
+#   mutate(SIC = if_else(SIC %in% c(-8, -9), NA_real_, SIC),
+#          SOC = if_else(SOC %in% c(-8, -9), NA_real_, SOC),
+#          incomeAmount_MR = earnings_MR,
+#          # Need year-round employment estimates.
+#          yrRoundEmpl = as.numeric(monthsWorked == 12) * strataWt)
+
 # Get to person/SOC/SIC level (i.e., if a person has 2 jobs in the same 
 #     industry and occupation, combine those.) Do this for each re-sample.
-employEstData <- group_by(REC23Data, samp, projID, studyear, communty, commname,
-                      strata, estJobs, employStrataWt, 
-                      uHHID, person, CSISCatCodes, SIC, SOC) %>%
+employEstData <- REC23Data %>% 
+  group_by(samp, projID, studyear, communty, commname,
+           strata, estJobs, employStrataWt, 
+           uHHID, person, CSISCatCodes, SIC, SOC) %>%
   summarize(estHHCount = max(employStrataWt, na.rm=TRUE),
             estPersonCount = max(employStrataWt, na.rm=TRUE),
             estJobCount = sum(employStrataWt, na.rm=TRUE),
@@ -214,11 +222,12 @@ employEstData <- group_by(REC23Data, samp, projID, studyear, communty, commname,
 count = nrow(employEstData) / (econBoot_k + 1)
 cat(formatSummaryBlock(str_interp("Summarized employment information to the occupation and industry level by person resulting in ${count} records per resample.")))
 
-# 2.2 Summarize to person / industry level (ie: If the a person has more than 
+# 2.2 Summarize to person / industry level (ie: If a person has more than 
 #     one job in a single industry, combine those.)
-SICSummaryData <- group_by(REC23Data, samp, projID, studyear, communty, commname,
-                           strata, estJobs, employStrataWt, 
-                           uHHID, person, CSISCatCodes, SIC) %>%
+SICSummaryData <- REC23Data %>% 
+  group_by(samp, projID, studyear, communty, commname,
+           strata, estJobs, employStrataWt, 
+           uHHID, person, CSISCatCodes, SIC) %>%
   summarize(estHHCount = max(employStrataWt, na.rm=TRUE),
             estPersonCount = max(employStrataWt, na.rm=TRUE),
             estJobCount = sum(employStrataWt, na.rm=TRUE),
@@ -300,7 +309,8 @@ In order to simplify the organization of tables & figures, specialized coding is
 # Create income source labels (occupation/SOC)
 SOCCodeData <- codeData %>%
   filter(codeSetID == 96) %>%
-  transmute(SOC = code, SOCDesc = codeDescription)
+  transmute(SOC = code, SOCDesc = codeDescription) %>% 
+  mutate(SOC = if_else(SOC == 999, -9, SOC))
 
 employEstData <- employEstData %>%
   left_join(SOCCodeData, by = "SOC") %>%
@@ -310,7 +320,9 @@ employEstData <- employEstData %>%
 # Create income category labels (industry/SIC)
 SICCodeData <- codeData %>%
   filter(codeSetID == 97) %>%
-  transmute(SIC = code, SICDesc = codeDescription)
+  transmute(SIC = code, SICDesc = codeDescription) %>% 
+  mutate(SIC = if_else(SIC == 999, -9, SIC))
+
 
 employEstData <- employEstData %>%
   left_join(SICCodeData, by = "SIC") %>%
@@ -339,7 +351,7 @@ Impute other income estimates, produce total and subtotal rows at the household 
 ```{r sub tots and summaries}
 
 # Bring in sampling data to impute estimates
-otherEstData <- REC24Data %>%
+otherEstData <- REC24Data_raw %>%
   left_join(sampData, by = c("projID", "studyear", "communty", "strata")) %>%
   mutate(
     estIncome   = incomeAmount_MR * strataWt,

@@ -184,6 +184,7 @@ Set the seed to the current study year + the project ID. This will ensure differ
 # Initialize the base sample & simplify to the minimum number of columns to 
 #  (hopefully) improve efficiency. We do this with the root HH File because
 #  the econ bootstrapping doesn't require 
+
 REC00Data <- select(REC00Data, projID, studyear, communty, strata, HHID)
 resampData = REC00Data
 resampData$samp = 0
@@ -191,6 +192,7 @@ resampData$samp = 0
 tempData <- group_by(REC00Data, projID, studyear, communty, strata) %>%
   summarize(n = n()) %>% 
   arrange(projID, studyear, communty, strata)
+
 
 set.seed(studyear + projID)
 for(ii in 1:nrow(tempData))
@@ -214,8 +216,8 @@ for(ii in 1:nrow(tempData))
 }
 
 # Finally -- Provide a totally unique HHID for the entirety of the dataset to prevent confusion during
-#   analysis; there are several cases where we ahve a 1:many relationship in the data at the household
-#   level and will need to preseve those relationships. 
+#   analysis; there are several cases where we have a 1:many relationship in the data at the household
+#   level and will need to preserve those relationships. 
 resampData$uHHID = seq(1:nrow(resampData))
 
 count = nrow(resampData)
