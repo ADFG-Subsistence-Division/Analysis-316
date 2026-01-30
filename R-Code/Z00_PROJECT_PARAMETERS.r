@@ -50,8 +50,20 @@ studyear = 2024
 projID = 316
 projectName = "NPS Ambler Comprehensive"
 
-#projID = 999
-#projectName = "MODIFY Z00_PROJECT_PARAMETERS.r BEFORE CONTINUING"
+# Paths and what-not for synchronization.
+# Where on the network drive to save; use a default folder to prevent overwriting.
+# Update the remoteArchivePath to the folder you want to use. 
+#  you can also update the filenames, if you choose. The current organization keeps
+#  it specific to project and study year.
+
+archivePath = ('./CSV')
+localSQLiteDB = str_interp('./SQLite/analysisCSVFiles_${projID}_${studyear}.db')
+
+# Use below as default; replace with correct project file as needed
+#	remoteArchivePath = paste(ancShareDrive, '/IM/CSV Archives/', sep='')
+
+remoteArchivePath = paste(server, '/PROJECTS/316 NPS Upper Kobuk Comprehensive/316-Analysis-2024/SQLite/', sep='')
+remoteSQLiteDB = str_interp('${remoteArchivePath}analysisCSVFiles_${projID}_${studyear}.db')
 
 # Resources that shouldn't be expanded in the form of a logic statement.
 #  the logic statement MUST be in parenthesis. By convention
