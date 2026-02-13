@@ -1,0 +1,1 @@
+This folder should contain only output intended for inclusion in the HH Database. The contents of this folder MUST NOT be included in the .GIT repository.

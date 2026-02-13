@@ -46,7 +46,7 @@ server = '//dfg.alaska.local/SUB/Anchorage/'
 #server = 'C:/R-Subist-Data-Local/'
 
 #What project are we working on?
-studyear = 2024
+studyear = 2025
 projID = 316
 projectName = "NPS Ambler Comprehensive"
 
@@ -62,7 +62,7 @@ localSQLiteDB = str_interp('./SQLite/analysisCSVFiles_${projID}_${studyear}.db')
 # Use below as default; replace with correct project file as needed
 #	remoteArchivePath = paste(ancShareDrive, '/IM/CSV Archives/', sep='')
 
-remoteArchivePath = paste(server, '/PROJECTS/316 NPS Upper Kobuk Comprehensive/316-Analysis-2024/SQLite/', sep='')
+remoteArchivePath = paste(server, '/PROJECTS/316 NPS Upper Kobuk Comprehensive/316-Analysis-2025/SQLite/', sep='')
 remoteSQLiteDB = str_interp('${remoteArchivePath}analysisCSVFiles_${projID}_${studyear}.db')
 
 # Resources that shouldn't be expanded in the form of a logic statement.
