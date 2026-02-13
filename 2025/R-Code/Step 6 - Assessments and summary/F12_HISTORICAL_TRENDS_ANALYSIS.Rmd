@@ -1,0 +1,600 @@
+---
+title: "F12_HISTORICAL_TRENDS_ANALYSIS - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-15"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">F12_HISTORICAL_TRENDS_ANALYSIS - (316) NPS Ambler Comprehensive</div>
+</div>
+
+# Comments and summary
+Produce an output of comment and summary data for SRS review.
+
+## Changelog
+
+### Change 1
+- Programmer: Jesse Coleman
+- Date: 03/18/2025
+- Change Description: Removed source() calls; all functions are included in the library adfgSubs.
+- Template Update [Y|N]: Y
+- One-Off: No-include in all future comprehensive templates 
+
+## Input data
+
+- /CSV/00 - Lookup Codes/fullCommuntyList.csv  
+- /CSV/01 - Database Extract/REC300_raw.csv  
+
+*NOTE:* No database extracts are executed.
+ 
+## Output data
+
+- CSV/05 - Final Analysis Output/Comments and Summary.csv'
+
+## Background
+
+## Checklist
+- Update header information  
+- Verify contents  
+- upload to sharePoint  
+
+## Additional information
+
+### Required libraries 
+- tidyVerse  
+- knitr
+- adfgSubs
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+# Data processing
+
+## Initialize environment
+
+Loading libraries, standard functions and set environment parameters.
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+
+# Load libraries
+library(knitr)
+library(boot)
+library(adfgSubs)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+# source('../Functions/f_RMD_HTML_FORMATTING_FUNCTIONS.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+```
+
+## Load data
+
+```{r load data}
+
+# ##############################################################################
+# Load data from intermediate files.
+# ##############################################################################
+
+
+# 2023 harvest data.
+harvData <- read.csv('../../CSV/03 - Main/harvData_HH_finalPrepped.csv',
+                   na = '', 
+                   header = TRUE, 
+                   strip.white = TRUE)
+
+count <- nrow(harvData)
+cat(formatSummaryBlock(paste("Opening file: harvData_HH_finalPrepped.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+# Selected CSIS data.
+selectHarvData <- read.csv('../../CSV/03 - Main/PortGraham_Select_CSIS_Species.csv',
+                   na = '', 
+                   header = TRUE, 
+                   strip.white = TRUE)
+
+count <- nrow(selectHarvData)
+cat(formatSummaryBlock(paste("Opening file: PortGraham_Select_CSIS_Species.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+# Historical HH Data
+historicalHHData <- read.csv('../../CSV/03 - Main/historical_HH_DB.csv',
+                   na = '', 
+                   header = TRUE, 
+                   strip.white = TRUE)
+
+count <- nrow(historicalHHData)
+cat(formatSummaryBlock(paste("Opening file: historical_HH_DB.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+```
+
+
+## Sockeye
+
+Evaluate just sockeye harvests (2023).
+
+```{r sockeye this year}
+
+sockeyeData <- filter(harvData, resource == 115000000)
+
+sockeyeData$useNoHarv = 0
+sockeyeData <- sockeyeData %>%
+  mutate(useNoHarv = if_else(used == 1 & harvestq == 0, 1, 0))
+
+sockeyeData <- sockeyeData %>%
+  group_by(projID, studyear, commname, resName) %>%
+  summarise(used = mean(used, na.rm=TRUE),
+            attempt = mean(attempt, na.rm=TRUE),
+            harvestq = mean(harvestq, na.rm=TRUE),
+            received = mean(received, na.rm=TRUE),
+            giveaway = mean(giveaway, na.rm=TRUE),
+            useNoHarv = mean(useNoHarv, na.rm=TRUE),
+            estimatedHarvest = sum(estHarvestLbs),
+            percapita = sum(estHarvestLbs/commPop))
+
+
+```
+
+
+## Selected species over time
+
+The selected species over time figure and associated R2 values (printed) combined with selected correlation estimates show that while there are apparent trends in the percentage of households using, these do not represent a significant finding across the whole data set. The variation over time cannot be assumed as a process and instead may be the product of random chance in sampling or normal annual variations.
+
+```{r selected species over time}
+
+# Just relevant project IDs - the initial pull brought in all Port Graham
+#   project data.
+selectUseData <- selectHarvData %>%
+  filter(projid %in% c(17,65,81,91,92,93,117,171,235)) %>%
+  select(year, commname, rescode, resource, used) %>%
+  pivot_wider(values_from = used, names_from = year)
+
+newUseData <- harvData %>%
+  filter(resource %in% selectUseData$rescode) %>%
+  group_by(resource) %>%
+  summarize(used = mean(used, na.rm=TRUE)) %>%
+  ungroup() %>%
+  rename("2023" = used,
+         rescode = resource) 
+
+newUseData <- selectUseData %>%
+  left_join(newUseData, by=c("rescode"))
+
+# Pivot back for correlations and plots
+tmpFig <- pivot_longer(newUseData, cols=c("1987","1989","1990", "1991","1992",
+                                          "1993","1997","2003","2014","2023"),
+                       names_to = "studyear",
+                       values_to = "used")
+tmpFig$studyear = as.numeric(tmpFig$studyear)
+
+ggplot(tmpFig, aes(x=studyear, y=used, group=resource, color=resource)) +
+    geom_line() +
+  scale_y_continuous(labels = scales::percent) +
+  theme_minimal(base_size=10, base_family="serif") +
+  theme(axis.title.y=element_text(size=10, family="serif", face="plain"),
+        axis.text.y=element_text(size=10, family="serif", face="plain"),
+        panel.grid.major.y = element_blank(),
+        axis.title.x=element_text(size=10, family="serif", face="plain"),
+        axis.text.x=element_text(size=10, family="serif", face="plain")) +
+  labs(x = "Study year", y = "Percent of households using resourcef") +
+  theme(panel.grid.major.y = element_line(color = "gray", linetype = "solid"))
+
+# R2 values.
+paste("R2 Chum:", summary(lm(used ~ studyear, 
+                              data=tmpFig[tmpFig$rescode==111000000,]))$r.squared)
+paste("R2 Sockeye:", summary(lm(used ~ studyear, 
+           data=tmpFig[tmpFig$rescode==115000000,]))$r.squared)
+paste("R2 Herring:", summary(lm(used ~ studyear, 
+           data=tmpFig[tmpFig$rescode==120200000,]))$r.squared)
+paste("R2 Halibut:", summary(lm(used ~ studyear, 
+           data=tmpFig[tmpFig$rescode==121800000,]))$r.squared)
+paste("R2 Deer:", summary(lm(used ~ studyear, 
+           data=tmpFig[tmpFig$rescode==211200000,]))$r.squared)
+paste("R2 Moose:", summary(lm(used ~ studyear, 
+           data=tmpFig[tmpFig$rescode==211800000,]))$r.squared)
+paste("R2 Harbor seal:", summary(lm(used ~ studyear, 
+           data=tmpFig[tmpFig$rescode==300806000,]))$r.squared)
+paste("R2 Berries:", summary(lm(used ~ studyear, 
+           data=tmpFig[tmpFig$rescode==601000000,]))$r.squared)
+
+# Produce correlations
+chumUsed.spearman <- cor.test(tmpFig$studyear[tmpFig$rescode == 111000000], 
+                                 tmpFig$used[tmpFig$rescode == 111000000], 
+                                 method = "spearman")
+print(chumUsed.spearman)
+deerUsed.spearman <- cor.test(tmpFig$studyear[tmpFig$rescode == 211200000], 
+                                 tmpFig$used[tmpFig$rescode == 211200000], 
+                                 method = "spearman")
+print(deerUsed.spearman)
+
+mooseUsed.spearman <- cor.test(tmpFig$studyear[tmpFig$rescode == 211800000], 
+                                 tmpFig$used[tmpFig$rescode == 211800000], 
+                                 method = "spearman")
+print(mooseUsed.spearman)
+
+
+ggplot(tmpFig, aes(x=studyear, y=used, group=resource, color=resource)) +
+    geom_smooth(method = "lm", se = FALSE) +
+  scale_y_continuous(labels = scales::percent) +
+  theme_minimal(base_size=10, base_family="serif") +
+  theme(axis.title.y=element_text(size=10, family="serif", face="plain"),
+        axis.text.y=element_text(size=10, family="serif", face="plain"),
+        panel.grid.major.y = element_blank(),
+        axis.title.x=element_text(size=10, family="serif", face="plain"),
+        axis.text.x=element_text(size=10, family="serif", face="plain")) +
+  labs(x = "Study year", y = "Percent of households using resourcef") +
+  theme(panel.grid.major.y = element_line(color = "gray", linetype = "solid"))
+
+
+```
+
+When data from immediately around the Exxon Valdez oil spill is removed and only years assumed to be 'recovery' years are included (1992 onward), we find (again from below) that while the R2 values show fairly high levels of association, running Spearman's rank correlation indicates that only the trends for chum (p<0.05)=.007 and deer (p<0.05)=.048 are significant. The trends for all other species indicate these trends cannot be distinguished from random sampling chance or normal annual variation.
+
+```{r selected species over time no oil spill}
+
+tmpFig2 <- tmpFig %>% filter(studyear > 1990)
+
+ggplot(tmpFig2, aes(x=studyear, y=used, group=resource, color=resource)) +
+    geom_line() +
+  scale_y_continuous(labels = scales::percent) +
+  theme_minimal(base_size=10, base_family="serif") +
+  theme(axis.title.y=element_text(size=10, family="serif", face="plain"),
+        axis.text.y=element_text(size=10, family="serif", face="plain"),
+        panel.grid.major.y = element_blank(),
+        axis.title.x=element_text(size=10, family="serif", face="plain"),
+        axis.text.x=element_text(size=10, family="serif", face="plain")) +
+  labs(x = "Study year", y = "Percent of households using resourcef") +
+  theme(panel.grid.major.y = element_line(color = "gray", linetype = "solid"))
+
+# R2 values.
+paste("R2 Chum:", summary(lm(used ~ studyear, 
+                              data=tmpFig2[tmpFig2$rescode==111000000,]))$r.squared)
+paste("R2 Sockeye:", summary(lm(used ~ studyear, 
+           data=tmpFig2[tmpFig2$rescode==115000000,]))$r.squared)
+paste("R2 Herring:", summary(lm(used ~ studyear, 
+           data=tmpFig2[tmpFig2$rescode==120200000,]))$r.squared)
+paste("R2 Halibut:", summary(lm(used ~ studyear, 
+           data=tmpFig2[tmpFig2$rescode==121800000,]))$r.squared)
+paste("R2 Deer:", summary(lm(used ~ studyear, 
+           data=tmpFig2[tmpFig2$rescode==211200000,]))$r.squared)
+paste("R2 Moose:", summary(lm(used ~ studyear, 
+           data=tmpFig2[tmpFig2$rescode==211800000,]))$r.squared)
+paste("R2 Harbor seal:", summary(lm(used ~ studyear, 
+           data=tmpFig2[tmpFig2$rescode==300806000,]))$r.squared)
+paste("R2 Berries:", summary(lm(used ~ studyear, 
+           data=tmpFig2[tmpFig2$rescode==601000000,]))$r.squared)
+
+# Produce correlations
+chumUsed.spearman <- cor.test(tmpFig2$studyear[tmpFig2$rescode == 111000000], 
+                                 tmpFig2$used[tmpFig2$rescode == 111000000], 
+                                 method = "spearman")
+print(chumUsed.spearman)
+sockUsed.spearman <- cor.test(tmpFig2$studyear[tmpFig2$rescode == 115000000], 
+                                 tmpFig2$used[tmpFig2$rescode == 115000000], 
+                                 method = "spearman")
+print(sockUsed.spearman)
+
+herringUsed.spearman <- cor.test(tmpFig2$studyear[tmpFig2$rescode == 120200000], 
+                                 tmpFig2$used[tmpFig2$rescode == 120200000], 
+                                 method = "spearman")
+print(herringUsed.spearman)
+
+halibutUsed.spearman <- cor.test(tmpFig2$studyear[tmpFig2$rescode == 121800000], 
+                                 tmpFig2$used[tmpFig2$rescode == 121800000], 
+                                 method = "spearman")
+print(halibutUsed.spearman)
+
+deerUsed.spearman <- cor.test(tmpFig2$studyear[tmpFig2$rescode == 211200000], 
+                                 tmpFig2$used[tmpFig2$rescode == 211200000], 
+                                 method = "spearman")
+print(deerUsed.spearman)
+
+mooseUsed.spearman <- cor.test(tmpFig2$studyear[tmpFig2$rescode == 211800000], 
+                                 tmpFig2$used[tmpFig2$rescode == 211800000], 
+                                 method = "spearman")
+print(mooseUsed.spearman)
+
+sealUsed.spearman <- cor.test(tmpFig2$studyear[tmpFig2$rescode == 300806000], 
+                                 tmpFig2$used[tmpFig2$rescode == 300806000], 
+                                 method = "spearman")
+print(sealUsed.spearman)
+
+berriesUsed.spearman <- cor.test(tmpFig2$studyear[tmpFig2$rescode == 601000000], 
+                                 tmpFig2$used[tmpFig2$rescode == 601000000], 
+                                 method = "spearman")
+print(berriesUsed.spearman)
+
+
+
+ggplot(tmpFig2, aes(x=studyear, y=used, group=resource, color=resource)) +
+    geom_smooth(method = "lm", se = FALSE) +
+  scale_y_continuous(labels = scales::percent) +
+  theme_minimal(base_size=10, base_family="serif") +
+  theme(axis.title.y=element_text(size=10, family="serif", face="plain"),
+        axis.text.y=element_text(size=10, family="serif", face="plain"),
+        panel.grid.major.y = element_blank(),
+        axis.title.x=element_text(size=10, family="serif", face="plain"),
+        axis.text.x=element_text(size=10, family="serif", face="plain")) +
+  labs(x = "Study year", y = "Percent of households using resourcef") +
+  theme(panel.grid.major.y = element_line(color = "gray", linetype = "solid"))
+
+
+
+```
+
+## Mean species used
+
+The analysis below starts by removing vegetation in order to assure a consistent analysis. Early in the Division's history, plants, greens, mushrooms, and berries were not collected using methods that can be assumed equivalent to 2023.
+
+The analysis below indicates that the apparent downward trend in the average number of species used per household has a weak, but statistically significant downward trend. From Spearman's correlation $\rho$ = -.114 and (p<0.05)=.014. Bootstrapping with 1000 re-samples was also implemented to calculate the 95% confidence interval of $\rho$ was found to range between -.21 and -.02. 
+
+```{r mean species used}
+
+# Remove vegetation for proper comparison.
+
+usedHxData <- historicalHHData %>%
+  filter(specList == 1 & resource < 600000000) %>%
+  group_by(studyear, HHID) %>%
+  summarize(used = sum(used, na.rm=TRUE))
+
+thisUsedData <- harvData %>%
+  filter(specList == 1 & resource < 600000000) %>%
+  group_by(studyear, HHID) %>%
+  summarise(used = sum(used, na.rm=TRUE))
+
+usedSpeciesData <- dplyr::bind_rows(usedHxData, thisUsedData)
+
+
+# Compute group statistics (whisker max and mean)
+stats <- usedSpeciesData %>%
+  group_by(studyear) %>%
+  summarise(
+    #upper_whisker = quantile(used, 0.75, na.rm = TRUE) + 1.5 * IQR(used, na.rm = TRUE),  # Upper whisker
+    upper_whisker = max(used),  # Upper bound
+    mean_use = mean(used, na.rm = TRUE)
+  )
+
+# Create the boxplot
+ggplot(usedSpeciesData, aes(x = as.factor(studyear), y = used)) +
+  geom_boxplot(fill = "lightgray", color = "black") +  # Boxplot without outliers
+  stat_boxplot(geom = "errorbar", width = 0.2) +  # Whiskers
+  theme_minimal(base_family = "serif") + # Apply minimal theme with serif font
+  #theme_minimal(base_family = "serif", base_size = 10) + # Apply minimal theme with serif font
+  #geom_jitter(width = 0.2, alpha = 0.5, color = "blue") +  # Jittered points for visibility
+  geom_text(data = stats, aes(x = as.factor(studyear), y = upper_whisker + 3, label = round(mean_use, 1)), 
+            family = "serif", size = 10 / .pt) +  # Adjusted font size (10pt)
+  theme(axis.title.y=element_text(size=10, family="serif", face="plain"),
+        axis.text.y=element_text(size=10, family="serif", face="plain"),
+        panel.grid.major.y = element_blank(),
+        axis.title.x=element_text(size=10, family="serif", face="plain"),
+        axis.text.x=element_text(size=10, family="serif", face="plain")) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.05)), limits = c(0, NA)) +
+  labs(x = "Study year", y = "Resources used by households") +
+  theme(panel.grid.major.y = element_line(color = "gray", linetype = "solid"))
+
+# Perform Spearman's Rank Correlation Test - is this trend significant?
+speciesUsed.spearman <- cor.test(usedSpeciesData$studyear, 
+                                 usedSpeciesData$used, 
+                                 method = "spearman")
+
+# Print test result
+print(speciesUsed.spearman)
+
+# Take a look at a boot-strapped version - for the same question
+
+# Define function to compute Spearman's correlation
+spearman_fn <- function(data, indices) {
+  dd <- data[indices, ]  # Resample data
+  return(cor(dd$studyear, dd$used, method = "spearman"))
+}
+
+# Perform Bootstrapping (1000 resamples)
+set.seed(2023)
+speciesUsed.spearmanBoot <- boot(data = usedSpeciesData, statistic = spearman_fn, R = 1000)
+
+# Print Bootstrap Results
+print(speciesUsed.spearmanBoot)
+
+
+# Plot bootstrap distribution 
+#   Note boot.ci uses the percentile method assuming the number of observations
+#   overall is 'large enough' - normality assumption was not tested.
+boot.ci(speciesUsed.spearmanBoot, type = "perc")  # 95% confidence interval
+hist(speciesUsed.spearmanBoot$t, main = "Bootstrap Distribution of Spearman's rho",
+     xlab = "Spearman Correlation", col = "lightblue", border = "black")
+
+
+```
+In the analysis below, the years immediately surrounding the Exxon Valdez oil spill have been removed. In this instance, we find a trend that has greater magnitude ($rho$=-.38) indicating a moderate to weak magnitude which remains statistically significant (p<.05) < 0.01. The 95% confidence interval of the value of $rho$ was calculated to be between -.47 and -.28.
+
+From these analysis combined, the number of species used has steadily declined from early post-spill recovery levels to those equivalent to the spill-year. Further, the trend can be assumed the result of a process and not a matter of random chance, sampling, or normal annual variation.
+
+```{r mean species used post spill}
+
+postSpillUsedSpeciesData <- usedSpeciesData %>%
+  filter(studyear > 1990)
+
+# Compute group statistics (whisker max and mean)
+stats <- postSpillUsedSpeciesData %>%
+  group_by(studyear) %>%
+  summarise(
+    #upper_whisker = quantile(used, 0.75, na.rm = TRUE) + 1.5 * IQR(used, na.rm = TRUE),  # Upper whisker
+    upper_whisker = max(used),  # Upper bound
+    mean_use = mean(used, na.rm = TRUE)
+  )
+
+# Create the boxplot
+ggplot(postSpillUsedSpeciesData, aes(x = as.factor(studyear), y = used)) +
+  geom_boxplot(fill = "lightgray", color = "black") +  # Boxplot without outliers
+  stat_boxplot(geom = "errorbar", width = 0.2) +  # Whiskers
+  theme_minimal(base_family = "serif") + # Apply minimal theme with serif font
+  #theme_minimal(base_family = "serif", base_size = 10) + # Apply minimal theme with serif font
+  #geom_jitter(width = 0.2, alpha = 0.5, color = "blue") +  # Jittered points for visibility
+  geom_text(data = stats, aes(x = as.factor(studyear), y = upper_whisker + 3, label = round(mean_use, 1)), 
+            family = "serif", size = 10 / .pt) +  # Adjusted font size (10pt)
+  theme(axis.title.y=element_text(size=10, family="serif", face="plain"),
+        axis.text.y=element_text(size=10, family="serif", face="plain"),
+        panel.grid.major.y = element_blank(),
+        axis.title.x=element_text(size=10, family="serif", face="plain"),
+        axis.text.x=element_text(size=10, family="serif", face="plain")) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.05)), limits = c(0, NA)) +
+  labs(x = "Study year", y = "Resources used by households") +
+  theme(panel.grid.major.y = element_line(color = "gray", linetype = "solid"))
+
+# Perform Spearman's Rank Correlation Test - is this trend significant?
+speciesUsed.spearman <- cor.test(postSpillUsedSpeciesData$studyear, 
+                                 postSpillUsedSpeciesData$used, 
+                                 method = "spearman")
+
+# Print test result
+print(speciesUsed.spearman)
+
+# Take a look at a boot-strapped version - for the same question
+
+# Define function to compute Spearman's correlation
+spearman_fn <- function(data, indices) {
+  dd <- data[indices, ]  # Resample data
+  return(cor(dd$studyear, dd$used, method = "spearman"))
+}
+
+# Perform Bootstrapping (1000 resamples)
+set.seed(2023)
+speciesUsed.spearmanBoot <- boot(data = postSpillUsedSpeciesData, statistic = spearman_fn, R = 1000)
+
+# Print Bootstrap Results
+print(speciesUsed.spearmanBoot)
+
+
+# Plot bootstrap distribution 
+#   Note boot.ci uses the percentile method assuming the number of observations
+#   overall is 'large enough' - normality assumption was not tested.
+boot.ci(speciesUsed.spearmanBoot, type = "perc")  # 95% confidence interval
+hist(speciesUsed.spearmanBoot$t, main = "Bootstrap Distribution of Spearman's rho",
+     xlab = "Spearman Correlation", col = "lightblue", border = "black")
+
+
+```
+```{r other selected resources over time}
+
+# Pacific cod historical and just the data required to produce a figure.
+tmpPacCodData <- historicalHHData %>%
+  select(studyear, resource, estHarvestLbs, attempt, commHH, sampHH) %>%
+  filter(resource == 121008000) %>%
+  mutate (
+    resource = as.numeric(resource)
+  )
+#tmpPacCodData$resource = as.numeric(tmpPacCodData$resource)
+
+# Pacific cod for 'this' year & merge to historical
+tmpPacCodData <- harvData %>%
+  select(studyear, resource, estHarvestLbs, attempt, commhh, samphh) %>%
+  rename(commHH=commhh,
+         sampHH=samphh) %>%
+  filter(resource == 121008000) %>%
+  dplyr::bind_rows(tmpPacCodData)
+
+# Create groups by 1/3rd
+tmpPacCodData <- tmpPacCodData %>% 
+  group_by(studyear) %>%
+  mutate(
+    totHarv = sum(estHarvestLbs, na.rm=TRUE),
+    #rank = order(order(estHarvestLbs/(commHH/sampHH), decreasing=TRUE))
+    hhHarv = estHarvestLbs/(commHH/sampHH)
+  ) %>% ungroup()
+
+fisherPacCod <- tmpPacCodData %>% filter(attempt == 1)
+
+# Get rank among fishers.
+fisherPacCod <- fisherPacCod %>% 
+  group_by(studyear) %>%
+  mutate(
+    rank = order(order(hhHarv, decreasing=TRUE)),
+    nFishers = n(),
+    grouping = if_else(rank/nFishers >= .33, 2, 1),
+    grouping = if_else(rank/nFishers >= .66, 3, grouping)
+  )
+
+# Create the boxplot for just fishers.
+fisherPacCod %>%
+ggplot(aes(x = as.factor(studyear), y = (hhHarv))) +
+  geom_boxplot(fill = "lightgray", color = "black") +  # Boxplot without outliers
+  stat_boxplot(geom = "errorbar", width = 0.2) +  # Whiskers
+  theme_minimal(base_family = "serif") + # Apply minimal theme with serif font
+  #theme_minimal(base_family = "serif", base_size = 10) + # Apply minimal theme with serif font
+  #geom_jitter(width = 0.2, alpha = 0.5, color = "blue") +  # Jittered points for visibility
+  theme(axis.title.y=element_text(size=10, family="serif", face="plain"),
+        axis.text.y=element_text(size=10, family="serif", face="plain"),
+        panel.grid.major.y = element_blank(),
+        axis.title.x=element_text(size=10, family="serif", face="plain"),
+        axis.text.x=element_text(size=10, family="serif", face="plain")) +
+  #scale_y_continuous(expand = expansion(mult = c(0, 0.05)), limits = c(0, NA)) +
+  labs(x = "Study year", y = "Household harvest (lbs)") +
+  theme(panel.grid.major.y = element_line(color = "gray", linetype = "solid"))
+
+
+# Create the plot
+ggplot(fisherPacCod, aes(x = studyear, y = hhHarv)) +
+    geom_bar(stat = "identity", position = "dodge") +  # Clustered bars
+    geom_line(data = fisherPacCod %>% distinct(studyear, totHarv), 
+              aes(x = studyear, y = max(totHarv), group = 1), 
+              color = "black", size = 1.2) +  # Line for totHarv, scaled to match primary y-axis
+    geom_point(data = fisherPacCod %>% distinct(studyear, totHarv), 
+               aes(x = studyear, y = max(totHarv)), 
+               color = "black", size = 3) +  # Points on the line
+    scale_y_continuous(
+        name = "hhHarv (Bar Chart)",
+        sec.axis = sec_axis(~ . / max(hhHarv) * max(totHarv), name = "totHarv (Line Chart)")
+    ) +
+    labs(x = "Grouping", title = "Clustered Bar Chart with Secondary Axis") +
+    theme_minimal() +
+    theme(legend.position = "top")  # Adjust legend position
+
+```
+
+
+
+## Write CSV
+
+```{r write csv files}
+
+# ##############################################################################
+# Write out CSV files.
+# ##############################################################################
+
+# Sample code for writing out a file.
+  fName = str_interp('../../CSV/05 - Final Analysis Output/historicalUseCompare.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(newUseData), ' records to be written', sep='')))
+
+# Standard is to use CSV files for portability.
+  rio::export(newUseData, fName)
+
+```
+
+<p class="h1footer"> End of F10 MOOSE HEALTH AND ABUNDANCE script. </p>

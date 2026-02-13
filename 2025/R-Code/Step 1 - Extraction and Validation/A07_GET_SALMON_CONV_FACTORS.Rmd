@@ -1,0 +1,191 @@
+---
+title: "A07_GET_SALMON_CONV_FACTORS - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-15"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">A07_GET_SALMON_CONV_FACTORS - (316) NPS Ambler Comprehensive</div>
+</div>
+
+# Get salmon conversion factors
+
+Get salmon conversion factor data from the ASFDB.
+
+## Changelog: 
+
+- Programmer: D.S.Koster  
+- Date: 05/21/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output.  
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates 
+
+## Input data
+  
+- dfgjnusql-db71p/Sub_SDS.dbo.vw_conversionFactorReport
+
+*NOTE:* No files from file-system utilized in this R file.
+
+## Output data
+  
+- /CSV/03 - Main/salmonConvFactors.csv
+
+## Background
+
+Most conversion factors are used annually based on historical decisions that are carried forward for consistency. However, the Division of Commercial Fisheries produces exvessel totals of landings and pounds. From this, we can convert to edible pounds by applying Crapo. et. al. conversions to dressed head-off. This is done annually and consistent rules are applied in the event no exvessel data is available for a given district and year.
+
+This file is designed to work with a 2023 or later analysis project, and will not work as a stand-alone file.
+
+## Checklist
+
+- Update 'Author' to your name, 
+- Update the project information in 'title' to the current project.
+- Update the development log with any changes you've made to the template file, including your name.
+- Change District in the SQL WHERE clause to the closest district you are working from in the SDS
+- Verify that the conversions appear to be reasonable (relatively the correct values based on species)
+
+## Additional Information
+
+Districts
+
+| districtID | regionID |      districtName       |
+|------------|----------|-------------------------|
+| 1	         |  4	      | AK Pen/Aleutian Islands |
+| 2	         |  2	      | Bristol Bay             |
+| 3	         |  4	      | Chignik                 |
+| 4	         |  2	      | Cook Inlet              |
+| 5	         |  4	      | Kodiak                  |
+| 6	         |  1	      | Kotzebue                |
+| 7	         |  1	      | Kuskokwim               |
+| 8	         |  1	      | Norton Sound            |
+| 9	         |  2	      | Prince William Sound    |
+| 10	       |  3	      | Southeast               |
+| 11	       |  1	      | Yukon                   |
+| 99	       |  99      | Statewide               |
+
+
+
+### Implementation notes
+
+Write implementation notes here.
+
+## Required libraries 
+
+- tidyVerse  
+- odbc  
+- rio  
+- knitr  
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+library(knitr)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+source('../Functions/f_RMD_HTML_FORMATTING_FUNCTIONS.r')
+
+# For this particular script, we need to include the ODBC Connections.
+source('../Functions/f_subsistenceDatabaseConnections.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+```
+
+## Set district
+
+Make sure this is updated for your project!
+
+```{r set dist, echo=TRUE}
+
+districtCD = 11
+
+```
+
+## Load data
+
+```{r load data}
+
+# ##############################################################################
+# Init database.
+# ##############################################################################
+
+loadODBCLibrary()
+conn = connectToASFDB()
+
+# ##############################################################################
+# Load data from database
+# ##############################################################################
+
+strSQL = sql(str_interp("SELECT[regionID]
+                        ,[region]
+                        ,[districtID]
+                        ,[districtName]
+                        ,[year]
+                        ,[chinConv]
+                        ,[sockConv]
+                        ,[cohoConv]
+                        ,[chumConv]
+                        ,[pinkConv]
+                        FROM [Sub_ASFDB].[dbo].[vw_conversionFactorReport]
+                        WHERE (districtID = ${districtCD}) AND year = 2022"))
+
+salmonCFData <- dbGetQuery(conn, strSQL)
+
+dbDisconnect(conn)
+
+```
+
+## Extract conversion factors
+
+```{r extracted conversion factors}
+
+knitr::kable(salmonCFData, 
+             caption=formatTableHeader("Salmon conversion factors"),
+             align='l')
+
+```
+
+# Write CSV files
+
+```{r write csv files}
+
+# ##############################################################################
+# Write out CSV files.
+# ##############################################################################
+
+# Sample code for writing out a file.
+  fName = str_interp('../../CSV/03 - Main/salmonConvFactors.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, sep='')))
+
+  rio::export(salmonCFData, fName)
+
+```
+
+<p class="h1footer"> End of get salmon conversion factors script. </p>

@@ -1,0 +1,314 @@
+---
+title: "E08_TOP_RESOURCES_USED - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-15"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">E08_TOP_RESOURCES_USED - (316) NPS Ambler Comprehensive</div>
+</div>
+
+# Top resources used
+
+Produce data for table and figure of top resources harvested (lbs) and used.
+
+## Change log
+
+### Change 1
+- Programmer: D.S.Koster  
+- Date: 045/21/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output. Corrected a few issues with outputs.  
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates 
+
+### Change 2
+- Programmer: Jesse Coleman
+- Date: 03/18/2025
+- Change Description: Removed source() calls; all functions are included in the library adfgSubs.
+- Template Update [Y|N]: Y
+- One-Off: No-include in all future comprehensive templates 
+
+### Change 3
+- Programmer: Jesse Coleman
+- Date: 07/14/2025
+- Change Description: Refactor using tidyverse language and DRY ("don't repeat 
+yourself") principles.
+- Template Update [Y|N]: Y
+- One-Off: No - include in all future comprehensive templates 
+
+
+## Background
+
+Develop a background, if necessary.
+
+## Input data
+  
+- /CSV/05 - Final Analysis Output/harvest_use_raw.csv  
+
+## Output data
+  
+- /CSV/05 - Final Analysis Output/resourceRankByHarv_Raw.csv  
+- /CSV/05 - Final Analysis Output/resourceRankByUse_Raw.csv  
+
+
+## Checklist
+  
+- Update 'Author' to your name  
+- Update the project information in 'title' to the current project  
+- Update the development log with any changes you've made to the template file, including your name  
+- Update the table template  
+- Compare results presented here to those in the template  
+
+## Additional information
+
+### Required libraries (adjust as needed)
+
+- tidyVerse  
+- rio  
+- knitr
+- adfgSubs
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+
+# Additional libraries
+library(knitr)
+library(kableExtra)
+library(adfgSubs)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+
+```
+
+## Load data
+
+```{r load data}
+# Load data from intermediate files.
+
+# 1.1 - Load working data file, individual species only and no wood.
+harvData <- read.csv(str_interp('../../CSV/05 - Final Analysis Output/harvest_use_raw.csv'), 
+                      na = '', 
+                      header = TRUE, 
+                      strip.white = TRUE) %>%
+  filter(specList == 1 & resource < 604000000)
+
+count <- nrow(harvData)
+cat(formatSummaryBlock(paste("Opening file: harvest_use_raw.csv, ", 
+                             count, 
+                             " records loaded (Individual species and no wood-related items).", sep="")))
+
+# Remove any white-space present in the resName field.
+harvData$resName = trimws(harvData$resName, which=c("both"))
+
+commnameList <- select(harvData, commname) %>% distinct(commname)
+
+```
+
+## Rank by per-capita
+
+```{r rank by percap}
+
+rankData <- harvData %>% 
+  group_by(projID, studyear, communty) %>%
+  mutate(estRank1 = order(order(percap)),
+         nRes = n(),
+         # Reverse rank to a 1-n scale
+         estRank = (nRes - estRank1) + 1,
+         sOrder = if_else(estRank <= 10, 1, 3)) %>% 
+
+# Reduce the size of the main data source to just output variables.
+  select(projID, studyear, communty, commname, sOrder, 
+         estRank, resource, resName, NHouseholds, NPopulation, estHarvestLbs_sum,
+         percap)
+
+tempData <- rankData %>% 
+  filter(estRank > 10) %>% 
+  mutate(sOrder = 2,
+         resource = 999999999,
+         resName = 'All other resources',
+         estRank = 0) %>% 
+  
+  # Prep summary rows, there are a few ways to do this, but this is the most 
+  #  straight-forward.
+  group_by(projID, studyear, communty, commname, sOrder, 
+           estRank, resource, resName, NHouseholds, NPopulation) %>%
+  summarize(estHarvestLbs_sum = sum(estHarvestLbs_sum, na.rm = TRUE),
+            percap = sum(percap, na.rm=TRUE))
+
+# re-bind and sort the dataset. 
+harvOutputData <- bind_rows(rankData, tempData) %>% 
+  arrange(projID, studyear, communty, sOrder, estRank) %>%
+  ungroup()
+
+
+# Because of limitations with ggPlot, we'll have to just live with a table for now.
+
+tmpHarvTblData <- filter(harvOutputData, sOrder < 3) %>% 
+  select(commname, resName, percap) %>%
+  group_by(commname) %>%
+  mutate(pctLbs = percap / sum(percap)) %>%
+  ungroup()
+
+# Formatting:
+tmpHarvTblData$pctLbs = round(tmpHarvTblData$pctLbs * 100, 1)
+tmpHarvTblData$percap = round(tmpHarvTblData$percap, 1)
+tmpHarvTblData$pctLbs = paste(as.character(tmpHarvTblData$pctLbs), '%', sep='')
+
+for(comm in commnameList$commname) 
+{
+  tmpOutTblData <- filter(tmpHarvTblData, commname == comm) %>%
+    select(-commname)
+  
+  tblOut <- kbl(tmpOutTblData,
+                col.names = c("Resource", "Per capita", "Percent\nof total"),
+    caption=formatTableHeader(str_interp("Per capita harvests of the top 10 resources, ${comm}, ${studyear}")), 
+      align='lcc') %>%
+    kable_styling(full_width = F)
+  
+  print(tblOut)
+}
+
+tmpHarvFigData <- filter(harvOutputData, sOrder < 3) %>% 
+  select(commname, resName, percap) %>%
+  group_by(commname) %>%
+  mutate(pctLbs = percap / sum(percap)) %>%
+  ungroup()
+
+for (comm in commnameList$commname) {
+  tmpHarvFigData <- tmpHarvFigData %>% 
+    filter(commname == comm) %>% 
+    select(-commname)
+  
+  top10HarvFig <- ggplot(tmpHarvFigData, aes(y = pctLbs, x = "", fill = resName)) +
+    geom_bar(stat = "identity", width = 1) +
+    coord_polar(theta = "y") +
+    scale_fill_manual(values = getColors(nColors = 11)) +
+    theme_void() +
+    theme(legend.title = element_blank()) +
+    ggtitle(str_interp("Per capita harvests of the top 10 resources, ${comm}, ${studyear}"))
+  
+  print(top10HarvFig)
+}
+```
+
+## Top resources used
+
+```{r top resources used}
+
+# Get rid of the older intermediate datasets to prevent issues.
+rm(rankData, tempData)
+
+# This table is simpler because we don't create a figure from it that
+#  compares the top 10 to everything else.
+
+useOutputData <- select(harvData, projID, studyear, communty, commname,
+                          resource, resName, used_pct) %>%
+  arrange(projID, studyear, communty, desc(used_pct)) %>%
+  ungroup()
+
+tmpUsedTblData <- select(useOutputData, commname, resName, used_pct)
+tmpUsedTblData$used_pct = paste(as.character(round(tmpUsedTblData$used_pct, 1)), '%', sep="")
+
+for(comm in commnameList$commname) 
+{
+  tmpOutTblData <- filter(tmpUsedTblData, commname == comm) %>%
+    select(-commname)
+  
+  tblOut <- kbl(tmpOutTblData[1:10,],
+                col.names = c("Resource", "Percent using"),
+    caption=formatTableHeader(str_interp("Top ten USED resources in percentage of households, ${comm}, ${studyear}")),
+    align=c('l','c')) %>%
+    kable_styling(full_width = F)
+  
+  print(tblOut)
+  
+}
+
+tmpUsedFigData <- useOutputData %>% 
+  group_by(commname) %>% 
+  mutate(inverse_rank = rank(desc(used_pct), ties.method = "min"))
+
+for(comm in commnameList$commname) 
+{
+ tmpOutUsedFigData <- tmpUsedFigData %>% 
+   filter(commname == comm,
+           inverse_rank <= 10) %>% 
+   arrange(inverse_rank) %>% 
+   mutate(resName = factor(resName, levels = resName, ordered = TRUE),
+          inverse_rank = factor(inverse_rank))
+  
+  tmpOutUsedFig <- ggplot(tmpOutUsedFigData, aes(x = resName, y = used_pct, fill = inverse_rank)) +
+    geom_bar(stat = "identity", width = 0.75) +
+    scale_fill_manual(values = getColors(nColors = length(unique(tmpOutUsedFigData$inverse_rank))),
+                      guide = NULL) +
+    scale_x_discrete(name = "Resource") +
+    scale_y_continuous(name = "Percent of households using") +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+    ggtitle(str_interp("Top 10 used resources, ${comm}, ${studyear}"))
+  
+  print(tmpOutUsedFig)
+
+}
+
+```
+
+
+# Write CSV files
+
+```{r write csv files}
+
+# ##############################################################################
+# Write out CSV files.
+# ##############################################################################
+
+# Write resource rank by harvest file.
+  fName = '../../CSV/05 - Final Analysis Output/resourceRankByHarv_Raw.csv'
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(harvOutputData), ' records to be written', sep='')))
+
+# For 2023; we are, by default, working exclusively with R code..
+  rio::export(harvOutputData, fName)
+
+  # Write resource rank by USE file.
+  fName = '../../CSV/05 - Final Analysis Output/resourceRankByUse_Raw.csv'
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(useOutputData), ' records to be written', sep='')))
+
+# For 2023; we are, by default, working exclusively with R code..
+  rio::export(useOutputData, fName)
+  
+```
+
+<p class="h1footer"> End of Top resources used script. </p>

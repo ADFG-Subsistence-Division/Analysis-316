@@ -1,0 +1,458 @@
+---
+title: "F11_AQUACULTURE_QUESTIONS - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-15"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">F11_AQUACULTURE_QUESTIONS - (316) NPS Ambler Comprehensive</div>
+</div>
+
+# Comments and summary
+Produce an output of summary data for likert questions regarding aquaculture. Also format and organize open-ended questions for review & coding.
+
+## AI Note
+ChatGPT 4o was use in the development of this script. Prompts described below are not the full set of prompts, however, if re-used should provide adequate context & explanation to re-create the analysis and inform understanding of the analysis.
+
+Relevant prompts as of 01/29/2025:  
+- Can you provide me R code to evaluate the correlation between the two likert variables aquacultureAgreeDisagree and familiarAquaculture  
+- when running cor.test I get the warning message: 'Cannot compute exact p-value with ties' what does this mean?  
+- how do I interpret the output of cor.test  
+- Yes can I see a scatter plot for this that includes a label containing the spearman rho as well as the p-value with 95% confidence intervals  
+- can you explain how the indicies parameter in the spearman_cor function are passed from the boot function?  
+- Can you provide textbook citations for the interpretation of the spearman correlation described above?  
+
+## References
+Bootstrapping for Confidence Intervals in Correlation Analysis: Efron, B., & Tibshirani, R.J. (1993). An introduction to the Bootstrap.
+
+Spearman's correlation & Likert scale data: Agresti, A. (2018). Statistical Methods for the Social Sciences (5th ed.).
+
+Davison, A. C., & Hinkley, D. V. (1997). Bootstrap Methods and Their Application. Cambridge University Press.
+
+Canty, A., & Ripley, B. D. (2022). boot: Bootstrap R (S-Plus) Functions (Version 1.3-28). Available from: https://cran.r-project.org/package=boot.
+
+## Changelog
+
+### Change 1
+- Programmer: Jesse Coleman
+- Date: 03/18/2025
+- Change Description: Removed source() calls; all functions are included in the library adfgSubs.
+- Template Update [Y|N]: Y
+- One-Off: No-include in all future comprehensive templates 
+
+
+## Input data
+
+- /CSV/00 - Lookup Codes/fullCommuntyList.csv  
+- /CSV/01 - Database Extract/REC300_raw.csv  
+
+*NOTE:* No database extracts are executed.
+ 
+## Output data
+
+- CSV/05 - Final Analysis Output/Comments and Summary.csv'
+
+## Background
+
+## Checklist
+- Update header information  
+- Verify contents  
+- upload to sharePoint  
+
+## Additional information
+
+### Required libraries 
+- tidyVerse  
+- knitr
+- adfgSubs
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+# Data processing
+
+## Initialize environment
+
+Loading libraries, standard functions and set environment parameters.
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+
+# Load libraries
+library(knitr)
+library(boot)
+library(adfgSubs)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+# source('../Functions/f_RMD_HTML_FORMATTING_FUNCTIONS.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+```
+
+## Load data
+
+```{r load data}
+
+# ##############################################################################
+# Load data from intermediate files.
+# ##############################################################################
+
+# Moose health questions
+aquacultureData <- read.csv('../../CSV/01 - Database Extract/REC368_raw.csv',
+                   na = '', 
+                   header = TRUE, 
+                   strip.white = TRUE) %>%
+  filter(!is.na(displayGroup))
+
+count <- nrow(aquacultureData)
+cat(formatSummaryBlock(paste("Opening file: REC368_raw.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+# Community lookup data.
+communtyLkpData <- read.csv('../../CSV/00 - Lookup Codes/fullCommuntyList.csv',
+                   na = '', 
+                   header = TRUE, 
+                   strip.white = TRUE)
+
+count <- nrow(communtyLkpData)
+cat(formatSummaryBlock(paste("Opening file: fullCommuntyList.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+```
+
+
+## Clean and organize
+
+Produce data frame for just the text responses.
+
+```{r clean and organize}
+
+aquacultureData$category = ""
+aquacultureData$category[aquacultureData$displayGroup == 36801] = "Mariculture"
+aquacultureData$category[aquacultureData$displayGroup == 36802] = "Hatcheries"
+
+
+aquacultureData <- left_join(aquacultureData, communtyLkpData, by=c("communty")) 
+
+# Deal with missing data & recode likert data to conventional scale
+aquacultureData <- aquacultureData %>%
+  mutate(familiarAquaculture = if_else(familiarAquaculture < 0, 
+                                       NA, familiarAquaculture+1),
+         aquacultureAgreeDisagree = if_else(aquacultureAgreeDisagree < 0, 
+                                            NA, aquacultureAgreeDisagree+1))
+
+# Make data frame for dealing with the text information.
+aquacultureTextData <- aquacultureData %>%
+  select(projID, studyear, communty, commname, category, advanDesc, disadvanDesc,
+         affectsDesc, infoDesc)
+
+aquacultureTextData <- aquacultureTextData %>%
+  rename(Advantages = advanDesc,
+         Disadvantages = disadvanDesc,
+         Affects = affectsDesc,
+         OtherInformation = infoDesc)
+
+aquacultureTextData <- aquacultureTextData %>%
+  arrange(category)
+
+```
+
+
+## Text information tables
+
+```{r write tables and figures}
+# This is an example of a table, you can remove the col.names option here
+#  and use only the data frame column headers, depending..
+
+aquacultureTextData %>%
+  filter(category == "Mariculture") %>%
+knitr::kable(.,
+             caption=formatTableHeader("Mariculture descriptions"))
+
+aquacultureTextData %>%
+  filter(category == "Hatcheries") %>%
+knitr::kable(.,
+             caption=formatTableHeader("Hatcheries descriptions"))
+
+```
+
+
+## Mariculture likert analysis
+
+The majority of respondents indicated they were unfamiliar with aquaculture. The average of 1.97 on the Likert scale as illustrated by the figure below indicates that a strong majority of respondents reported little to no familiarity. When asking about whether or not Port Graham should participate in aquaculture respondents largely indicated neutral to favorably with and average Likert score of 3.53 indicating that overall the community is neutral to somewhat supportive.
+
+```{r basic summary mariculture}
+
+# Define Likert scale labels
+likertLabels <- c("Unfamiliar", "Slightly Familiar", "Moderately Familiar", "Familiar", "Very Familiar")
+
+# Mariculture familarity
+tmpData <- aquacultureData %>% 
+  filter(category == "Mariculture") %>%
+  group_by(projID, studyear, commname, familiarAquaculture) %>%
+  summarize(catCount = n()) %>%
+  ungroup() %>%
+  filter(!is.na(familiarAquaculture))
+
+meanResponse = sum(tmpData$familiarAquaculture * tmpData$catCount) / sum(tmpData$catCount)
+
+ggplot(tmpData, aes(x = factor(familiarAquaculture, levels = 1:5, labels = likertLabels), 
+                            y = catCount, fill = factor(familiarAquaculture))) +
+  geom_bar(stat = "identity", color = "black") +
+  scale_fill_manual(values = c("#d73027", "#fc8d59", "#fee08b", "#91bfdb", "#4575b4")) +  # Color gradient
+  labs(
+    title = "Familiarity with Mariculture",
+    x = "Level of Familiarity",
+    y = "Households",
+    fill = "Familarity"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +  # Rotate x-axis labels
+  annotate("text", x = 4, y = max(tmpData$catCount), 
+           label = paste("Mean:", round(meanResponse, 2)), 
+           hjust = 0, size = 3, fontface = "bold")  # Add mean response in top left
+ggsave("../../Images/maricultureFamiliarity.png", width = 6.5, height = 4, units = "in")
+
+
+# Mariculture support
+tmpData <- aquacultureData %>% 
+  filter(category == "Mariculture") %>%
+  group_by(projID, studyear, commname, aquacultureAgreeDisagree) %>%
+  summarize(catCount = n()) %>%
+  ungroup() %>%
+  filter(!is.na(aquacultureAgreeDisagree))
+
+likertLabels <- c("Strongly disagree", "Somewhat disagree", "Neutral", "Somewhat agree", "Strongly agree")
+meanResponse = sum(tmpData$aquacultureAgreeDisagree * tmpData$catCount) / sum(tmpData$catCount)
+
+ggplot(tmpData, aes(x = factor(aquacultureAgreeDisagree, levels = 1:5, labels = likertLabels), 
+                            y = catCount, fill = factor(aquacultureAgreeDisagree))) +
+  geom_bar(stat = "identity", color = "black") +
+  scale_fill_manual(values = c("#d73027", "#fc8d59", "#fee08b", "#91bfdb", "#4575b4")) +  # Color gradient
+  labs(
+    title = "Port Graham should be involved in mariculture",
+    x = "Level of support",
+    y = "Households",
+    fill = "Agree/Disagree"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +  # Rotate x-axis labels
+  annotate("text", x = 1, y = max(tmpData$catCount), 
+           label = paste("Mean:", round(meanResponse, 2)), 
+           hjust = 0, size = 3, fontface = "bold")  # Add mean response in top left
+ggsave("../../Images/maricultureAgreeParticipation.png", width = 6.5, height = 4, units = "in")
+
+
+
+```
+
+To understand whether or not familiarity with mariculture has a relationship to support, a spearman rank correlation produced a $\rho$ = 0.43. This represents a moderate positive correlation, but it is statistically significant (p=.011). This indicates that increased familiarity of mariculture is associated with a more supportive perspective on involving Port Graham in mariculture. Note that the figure incorporates slight jittering of points to prevent over-plotting or obfuscating data points. Each cluster around whole numbers can be assumed equal to the nearest whole numbers.
+
+```{r mairculture correlation figure}
+
+maricultureTmpData <- aquacultureData %>% 
+  filter(category == "Mariculture")
+
+# Compute Spearman correlation and p-value
+corResult <- cor.test(maricultureTmpData$aquacultureAgreeDisagree, 
+                       maricultureTmpData$familiarAquaculture, 
+                       method = "spearman")
+
+# Function to compute Spearman correlation (for bootstrapping 95% CI)
+#   Note on functionality: indicies come from the bootsampling function
+#   the return of correlation needs to point to the actual columns of interest.
+spearman_cor <- function(data, indices) {
+  dd <- data[indices, ]
+  return(cor(dd$aquacultureAgreeDisagree, dd$familiarAquaculture, 
+             method = "spearman"))
+}
+
+# Bootstrapping to get 95% confidence interval
+set.seed(studyear) # Standard is to use the study year
+bootResult <- boot(maricultureTmpData, spearman_cor, R = econBoot_k)
+confInt <- boot.ci(bootResult, type = "perc")$percent[4:5]  # Extract 95% CI
+
+
+# Extract correlation values
+rho_value <- round(corResult$estimate, 2)
+p_value <- signif(corResult$p.value, 3)
+ciLower <- round(confInt[1]*100, 1)
+ciUpper <- round(confInt[2]*100, 1)
+
+# Create scatter plot with jittered points and text annotation
+ggplot(maricultureTmpData, aes(x = familiarAquaculture, y = aquacultureAgreeDisagree)) +
+  geom_jitter(width = 0.1, height = 0.1, alpha = 0.6, color = "blue") +  # Jitter to avoid overplotting
+  geom_smooth(method = "lm", color = "red", se = TRUE) +  # Trend line
+  labs(title = "Agreement with participation vs familiarity with mariculture",
+       y = "Port Graham should be involved in Aquaculture (Likert 1-5)",
+       x = "Familiarity with Aquaculture (Likert 1-5)") +
+  theme_minimal() +
+  annotate("text", x = 3, y = 2.5, label = paste("Spearman’s rho =", rho_value), 
+           hjust = 0, size = 5, fontface = "bold") +
+  annotate("text", x = 3, y = 2.2, 
+           label = paste("p-value =", p_value), hjust = 0, size = 5) #+
+  #annotate("text", x = 1, y = 4.6, label = paste("95% CI (+/-)%:", ciLower, "-", ciUpper), hjust = 0, size = 5)
+ggsave("../../Images/maricultureCorrelation.png", width = 6.5, height = 4, units = "in")
+
+```
+
+
+## Hatchery likert analysis
+
+The results of the question regarding familiarity of hatcheries and the support of Port Graham becoming involved are nearly equal, both having an average score of 3.5. In terms of familiarity, this indicates residents overall feel more than somewhat familiar. For support of having Port Graham involved, overall sentiment is neutral to somewhat supportive with more residents indicating support than not.
+
+```{r basic summary hatchery}
+
+# Define Likert scale labels
+likertLabels <- c("Unfamiliar", "Slightly Familiar", "Moderately Familiar", "Familiar", "Very Familiar")
+
+# Mariculture familarity
+tmpData <- aquacultureData %>% 
+  filter(category == "Hatcheries") %>%
+  group_by(projID, studyear, commname, familiarAquaculture) %>%
+  summarize(catCount = n()) %>%
+  ungroup() %>%
+  filter(!is.na(familiarAquaculture))
+
+meanResponse = sum(tmpData$familiarAquaculture * tmpData$catCount) / sum(tmpData$catCount)
+
+ggplot(tmpData, aes(x = factor(familiarAquaculture, levels = 1:5, labels = likertLabels), 
+                            y = catCount, fill = factor(familiarAquaculture))) +
+  geom_bar(stat = "identity", color = "black") +
+  scale_fill_manual(values = c("#d73027", "#fc8d59", "#fee08b", "#91bfdb", "#4575b4")) +  # Color gradient
+  labs(
+    title = "Familiarity with Hatcheries",
+    x = "Level of Familiarity",
+    y = "Households",
+    fill = "Familarity"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +  # Rotate x-axis labels
+  annotate("text", x = 4, y = max(tmpData$catCount), 
+           label = paste("Mean:", round(meanResponse, 2)), 
+           hjust = 0, size = 3, fontface = "bold")  # Add mean response in top left
+ggsave("../../Images/hatcheryFamiliarity.png", width = 6.5, height = 4, units = "in")
+
+# Mariculture support
+tmpData <- aquacultureData %>% 
+  filter(category == "Hatcheries") %>%
+  group_by(projID, studyear, commname, aquacultureAgreeDisagree) %>%
+  summarize(catCount = n()) %>%
+  ungroup() %>%
+  filter(!is.na(aquacultureAgreeDisagree))
+
+likertLabels <- c("Strongly disagree", "Somewhat disagree", "Neutral", "Somewhat agree", "Strongly agree")
+meanResponse = sum(tmpData$aquacultureAgreeDisagree * tmpData$catCount) / sum(tmpData$catCount)
+
+ggplot(tmpData, aes(x = factor(aquacultureAgreeDisagree, levels = 1:5, labels = likertLabels), 
+                            y = catCount, fill = factor(aquacultureAgreeDisagree))) +
+  geom_bar(stat = "identity", color = "black") +
+  scale_fill_manual(values = c("#d73027", "#fc8d59", "#fee08b", "#91bfdb", "#4575b4")) +  # Color gradient
+  labs(
+    title = "Port Graham should be involved in hatcheries",
+    x = "Level of support",
+    y = "Households",
+    fill = "Agree/Disagree"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +  # Rotate x-axis labels
+  annotate("text", x = 1, y = max(tmpData$catCount), 
+           label = paste("Mean:", round(meanResponse, 2)), 
+           hjust = 0, size = 3, fontface = "bold")  # Add mean response in top left
+ggsave("../../Images/hatcheryAgreeParticipation.png", width = 6.5, height = 4, units = "in")
+
+
+```
+
+To understand whether or not familiarity with hatcheries has a relationship to support, a spearman rank correlation produced a $\rho$ = 0.33. This represents a weak to moderate positive correlation that lacks signifcance at the 95% confidence level. (p=.06). This suggests that increased familiarity of hatcheries may be associated with a more supportive perspective on involving Port Graham in hatcheries. However, because this finding is not significant, it should be assumed that general support is uniform among households with respect to their familiarity. For example, households reporting they know little about hatcheries have similar levels of support to those indicating they are very familiar with hatcheries. Note that the figure incorporates slight jittering of points to prevent over-plotting or obfuscating data points. Each cluster around whole numbers can be assumed equal to the nearest whole numbers.
+
+```{r hatchery correlation figure}
+
+maricultureTmpData <- aquacultureData %>% 
+  filter(category == "Hatcheries")
+
+# Compute Spearman correlation and p-value
+corResult <- cor.test(maricultureTmpData$aquacultureAgreeDisagree, 
+                       maricultureTmpData$familiarAquaculture, 
+                       method = "spearman")
+
+# Function to compute Spearman correlation (for bootstrapping 95% CI)
+#   Note on functionality: indicies come from the bootsampling function
+#   the return of correlation needs to point to the actual columns of interest.
+spearman_cor <- function(data, indices) {
+  dd <- data[indices, ]
+  return(cor(dd$aquacultureAgreeDisagree, dd$familiarAquaculture, 
+             method = "spearman"))
+}
+
+# Bootstrapping to get 95% confidence interval
+set.seed(studyear) # Standard is to use the study year
+bootResult <- boot(maricultureTmpData, spearman_cor, R = econBoot_k)
+confInt <- boot.ci(bootResult, type = "perc")$percent[4:5]  # Extract 95% CI
+
+
+# Extract correlation values
+rho_value <- round(corResult$estimate, 2)
+p_value <- signif(corResult$p.value, 3)
+ciLower <- round(confInt[1]*100, 1)
+ciUpper <- round(confInt[2]*100, 1)
+
+# Create scatter plot with jittered points and text annotation
+ggplot(maricultureTmpData, aes(x = familiarAquaculture, y = aquacultureAgreeDisagree)) +
+  geom_jitter(width = 0.1, height = 0.1, alpha = 0.6, color = "blue") +  # Jitter to avoid overplotting
+  geom_smooth(method = "lm", color = "red", se = TRUE) +  # Trend line
+  labs(title = "Agreement with partcipation vs Familiarity with hatcheries",
+       y = "Port Graham should be involved with Hatcheries (Likert 1-5)",
+       x = "Familiarity with Hatcheries (Likert 1-5)") +
+  theme_minimal() +
+  annotate("text", x = 1, y = 4.5, label = paste("Spearman’s rho =", rho_value), 
+           hjust = 0, size = 5, fontface = "bold") +
+  annotate("text", x = 1, y = 4.3, label = paste("p-value =", p_value), hjust = 0, vjust=0.8, size = 5) #+
+  #annotate("text", x = 1, y = 4.6, label = paste("95% CI (+/-)%:", ciLower, "-", ciUpper), hjust = 0, size = 5)
+ggsave("../../Images/hatcheryCorrelation.png", width = 6.5, height = 4, units = "in")
+
+```
+
+## Write CSV
+
+```{r write csv files}
+
+# ##############################################################################
+# Write out CSV files.
+# ##############################################################################
+
+# Sample code for writing out a file.
+  fName = str_interp('../../CSV/05 - Final Analysis Output/aquacultureText.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(aquacultureTextData), ' records to be written', sep='')))
+
+# Standard is to use CSV files for portability.
+  rio::export(aquacultureTextData, fName)
+
+```
+
+<p class="h1footer"> End of F11 Aquaculture questions script. </p>

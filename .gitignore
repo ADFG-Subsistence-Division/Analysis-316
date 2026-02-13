@@ -4,25 +4,13 @@
 .RData
 .Ruserdata
 *.db
-/CSV/00 - Lookup Codes/*.csv
-/CSV/01 - Database Extract/*.csv
-/CSV/02 - Error Checking/*.csv
-/CSV/03 - Main/*.csv
-/CSV/04 - Employment Processing/*.csv
-/CSV/05 - Final Analysis Output/*.csv
-/CSV/06 - HH Database Uploads/*.csv
-/CSV/07 - CSIS Uploads/*.csv
-/xls-table/*.xlsx
-/xls-table/*.csv
-/xls-table/*.xls
-Notes for conversion of employ data.txt
-/R-Code/Step 1 - Extraction and Validation/*.html
-/R-Code/Step 2 - Standardize and Validate/*.html
-/R-Code/Step 3 - Demographics/*.html
-/R-Code/Step 4 - Income and Employment/*.html
-/R-Code/Step 5 - Harvest processing/*.html
-/R-Code/Step 6 - Assessments and summary/*.html
-/Images/*.*
+*.csv
+*.png
+*.html
+*.xlsx
+*.xls
+*.doc
+*.docx
 /Dashboard/connectionData.R
 /www/*
 .Rhistory

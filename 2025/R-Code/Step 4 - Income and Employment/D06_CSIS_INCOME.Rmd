@@ -1,0 +1,595 @@
+---
+title: "D06_CSIS_INCOME - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-15"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">D06_CSIS_INCOME - (316) NPS Ambler Comprehensive</div>
+</div>
+
+# CSIS Income
+Produce output files to be incorproated into the CSIS. Note that this file produces CSIS v2.0 economic input files that are more closely related to the files produced for technical papers.
+
+## Change log
+
+Change 1
+- Programmer: D.S.Koster  
+- Date: 05/21/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output.  
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates 
+
+Change 2
+- Programmer: Jesse Coleman
+- Date: 03/18/2025
+- Change Description: Removed source() calls; all functions are included in the library adfgSubs.
+- Template Update [Y|N]: Y
+- One-Off: No-include in all future comprehensive templates 
+
+Change 3
+- Programmer: Jesse Coleman
+- Date: 06/18/2025
+- Change Description: Refactor using tidyverse language and DRY ("don't repeat yourself") principles.
+- Template Update [Y|N]: Y
+- One-Off: No - include in all future comprehensive templates 
+
+## Input data
+
+- CSV/05 - Final Analysis Output/employ_by_industry_raw.csv  
+- CSV/06 - HH Database Uploads/REC23_HH_FILE.csv  
+- CSV/01 - Database Extract/REC23_raw.csv  
+- CSV/05 - Final Analysis Output/employCharacteristics(T)_raw.csv  
+- CSV/05 - Final Analysis Output/estEarnedAndOtherIncome_raw.csv  
+
+## Output data
+
+- CSV/07 - CSIS Uploads/dat_employbyindustry.csv  
+- CSV/07 - CSIS Uploads/dat_econcharacteristics.csv  
+- CSV/07 - CSIS Uploads/dat_earningsLevels.csv  
+- ../../SQLite/csisDB.db [dat_employbyindustry]  
+- ../../SQLite/csisDB.db [dat_econcharacteristics]  
+- ../../SQLite/csisDB.db [dat_earningsLevels]  
+
+## Background
+
+This CSIS output is an enhancement to previous versions that break down items better, provides a more flexible report for income histograms (the binning of incomes needs to change with time), this also ignores the CSISCatCodes previously used for the CSIS, instead mimicking published technical report.
+
+## Checklist
+
+- Update 'Author' to your name, 
+- Update the project information in 'title' to the current project.
+- Update the development log with any changes you've made to the template file, including your name.
+- Open the SQLite database and verify the contents  
+
+## Additional information
+
+### Required libraries
+- tidyVerse  
+- rio  
+- knitr  
+- DBI (SQLite)  
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+
+# Additional libraries
+library(knitr)
+library(DBI)
+library(adfgSubs)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+# source('../Functions/f_RMD_HTML_FORMATTING_FUNCTIONS.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+```
+
+## Prep lists
+
+This section of code creates a list of earnings categories - note that due to inflation, the original categories from the CSIS are no longer relevant for the household level.
+
+```{r prep lists}
+
+earningsLevelCD = c(0,1,2,3,4,5,6,7,8,9)
+
+earningsLevels = c("Some or All earnings missing",
+                   "$0 - $24,999",
+                   "$25,000 - $49,999",
+                   "$50,000 - $74,999",
+                   "$75,000 - $99,999",
+                   "$100,000 - $124,999",
+                   "$125,000 - $149,999",
+                   "$150,000 - $174,999",
+                   "$175,000 - $199,999",
+                   "$200,000 + ")
+
+earningsLevelData <- data.frame(earningsLevelCD, earningsLevels)
+
+```
+
+## Load data
+
+```{r load data}
+
+# Load data from intermediate files.
+
+# Get the employment by industry.
+byIndustryData <- read.csv('../../CSV/05 - Final Analysis Output/employ_by_industry_raw.csv',
+                   na = '', 
+                   header = TRUE, 
+                   strip.white = TRUE)
+
+count <- nrow(byIndustryData)
+cat(formatSummaryBlock(paste("Opening file: employ_by_industry_raw.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+# Open the income by household file - Note for CSIS, we 
+#  can use the reported income and count as 'missing'. 
+
+# Imputed HH file
+hhJobsData <- read.csv('../../CSV/06 - HH Database Uploads/REC23_HH_FILE.csv',
+                   na = '', 
+                   header = TRUE, 
+                   strip.white = TRUE)
+count <- nrow(hhJobsData)
+cat(formatSummaryBlock(paste("Opening file: REC23_HH_FILE.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+# Raw REC23 file.
+rec23RawData <- read.csv('../../CSV/01 - Database Extract/REC23_raw.csv',
+                   na = '', 
+                   header = TRUE, 
+                   strip.white = TRUE)
+count <- nrow(rec23RawData)
+cat(formatSummaryBlock(paste("Opening file: REC23_raw.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+
+# Open the income characteristics file
+incCharData <- read.csv('../../CSV/05 - Final Analysis Output/employCharacteristics(T)_raw.csv',
+                   na = '', 
+                   header = TRUE, 
+                   strip.white = TRUE)
+
+count <- nrow(incCharData)
+cat(formatSummaryBlock(paste("Opening file: employCharacteristics(T)_raw.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+#estEarnedAndOtherIncome_raw
+estEarnedOthIncomeData <- read.csv('../../CSV/05 - Final Analysis Output/estEarnedAndOtherIncome_raw.csv',
+                               na='',
+                               header = TRUE,
+                               strip.white = TRUE)
+count <- nrow(estEarnedOthIncomeData)
+cat(formatSummaryBlock(paste("Opening file: estEarnedAndOtherIncome_raw_raw.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+```
+
+## Rename and reorganize industry
+
+This chunk reorganizes the data and renames in prep for CSIS upload. Note this file was added to replace the older dat_econ1 format used for older data. The table containing this information has been used routinely for the majority of comprehensive surveys since 2004. dat_econ2 will no longer be used, and the CSISCatCodes will be replaced as well.
+
+```{r employment by industry}
+
+# Renaming for CSIS.
+byIndustryData <- byIndustryData %>%
+  rename("projid"     = "projID",
+         "year"       = "studyear",
+         "commcode"   = "communty",
+         "estJobs"    = "estJobCount_mean", 
+         "estHHs"     = "estHHCount_mean",
+         "estPeople"  = "estPersonCount_mean",
+         "estIncome"  = "estIncome_mean",
+         "industry"   = "incCategoryDesc",
+         "pctPeople"  = "pctPerson",
+         "occupation" = "incsrceDesc") %>% 
+  # Do some renaming of jobs/industry to properly label for CSIS and general
+  #   public use.
+  mutate(occupation = case_when(occupation == "All industries" ~ "All Occupations",
+                                occupation == industry ~ "All occupations",
+                                TRUE ~ occupation))
+
+
+# Reduce the file to just the essentials
+byIndustryData <- byIndustryData %>%
+  select(projid, year, commcode, industry, occupation, estJobs, estHHs, estPeople, estIncome,
+         pctJobs, pctHHs, pctPeople, pctIncome)
+```
+
+```{r industry to database}
+# Put it into the SQLite database.
+csisDB <- dbConnect(RSQLite::SQLite(), "../../SQLite/csisDB.db")
+
+delSQL = 'DROP TABLE IF EXISTS "dat_employbyindustry";'
+
+DBResult <- dbSendQuery(csisDB, delSQL)
+cat("<h4>Drop table:</h4>")
+print(DBResult)
+dbClearResult(DBResult)
+
+tblSQL = 'CREATE TABLE "dat_employbyindustry" (
+	"econEmployUID" INTEGER NOT NULL,
+	"commcode" INTEGER NOT NULL,
+	"year" INTEGER NOT NULL,
+	"projid" INTEGER NOT NULL,
+	"industry" TEXT ,
+	"occupation" TEXT ,
+	"estJobs" REAL ,
+	"estHHs" REAL ,
+	"estPeople" REAL ,
+	"estIncome" REAL ,
+	"pctJobs" REAL ,
+	"pctHHs" REAL ,
+	"pctPeople" REAL ,
+	"pctIncome" REAL, 
+  PRIMARY KEY ("econEmployUID" AUTOINCREMENT));'
+
+DBResult <- dbSendQuery(csisDB, tblSQL)
+cat("<h4>Create empty table:</h4>")
+print(DBResult)
+dbClearResult(DBResult)
+
+strSQL = 'INSERT INTO dat_employbyindustry (commcode,
+  year,
+  projid,
+  industry,
+  occupation,
+  estJobs,
+  estHHs,
+  estPeople,
+  estIncome,
+  pctJobs,
+  pctHHs,
+  pctPeople,
+  pctIncome) VALUES (:commcode,
+        :year,
+        :projid,
+        :industry,
+        :occupation,
+        :estJobs,
+        :estHHs,
+        :estPeople,
+        :estIncome,
+        :pctJobs,
+        :pctHHs,
+        :pctPeople,
+       :pctIncome);'
+
+dbBegin(csisDB)
+DBResult <- dbSendQuery(csisDB, strSQL, byIndustryData)
+cat("<h4>Insert data:</h4>")
+print(DBResult)
+dbClearResult(DBResult)
+dbCommit(csisDB)
+
+dbDisconnect(csisDB)
+
+```
+
+
+## Income characterisics
+
+This produces dat_incomeCharacteristics table for the CSIS:
+
+- emiss -> Percent of households with missing earnings information.  
+- avggrinc -> Estimated average gross household income in the community, based on sampled households.  
+- avgeainc -> Estimated average earned income per household in the community, based on sampled households. Earned income does not include transfer payments, Alaska Permanent Fund dividends, social security and retirement pensions, unemployment insurance, etc.)  
+- avgnjobs -> Estimated average number of jobs per household in the community, based on sampled households.  
+- avgnemad -> Estimated average number of employed adults per household in the
+community, based on sampled households.  
+- nadults Number of adults in the community.  
+- avgwkad Estimated average number of weeks worked per adult in the community, based on sampled households.  
+- avgwkead -> Estimated average weeks of wage employment per year per employed adult in the community (to 1 decimal), based on sampled households.  
+- avgwkhh -> Estimated average weeks of wage employment per year per household in the community (to 1 decimal), based on sampled households.  
+- estotinc -> Estimated total income in the community (number of households in the community times average gross income).  
+- esterinc -> Estimated earned income in the community (number of households in the community times average earned income).  
+- econ1mem Memo Comment field for household earnings information.
+
+```{r income characteristics}
+
+# Average gross income per household
+avggrincData <- estEarnedOthIncomeData %>%
+  filter(incCategoryDesc == "All income sources" & 
+           incsrceDesc == "All income sources") %>%
+  select(projID, studyear, communty, Nhouseholds, estIncome) %>%
+  rename("estotinc" = "estIncome")
+
+avggrincData$avggrinc = avggrincData$estotinc / avggrincData$Nhouseholds
+avggrincData <- select(avggrincData, -Nhouseholds)
+
+# Earned income per household.
+avgeaincData <- estEarnedOthIncomeData %>%
+  filter(incCategoryDesc == "All sources of income" &
+           incsrceDesc == "All industries") %>%
+  select(projID, studyear, communty, Nhouseholds, estIncome) %>%
+  rename("esterinc" = "estIncome")
+
+avgeaincData$avgeainc <- avgeaincData$esterinc / avgeaincData$Nhouseholds
+avgeaincData <- avgeaincData %>%
+  select(-Nhouseholds)
+
+# Average number of jobs per household
+avgnjobsData <- incCharData
+avgnjobsData$avgnjobs = avgnjobsData$numberJobs / avgnjobsData$NHouseholds
+avgnjobsData <- avgnjobsData %>% 
+  select(projID, studyear, communty, avgnjobs)
+
+incCharCSISData <- incCharData
+incCharCSISData <- incCharCSISData %>%
+  rename('avgnemad' = 'meanEmplAdultsPerAllHH',
+         'nadults' = 'estAdult',
+         'avgwkad' = 'weeksEmployedAllAdults',
+         'avgwkead' = 'meanWeeksEmplAdults',
+         'avgwkhh' = 'meanHHWeeksEmpl') %>%
+  select(projID, studyear, communty, avgnemad, nadults, avgwkad, avgwkead, avgwkhh)
+
+# Put them all together into the incCharCSIS data for output to dat_econCharacteristics
+keyData = c("projID", "studyear", "communty")
+incCharCSISData <- incCharCSISData %>%
+  left_join(avggrincData, by=keyData) %>%
+  left_join(avgeaincData, by=keyData) %>%
+  left_join(avgnjobsData, by=keyData) %>%
+  select(projID, studyear, communty, avggrinc, avgeainc,
+         avgnjobs,avgnemad, nadults, avgwkad, avgwkead, avgwkhh, estotinc,
+         esterinc) %>%
+  rename("commcode" = "communty",
+         "projid" = "projID",
+         "year" = "studyear")
+
+# Rename some columns to make life easier
+
+
+```
+
+```{r characteristics to database}
+
+
+# Put it into the SQLite database.
+csisDB <- dbConnect(RSQLite::SQLite(), "../../SQLite/csisDB.db")
+
+delSQL = 'DROP TABLE IF EXISTS "dat_econcharacteristics";'
+
+DBResult <- dbSendQuery(csisDB, delSQL)
+cat("<h4>Drop table:</h4>")
+print(DBResult)
+dbClearResult(DBResult)
+
+tblSQL = 'CREATE TABLE "dat_econcharacteristics" (
+	"econCharUID" INTEGER NOT NULL,
+	"commcode" INTEGER NOT NULL,
+	"year" INTEGER NOT NULL,
+	"projid" INTEGER NOT NULL,
+	"avggrinc" REAL, 
+	"avgeainc" REAL,
+  "avgnjobs" REAL,
+  "avgnemad" REAL, 
+  "nadults" REAL, 
+  "avgwkad" REAL, 
+  "avgwkead" REAL, 
+  "avgwkhh" REAL, 
+  "estotinc" REAL,
+  "esterinc" REAL, 
+  PRIMARY KEY ("econCharUID" AUTOINCREMENT));'
+
+DBResult <- dbSendQuery(csisDB, tblSQL)
+cat("<h4>Create empty table:</h4>")
+print(DBResult)
+dbClearResult(DBResult)
+
+strSQL = 'INSERT INTO dat_econcharacteristics (commcode,
+  year,
+  projid,
+	avggrinc, 
+	avgeainc,
+  avgnjobs,
+  avgnemad, 
+  nadults, 
+  avgwkad, 
+  avgwkead, 
+  avgwkhh, 
+  estotinc,
+  esterinc ) VALUES (:commcode,
+        :year,
+        :projid,
+	      :avggrinc, 
+	      :avgeainc,
+        :avgnjobs,
+        :avgnemad, 
+        :nadults, 
+        :avgwkad, 
+        :avgwkead, 
+        :avgwkhh, 
+        :estotinc,
+        :esterinc);'
+
+dbBegin(csisDB)
+DBResult <- dbSendQuery(csisDB, strSQL, incCharCSISData)
+cat("<h4>Insert data:</h4>")
+print(DBResult)
+dbClearResult(DBResult)
+dbCommit(csisDB)
+
+dbDisconnect(csisDB)
+
+```
+
+```{r income categories}
+
+# 1. Cross join of communities and earnings levels
+commCrossList <- incCharData %>%
+  distinct(projID, studyear, communty) %>%
+  cross_join(earningsLevelData)
+
+# 2. Calculate missingness, sum earnings by household, assign earnings bins
+incomeByBin <- hhJobsData %>%
+  mutate(
+    # 1 if any missing, 0 otherwise
+    anyMiss = if_else(is.na(reptEarnings), 1L, 0L)
+  ) %>%
+  group_by(projID, studyear, communty, HHID) %>%
+  summarize(
+    anyMiss = max(anyMiss, na.rm = TRUE),
+    reptEarnings = sum(reptEarnings, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  # Assign earningsLevelCD by binning reptEarnings, or 0 if anyMiss == 1
+  mutate(
+    earningsLevelCD = case_when(
+      anyMiss == 1 ~ 0L,
+      reptEarnings >= 0      & reptEarnings <  25000   ~ 1L,
+      reptEarnings >= 25000  & reptEarnings <  50000   ~ 2L,
+      reptEarnings >= 50000  & reptEarnings <  75000   ~ 3L,
+      reptEarnings >= 75000  & reptEarnings <  100000  ~ 4L,
+      reptEarnings >= 100000 & reptEarnings < 125000   ~ 5L,
+      reptEarnings >= 125000 & reptEarnings < 150000   ~ 6L,
+      reptEarnings >= 150000 & reptEarnings < 175000   ~ 7L,
+      reptEarnings >= 175000 & reptEarnings < 200000   ~ 8L,
+      reptEarnings >= 200000                           ~ 9L,
+      TRUE                                             ~ 0L
+    )
+  ) %>%
+  # Summarize to number of households at each earnings level
+  group_by(projID, studyear, communty, earningsLevelCD) %>%
+  summarize(nAtEarningsLevel = n(), .groups = "drop_last") %>%
+  mutate(
+    nHouseholds = sum(nAtEarningsLevel, na.rm = TRUE)
+  ) %>%
+  ungroup() %>%
+  # Calculate percent at each earnings level
+  mutate(
+    pctearning = (nAtEarningsLevel / nHouseholds) * 100
+  )
+
+# 3. Left join to full community/earningsLevel cross-list, clean up, and fill NAs with zero
+incomeLevelsData <- commCrossList %>%
+  left_join(incomeByBin, by = c("projID", "studyear", "communty", "earningsLevelCD")) %>%
+  select(-nHouseholds, -nAtEarningsLevel) %>%
+  mutate(
+    pctearning = replace_na(pctearning, 0)
+  )
+
+
+```
+
+```{r write earnings categories to database}
+
+incomeLevelsData <- incomeLevelsData %>%
+  rename("commcode" = "communty",
+         "projid" = "projID",
+         "year" = "studyear")
+
+incomeLevelsData <- incomeLevelsData %>% select(-earningsLevelCD)
+
+# Put it into the SQLite database.
+csisDB <- dbConnect(RSQLite::SQLite(), "../../SQLite/csisDB.db")
+
+delSQL = 'DROP TABLE IF EXISTS "dat_earningsLevels";'
+
+DBResult <- dbSendQuery(csisDB, delSQL)
+cat("<h4>Drop table:</h4>")
+print(DBResult)
+dbClearResult(DBResult)
+
+tblSQL = 'CREATE TABLE "dat_earningsLevels" (
+      "earningsLevelUID" INTEGER NOT NULL,
+      "commcode" INTEGER NOT NULL,
+      "year" INTEGER NOT NULL,
+	    "projid" INTEGER NOT NULL,
+	    "earningsLevels" TEXT, 
+	    "pctearning" REAL,
+	    PRIMARY KEY ("earningsLevelUID" AUTOINCREMENT));'
+
+DBResult <- dbSendQuery(csisDB, tblSQL)
+cat("<h4>Create empty table:</h4>")
+print(DBResult)
+dbClearResult(DBResult)
+
+strSQL = 'INSERT INTO "dat_earningsLevels" (
+          commcode,
+          year,
+          projid,
+          earningsLevels,
+          pctearning) VALUES (
+          :commcode,
+          :year,
+          :projid,
+          :earningsLevels,
+          :pctearning)'
+
+dbBegin(csisDB)
+DBResult <- dbSendQuery(csisDB, strSQL, incomeLevelsData)
+
+cat("<h4>Insert data:</h4>")
+print(DBResult)
+
+dbClearResult(DBResult)
+dbCommit(csisDB)
+
+dbDisconnect(csisDB)
+
+```
+
+# Write out CSV files
+
+```{r write csv files}
+
+# Write out CSV files.
+
+# Sample code for writing out a file.
+  fName = str_interp('../../CSV/07 - CSIS Uploads/dat_employbyindustry.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(byIndustryData), ' records to be written', sep='')))
+  rio::export(byIndustryData, fName)
+  
+  fName = str_interp('../../CSV/07 - CSIS Uploads/dat_econcharacteristics.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(incCharCSISData), ' records to be written', sep='')))
+  rio::export(incCharCSISData, fName)
+  
+  fName = str_interp('../../CSV/07 - CSIS Uploads/dat_earningsLevels.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(incomeLevelsData), ' records to be written', sep='')))
+  rio::export(incomeLevelsData, fName)
+    
+
+```
+
+<p class="h1footer"> End of CSIS INCOME script. </p>
+

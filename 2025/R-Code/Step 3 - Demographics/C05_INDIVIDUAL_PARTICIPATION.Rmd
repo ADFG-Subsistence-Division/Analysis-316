@@ -1,0 +1,500 @@
+---
+title: "C05_INDIVIDUAL_PARTICIPATION - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-15"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">C05_INDIVIDUAL_PARTICIPATION - (316) NPS Ambler Comprehensive</div>
+</div>
+
+# Individual participation
+
+Develop tables and figures associated with participation in harvesting and processing activities by person. This file operates when the individual participation page has been included. This file varies according to project and should be evaluated prior to running.
+
+## Change log
+
+### Change 1
+- Programmer: D.S.Koster  
+- Date: 05/21/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output. Cleaned up output table a bit so the headers a slightly cleaner. Added automation to identify participation questions asked and run the analysis without further adjustment.
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates  
+
+### Change 2
+- Programmer: Jesse Coleman
+- Date: 03/18/2025
+- Change Description: Removed source() calls; all functions are included in the library adfgSubs.
+- Template Update [Y|N]: Y
+- One-Off: No-include in all future comprehensive templates 
+
+## Input data
+  
+- /CSV/03 - Main/REC01_clean.csv  
+- /CSV/03 - Main/sample.csv  
+
+## Output data
+  
+- /CSV/05 - Final Analysis Output/individualParticipation(T)_raw.csv  
+- /CSV/05 - Final Analysis Output/individualParticipationFIG_raw.csv
+
+## Background
+
+
+## Checklist
+  
+- Update 'Author' to your name   
+- Update the project information in 'title' to the current project  
+- Update the development log with any changes you've made to the template file, including your name  
+- Update the table templates with the data from this file  
+- Check that the updated table templates match the figures here  
+
+## Additional information
+
+This file should run even if half of the variable names are incorrectly labelled. Please be sure to verify that all participation questions have been handled.
+
+### Functions used/dependencies
+
+### Required libraries (adjust as needed)
+
+- tidyVerse  
+- rio  
+- knitr  
+- kableExtra
+- adfgSubs
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+
+# Additional libraries
+library(knitr)
+library(kableExtra)
+library(adfgSubs)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+```
+
+## Load data
+
+```{r load data}
+
+# ##############################################################################
+# Load data.
+# ##############################################################################
+
+REC01Data <- read.csv(str_interp('../../CSV/03 - Main/REC01_clean.csv'), 
+                       na = '', 
+                       header = TRUE, 
+                       strip.white = TRUE)
+
+count <- nrow(REC01Data)
+cat(formatSummaryBlock(paste("Opening file: REC01_clean.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+sampleData <- read.csv(str_interp('../../CSV/03 - Main/sample.csv'), 
+                       na = '', 
+                       header = TRUE, 
+                       strip.white = TRUE)
+
+count <- nrow(sampleData)
+cat(formatSummaryBlock(paste("Opening file: sample.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+REC01Data <- left_join(REC01Data, sampleData, by=c('projID', 'studyear', 'communty', 'strata'))
+
+```
+
+## Automation lists
+
+Evaluate the code below, the script should (usually) run without further modification, but this code chunk needs to be reviewed per project.
+
+```{r automation lists}
+# Specify columns we want to summarize on for this.
+
+cat("<h4>All variables in the person record</h4>")
+cat(formatValueList(names(REC01Data)))
+
+
+allParticipationQuestions = c("harvSalm", "procSalm", "harvOtherFish", "procOtherFish", "harvMI", "procMI", 
+                              "harvLLM", "procLLM",  "harvFur", "procFur", "harvMM", "procMM",
+                              "harvBirds", "procBirds", "harvPlants", "procPlants", "harvSeaweed", "procSeaweed")
+
+participationQuestions = intersect(names(REC01Data), allParticipationQuestions)
+
+cat("<h4>Individual participation questions found</h4>")
+cat(formatValueList(participationQuestions))
+
+# Change comments, depending on whether or not we asked the NPS
+#       questions regarding fishwheels and things.
+allNpsQuestionList = c("buildFishTrapsYN",
+                    "buildDogSleds", "sewSkinsCloth",
+                    "cookWildFoods", "handicraftsYN",
+                    "shelterYN")
+
+npsQuestionList = intersect(names(REC01Data), allNpsQuestionList)
+
+if(length(npsQuestionList) == 0)
+{
+  cat("<h4>NPS Participation questions found </h4>")
+  cat(formatValueList(c("[NONE]")))
+} else {
+cat("<h4>NPS Participation questions found </h4>")
+cat(formatValueList(npsQuestionList))  
+}
+
+#
+# Age category df for merging.
+#
+ageCatCD = c(-8, 0, 1, 2, 3, 4, 5, 6, 7, 8)
+ageCatDesc = c("Missing", "0 to 9", "10 to 19", "20 to 29", "30 to 39", "40 to 49",
+               "50 to 59", "60 to 69", "70 to 79", "80+")
+ageCatCodeData <- data.frame(ageCatCD, ageCatDesc)
+
+```
+## Clean and prep data
+
+```{r clean and prep}
+# Replace negative values with NA
+
+REC01Data <- REC01Data %>% 
+  mutate(across(all_of(c(participationQuestions,npsQuestionList)),
+         ~ if_else(.x %in% c(-9,-8,-7), NA_real_, .x)))
+
+
+```
+
+## Individual participation (overall)
+
+```{r summarize ind participation}
+
+personData <- group_by(REC01Data, projID, studyear, communty, strata, HHID, personID) %>%
+  mutate(harvAnyResource = max(across(starts_with("harv")), na.rm=TRUE),
+         procAnyResource = max(across(starts_with("proc")), na.rm=TRUE))
+
+# In the event all columns were NA, we need to convert -INF to NA:
+
+personData <- inf_to_NA(personData, c("harvAnyResource", "procAnyResource"))
+
+# Add a bunch of stuff to group by for the final processing & output.
+personData <- personData %>% group_by(projID, studyear, communty, commname,
+                       NHouseholds, NPopulation) %>%
+  summarize(across(all_of(c(participationQuestions, "harvAnyResource", "procAnyResource", npsQuestionList)),
+                   ~ sum(.x * strataWt, na.rm=TRUE), 
+                   .names="{.col}")) %>%
+  mutate(across(all_of(c(participationQuestions, "harvAnyResource", "procAnyResource", npsQuestionList)),
+                ~ .x / NPopulation,
+                  .names="pct{.col}")) %>%
+  ungroup()
+
+
+# Get just the percentage column names (we have to make these);
+pctNameList <- c(participationQuestions, "harvAnyResource", "procAnyResource", npsQuestionList)
+pctNameList = paste('pct', pctNameList, sep='')
+
+# Create data frame for figure; one figure per community.
+tmpFigData <- personData %>% select(commname, !!!syms(pctNameList))
+tmpFigData <- pivot_longer(tmpFigData, cols=all_of(pctNameList),
+                           names_to="Activity", values_to="Participation")
+
+# Create data frame for table - this one requires reordering the original set, which 
+#    would be helpful for the final output, so changes will be made in personData
+#    before being trimmed down.
+
+orderedNameList <- c()
+for(activity in participationQuestions)
+{
+  orderedNameList <- c(orderedNameList, activity)
+  orderedNameList <- c(orderedNameList, paste('pct', activity, sep=''))
+}
+
+# Add in the 'any'
+orderedNameList <- c(orderedNameList, "harvAnyResource", "pctharvAnyResource",
+                     "procAnyResource", "pctprocAnyResource")
+
+# Now do NPS, if they exist.
+for(activity in npsQuestionList)
+{
+  orderedNameList <- c(orderedNameList, activity)
+  orderedNameList <- c(orderedNameList, paste('pct', activity, sep=''))
+}
+
+personData <- select(personData, projID, studyear, communty, commname,
+                       NHouseholds, NPopulation, !!!syms(orderedNameList))
+
+cat(formatSummaryBlock(str_interp("Individual participation data file create ${nrow(personData)} records produced.")))
+
+```
+
+## Individual participation
+
+```{r ind participation table output}
+
+# Make the table data frame.
+tmpTableData <- select(personData, commname, NPopulation, !!!syms(orderedNameList))
+
+# Start formatting for table; first make percentages 0 - 100,
+#   second round everything to 1 decminal point
+#   turn everything into character data,
+#   add the % symbol behind all of the percentages.
+#   Pivot longer / wider
+tmpTableData <- mutate(tmpTableData, across(starts_with('pct'), ~ . * 100))
+tmpTableData <- mutate(tmpTableData, across(all_of(c('NPopulation', orderedNameList)), ~ round(., 1)))
+tmpTableData <- mutate(tmpTableData, across(all_of(c('NPopulation', orderedNameList)), ~ as.character(.)))
+tmpTableData <- mutate(tmpTableData, across(starts_with('pct'), ~ paste(., '%',sep='') ))
+
+tmpTableData <- tmpTableData %>%
+  pivot_longer(cols=all_of(names(select(tmpTableData, -commname))),
+                             names_to = "column", values_to="value") %>%
+  pivot_wider(id_cols="column", names_from=commname, values_from=value)
+
+cat(formatSummaryBlock("NOTE: Because this table is built dynamically, the raw column names have been left rather than converting those into the text & formatting of the actual output table. However, the data and file should generally be organized the same."))
+
+kbl(tmpTableData,
+    caption=formatTableHeader(str_interp('Individual participation in harvesting and processing by community, ${studyear}'))) %>%
+  kable_styling(full=FALSE)
+
+# For bar-figure; we'll make the 'activity' into a factor, these are reversed to attempt to get
+#   the right order, ggplot seems to reverse order things for some reason -- fix if incorrect
+tmpFigData$Activity = factor(tmpFigData$Activity, levels=unique(tmpFigData$Activity))
+
+# Create categories for colorization.
+tmpFigData$Category = "Attempted harvesting activities"
+tmpFigData$Category[which(grepl("proc", tmpFigData$Activity))] = "Processing"
+
+tmpFigData$speciesCategory = tmpFigData$Activity
+tmpFigData$speciesCategory = str_replace(tmpFigData$speciesCategory, "proc", "")
+tmpFigData$speciesCategory = str_replace(tmpFigData$speciesCategory, "harv", "")
+tmpFigData$speciesCategory = str_replace(tmpFigData$speciesCategory, "pct", "")
+tmpFigData$speciesCategory = factor(tmpFigData$speciesCategory, levels=unique(tmpFigData$speciesCategory))
+
+colrs = getColors(nColors=2)
+for(comm in sampleData$commname)
+{
+  figOutData <- filter(tmpFigData, commname == comm) %>%
+    select(-commname)
+  
+  plotOut <- ggplot(figOutData, aes(fill=Category, 
+                                    x=speciesCategory, 
+                                    y=Participation,
+                                    label = scales::percent(Participation,
+                                                            accuracy=.1))) +
+    ggtitle(str_interp("Individual participation in attempted harvesting and processing, ${comm}, ${studyear}")) +
+    geom_bar(position = position_dodge(width = 0.5), stat="identity") +
+    scale_fill_manual(values = colrs) +
+    scale_y_continuous(labels = scales::percent, limits = c(0,1)) +
+    geom_text(position = position_dodge(width = .5),    # move to center of bars
+          vjust = -0.5,    # nudge above top of bar
+          size = 3) +
+    xlab("Percent of population participating") +
+    theme(legend.position="bottom", legend.title = element_blank()) +
+    theme(text=element_text(family="serif")) +
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"))
+    
+  print(plotOut)
+}
+
+# Finally, reorganize for figure out to reduce the amount of copy-paste to reduce
+#   the number of places errors can occur.
+finalFigData <- pivot_wider(tmpFigData, 
+                            id_cols=c('commname', 'speciesCategory'), 
+                            names_from=Category, values_from=Participation)
+finalFigData <- data.frame(projID, studyear, finalFigData)
+
+
+```
+
+## By Age Category
+
+```{r summarize by age category}
+
+# Age Categories; Set these up dynamically
+ageCatData <- REC01Data
+
+ageCatData$ageCat = floor(ageCatData$personAge / 10)
+ageCatData$ageCat[ageCatData$ageCat >= 8] = 8
+ageCatData$ageCat[ageCatData$ageCat < 0] = -8
+
+# Cross-join to ensure ALL lines are represented.
+ageCatData <- cross_join(ageCatData, ageCatCodeData)
+
+# Split file up.
+tmpAgeMatchData <- filter(ageCatData, ageCat == ageCatCD)
+tmpAgeNoMatchData <- filter(ageCatData, ageCat != ageCatCD)
+
+# Set up ageCatFL that can be used to multiply against the
+#   value provided in the appropriate harv/proc column for
+#   proper grouping.
+tmpAgeNoMatchData$ageCatFL = NA
+tmpAgeMatchData$ageCatFL = 1
+
+ageCatData <- dplyr::bind_rows(tmpAgeNoMatchData, tmpAgeMatchData)
+
+ageCatData <- group_by(ageCatData, projID, studyear, communty, strata, HHID, personID) %>%
+  mutate(harvAnyResource = max(across(starts_with("harv")), na.rm=TRUE),
+            procAnyResource = max(across(starts_with("proc")), na.rm=TRUE))
+
+# In the event all columns were NA, we need to convert -INF to NA:
+ageCatData <- inf_to_NA(ageCatData, c("harvAnyResource", "procAnyResource"))
+
+# Now; to get creative...
+#  We will loop through a list of each resource category we have identified
+#   the next several lines of code automatically detect each category AND 'any'
+#   provided naming conventions have been properly followed, this will work fine.
+parList <- c(participationQuestions, "harvAnyResource", "procAnyResource")
+parList <- gsub("proc", "", parList)
+parList <- gsub("harv", "", parList)
+parList <- unique(parList)
+
+
+# Simple calculation of percent per age category. Note that this uses automation to 
+#   figure out age groups by category based on specified categories.
+ageCatData <- group_by(ageCatData, projID, studyear, communty, commname,
+                       NHouseholds, NPopulation, ageCatDesc) %>%
+  summarize(nAgeCat = sum(ageCatFL, na.rm=TRUE),
+            across(all_of(c(participationQuestions, "harvAnyResource", "procAnyResource", npsQuestionList)),
+                   ~ sum(.x * ageCatFL, na.rm=TRUE), 
+                   .names="rept_{.col}"),
+            across(all_of(c(participationQuestions, "harvAnyResource", "procAnyResource", npsQuestionList)),
+                   ~ mean(.x * ageCatFL, na.rm=TRUE), 
+                   .names="pct_{.col}")) %>%
+  ungroup()
+
+
+# For participation category in the participation list - make a table and figure.
+
+pvtColNames <- c(paste("rept_", c(participationQuestions, "harvAnyResource", "procAnyResource"), sep=''), paste("pct_", c(participationQuestions, "harvAnyResource", "procAnyResource"), sep=''))
+
+tmpTableData <- ageCatData %>%
+  pivot_longer(cols=all_of(pvtColNames),
+                             names_to = "column", values_to="value") 
+
+tmpTableData$resCat = gsub("proc", "", tmpTableData$column)
+tmpTableData$resCat = gsub("harv", "", tmpTableData$resCat)
+
+tmpTableData$resCat = gsub("rept_", "", tmpTableData$resCat)
+tmpTableData$resCat = gsub("pct_", "", tmpTableData$resCat)
+
+# Get rid of reported amounts; use pct ONLY.
+tmpTableData <- tmpTableData %>% filter(grepl("pct_",column))
+tmp1Data <- tmpTableData %>% filter(grepl("proc",column))
+tmp1Data$activity="Processed"
+tmp2Data <- tmpTableData %>% filter(grepl("harv",column))
+tmp2Data$activity="Harvest"
+
+tmpTableData <- dplyr::bind_rows(tmp1Data, tmp2Data) %>%
+  arrange(projID, studyear, communty, resCat, activity, ageCatDesc)
+
+# Filter on commname
+# First by community, then by activity.
+colrs = getColors(nColors=2)
+for(comm in sampleData$commname)
+{
+  for(rc in parList)
+  {
+
+    figOutData <- filter(tmpTableData, commname == comm, resCat == rc) %>%
+      select(-commname)
+    
+    plotOut <- ggplot(figOutData, aes(fill=activity, 
+                                      x=ageCatDesc, 
+                                      y=value,
+                                      label = scales::percent(value,
+                                                              accuracy=.1))) +
+      ggtitle(str_interp("Individual participation in attempted harvesting and processing\n${rc} by age category, ${comm}, ${studyear}")) +
+      geom_bar(position = position_dodge(width = 0.5), stat="identity") +
+      scale_fill_manual(values = colrs) +
+      scale_y_continuous(labels = scales::percent, limits = c(0,1)) +
+      geom_text(position = position_dodge(width = .5),    # move to center of bars
+            vjust = -0.5,    # nudge above top of bar
+            size = 3) +
+      xlab("Age category") +
+      ylab("Percent of age category") +
+      theme(legend.position="bottom", legend.title = element_blank()) +
+      theme(text=element_text(family="serif")) +
+      theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+          panel.background = element_blank(), axis.line = element_line(colour = "black"))
+      
+    print(plotOut)
+  }
+}
+
+ageCatFinalFigData <- pivot_wider(tmpTableData, names_from="activity", values_from="value") %>%
+  group_by(projID, studyear, communty, commname, NHouseholds, NPopulation, resCat, ageCatDesc, 
+           nAgeCat) %>%
+  summarize(Harvest = sum(Harvest, na.rm=TRUE),
+            Processed = sum(Processed, na.rm=TRUE)) %>%
+  ungroup()
+
+
+```
+
+
+## Write CSV files
+
+```{r write csv files}
+
+# ##############################################################################
+# Write out CSV files.
+# ##############################################################################
+
+# #############################################################################
+fName = '../../CSV/05 - Final Analysis Output/individualParticipation(T)_raw.csv'
+cat(formatSummaryBlock(
+  paste('Writing file: ', fName, 
+        ' ', nrow(personData), ' records to be written', sep='')))
+
+rio::export(personData, fName)
+
+# #############################################################################
+fName = '../../CSV/05 - Final Analysis Output/individualParticipationFIG_raw.csv'
+cat(formatSummaryBlock(
+  paste('Writing file: ', fName, 
+        ' ', nrow(finalFigData), ' records to be written', sep='')))
+
+rio::export(finalFigData, fName)
+  
+# #############################################################################
+fName = '../../CSV/05 - Final Analysis Output/individualParticipationByAgeFIG_raw.csv'
+cat(formatSummaryBlock(
+  paste('Writing file: ', fName, 
+        ' ', nrow(ageCatFinalFigData), ' records to be written', sep='')))
+
+rio::export(ageCatFinalFigData, fName)
+
+
+```
+
+<p class="h1footer"> End of Individual participation script. </p>

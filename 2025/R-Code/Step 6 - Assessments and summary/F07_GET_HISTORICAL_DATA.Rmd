@@ -1,0 +1,650 @@
+---
+title: "F07_GET_HISTORICAL_DATA - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-15"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">F07_GET_HISTORICAL_DATA - (316) NPS Ambler Comprehensive</div>
+</div>
+
+# Historical data extract
+Extract data from various data sources to simplify the process of updating historical tables and figures. 
+
+## Change log
+
+### Change 1
+- Programmer: D.S.Koster  
+- Date: 05/21/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output. 
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates 
+
+### Change 2
+- Programmer: Jesse Coleman
+- Date: 03/18/2025
+- Change Description: Removed source() calls; all functions are included in the library adfgSubs.
+- Template Update [Y|N]: Y
+- One-Off: No-include in all future comprehensive templates 
+
+## Input data
+
+Database extract:  
+- Sub_Csis.dbo.com_dolpop  
+- Sub_Csis.dbo.com_census_web  
+- Sub_Csis.dbo.dat_methods  
+- Sub_Csis.dbo.[vw_Historical_Comprehensive_full]  
+- Sub_ASFDB.dbo.[vw_fullSalmonExtract]  
+  
+Files:  
+- /CSV/07 - CSIS Uploads/dat_harvest.csv  
+- /CSV/05 - Final Analysis Output/demogCharacteristics(T)_raw.csv
+
+## Output data
+-/CSV/05 - Final Analysis Output/DOLpop_raw.csv
+-/CSV/05 - Final Analysis Output/histComps_raw.csv  
+-/CSV/05 - Final Analysis Output/histSalmon_raw.csv  
+-/CSV/05 - Final Analysis Output/histCompsForFigure_raw.csv  
+
+## Additional Information
+
+### Functions used/dependencies
+
+### Required libraries  
+- tidyVerse  
+- odbc  
+- rio  
+- knitr 
+- adfgSubs
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+
+# Additional libraries
+library(knitr)
+library(adfgSubs)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+# source('../Functions/f_RMD_HTML_FORMATTING_FUNCTIONS.r')
+
+
+# For this particular script, we need to include the ODBC Connections.
+# source('../Functions/f_subsistenceDatabaseConnections.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+loadODBCLibrary()
+
+```
+
+## Load data
+
+```{r load data}
+
+# Automation list for resource categories
+resCatList <- c(0, 110000000, 120000000, 210000000, 220000000, 230000000,
+                300000000, 400000000, 500000000, 600000000)
+
+
+# ##############################################################################
+# Load data files first.
+# ##############################################################################
+
+#
+# We well re-match the resource codes to ensure consistent naming etc...
+#
+
+resNameData <- read.csv('../../CSV/00 - Lookup Codes/fullResList_raw.csv',
+                        na='',
+                        header=TRUE,
+                        strip.white=TRUE)
+count <- nrow(resNameData)
+cat(formatSummaryBlock(paste("Opening file: fullResList_raw.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+commNameData <- read.csv('../../CSV/00 - Lookup Codes/fullCommuntyList.csv',
+                        na='',
+                        header=TRUE,
+                        strip.white=TRUE)
+count <- nrow(commNameData)
+cat(formatSummaryBlock(paste("Opening file: fullCommuntyList.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+
+harvData <- read.csv('../../CSV/07 - CSIS Uploads/dat_harvest.csv',
+                   na = '', 
+                   header = TRUE, 
+                   strip.white = TRUE)
+
+count <- nrow(harvData)
+cat(formatSummaryBlock(paste("Opening file: dat_harvest.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+popData <- read.csv('../../CSV/05 - Final Analysis Output/demogCharacteristics(T)_raw.csv',
+                   na = '', 
+                   header = TRUE, 
+                   strip.white = TRUE)
+
+count <- nrow(popData)
+cat(formatSummaryBlock(paste("Opening file: demogCharacteristics(T)_raw.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+# Filter list of communities and turn into a string for automatic filtering here:
+
+sqlFilterComms = paste(as.character(popData$communty), collapse=", ")
+sqlFilterComms = paste('(', sqlFilterComms, ')', sep='')
+
+#######################################################
+# 2.0 - Get historical ASFDB data
+# #####################################################
+
+conn = connectToASFDB(server = 'dfgjnusql-db71p')
+# 2.1 Get ASFDB historical data
+strSQL = sql(str_interp("SELECT [fisheryID]
+                        ,[region]
+                        ,[districtName]
+                        ,[fisheryName]
+                        ,[fishCode]
+                        ,[year]
+                        ,[locationID]
+                        ,[sitename]
+                        ,[gearTypeID]
+                        ,[gearTypeName]
+                        ,[permitTypeID]
+                        ,[permitTypeName]
+                        ,[unitID]
+                        ,[communty]
+                        ,[commname]
+                        ,[sampleUnitValue]
+                        ,[populationUnitValue]
+                        ,[chinookEstimatedAmount]
+                        ,[sockeyeEstimatedAmount]
+                        ,[cohoEstimatedAmount]
+                        ,[chumEstimatedAmount]
+                        ,[pinkEstimatedAmount]
+                        ,[allSalmonEstimatedAmount]
+                        FROM [Sub_ASFDB].[dbo].[vw_fullSalmonExtract]
+                        WHERE communty in ${sqlFilterComms} AND 
+                        gearTypeID = 0 AND permitTypeID = 0"))
+
+historicalASFDBData <- dbGetQuery(conn, strSQL)
+
+count <- nrow(historicalASFDBData)
+cat(formatSummaryBlock(str_interp("Extracted ${count} rows from vw_fullSalmonExtract")))
+
+dbDisconnect(conn)
+
+# ##############################################################################
+# GET CSIS Comprehensive data.
+# ##############################################################################
+
+conn = connectToCSIS(server = 'dfgjnusql-db71p')
+
+# 6.1 Get CSIS historical data
+strSQL = sql(str_interp("SELECT [projname]
+      ,[baseline]
+      ,[commname]
+      ,[resource]
+      ,[commcode]
+      ,[year]
+      ,[projid]
+      ,[rescode]
+      ,[speclist]
+      ,[trying]
+      ,[hrvsting]
+      ,[used]
+      ,[giving]
+      ,[receving]
+      ,[units]
+      ,[numharv]
+      ,[convfact]
+      ,[totlbhrv]
+      ,[avglbhrv]
+      ,[xtotnum]
+      ,[numlower]
+      ,[numupper]
+      ,[xtotlbs]
+      ,[lbslower]
+      ,[lbsupper]
+      ,[percap] 
+      ,[pm95pct]
+      ,[percapg]
+      ,[mupch]
+      ,[mupchg]
+      ,[ulmupch]
+      ,[ulmupchg]
+      ,[pcttotal]
+      ,[mupc]
+      ,[uclupc]
+      ,[xupc]
+      ,[resmemo]
+      ,[commpop]
+      ,[commhh]
+  FROM [Sub_Csis].[dbo].[vw_Historical_Comprehensive_full]
+  WHERE commcode in ${sqlFilterComms}"))
+
+historicalCSISData <- dbGetQuery(conn, strSQL)
+
+count <- nrow(historicalCSISData)
+cat(formatSummaryBlock(str_interp("Extracted ${count} rows from vw_Historical_Comprehensive_full")))
+
+# ##############################################################################
+# GET CSIS DOL Population data.
+# ##############################################################################
+
+strSQL = sql(str_interp('SELECT [commcode] as [communty], 
+                                [year] as [studyear], 
+                                [dolpop] as [NPopulation] 
+                        FROM [dbo].[com_dolpop]
+                        WHERE [commcode] in ${sqlFilterComms}'))
+
+historicalDOLPopData <- dbGetQuery(conn, strSQL)
+count <- nrow(historicalDOLPopData)
+cat(formatSummaryBlock(str_interp("Extracted ${count} rows from com_dolpop")))
+
+# ##############################################################################
+# GET CSIS Census data
+# ##############################################################################
+strSQL = sql(str_interp('SELECT [commcode] as [communty],
+                                [year] as [studyear],
+                                [cenpop] as [NPopulation]
+                         FROM [dbo].[com_census_web]
+                         WHERE [commcode] in ${sqlFilterComms}'))
+
+censusPopData <- dbGetQuery(conn, strSQL)
+count <- nrow(censusPopData)
+cat(formatSummaryBlock(str_interp("Extracted ${count} rows from com_census_web")))
+
+# ##############################################################################
+# GET CSIS Comprehensive population estimates.
+# ##############################################################################
+
+strSQL = sql(str_interp('SELECT [commcode] as [communty],
+                                [year] as [studyear],
+                                [commpop] as [NPopulation]
+                        FROM [dbo].[dat_methods]
+                        WHERE baseline = 1 AND
+                        [commcode] in ${sqlFilterComms}'))
+historicalCompPopData <- dbGetQuery(conn, strSQL)
+count <- nrow(historicalCompPopData)
+cat(formatSummaryBlock(str_interp("Extracted ${count} rows from dat_methods")))
+
+
+dbDisconnect(conn)
+
+```
+## Comprehensive surveys
+
+
+```{r Comprehensive surveys}
+
+# ##############################################################################
+# Set up the initial file to contain all of the comp data, just the columns and
+#   rows we need.
+# ##############################################################################
+
+# Start by making the figures we're going to need for the historical figure.
+historicalCSISData$resource = historicalCSISData$rescode
+historicalCSISData <- select(historicalCSISData, -resource)
+
+
+histFigData <- dplyr::bind_rows(historicalCSISData, harvData)
+histFigData <- filter(histFigData, rescode %in% resCatList) %>%
+               select(year, commcode,
+                      rescode, xtotlbs, percap, pm95pct)
+histFigData <- left_join(histFigData, resNameData,
+                                by=c("rescode"="resource"))
+histFigData <- left_join(histFigData, commNameData,
+                         by=c("commcode"="communty"))
+
+# ##########################################################################
+# Re-order columns for output that is fed into tables/figures for excel.
+# ##########################################################################
+histCompOutData <- select(histFigData, year, commcode, commname,
+                         rescode, resName, xtotlbs, percap, pm95pct)
+
+
+# Pivot the comprehensive data out to be wider.
+histCompTableData <- pivot_wider(histCompOutData, names_from=year,
+                               values_from = c('xtotlbs', 'percap', 'pm95pct'),
+                               names_vary="slowest",
+                               names_sort=TRUE) %>%
+  arrange(commcode, rescode)
+
+# ########################################################################
+# Set up better data organization for historical data comparison 
+#    output excel files.
+# ########################################################################
+histCompPercapData <- select(histCompOutData, year, commcode, commname,
+                             rescode, resName, percap) %>%
+                      pivot_wider(names_from="year", values_from='percap')
+histCIData <- select(histCompOutData, year, commcode, commname,
+                             rescode, resName, pm95pct, percap)
+histCIData$bounds = histCIData$percap * histCIData$pm95pct
+histCIData <- select(histCIData, -percap, -pm95pct) %>%
+                      pivot_wider(names_from="year", values_from='bounds')
+# Just give garbage code for sorting, really we're looking at using the 'all resources'
+histCIData <- filter(histCIData, rescode == 0)
+histCIData$rescode = -1
+histCIData$resName = "95% CI Limits +/-"
+
+histCompFigureData <- dplyr::bind_rows(histCIData, histCompPercapData) %>%
+  arrange(commcode, rescode)
+
+# ############################################################################
+# Organize files for ggplot figure.
+# ###########################################################################
+                             
+histFigData$year = as.factor(histFigData$year)
+histFigData$resName = factor(histFigData$resName, levels = rev(unique(histFigData$resName)))
+
+histFigData$lower = histFigData$percap - (histFigData$percap*histFigData$pm95pct)
+histFigData$upper = histFigData$percap + (histFigData$percap*histFigData$pm95pct)
+histFigData$lower[histFigData$rescode != 0] = NA
+histFigData$upper[histFigData$rescode != 0] = NA
+histFigData$percap[histFigData$rescode == 0] = 0
+
+# Figure time :()
+colrs = getColors(nColors=9)
+for(comm in popData$commname)
+{
+  tmpHistFigData <- filter(histFigData, comm == commname)
+  
+  plotOut <- ggplot(tmpHistFigData, aes(x=year, y=percap, fill=resName)) +
+    ggtitle(str_interp("Historical harvest and use comparison, ${comm}, ${studyear}."))+
+  geom_col(position="stack") +
+  scale_fill_manual(values = colrs,
+                    limits=(unique(histFigData$resName)[-1])) +
+  geom_errorbar(aes(ymin = lower, ymax = upper), position="identity", width=0.2) +
+    ylab("Percapita harvests") +
+    xlab(" ") +
+    theme(text=element_text(family="serif")) +
+    theme(legend.title = element_blank()) +
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+    panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+    theme(legend.position="bottom") +
+    theme(plot.margin = margin(t=1,r=0,b=1,l=1, "cm"))
+  print(plotOut)
+}
+
+# CIs are required ONLY for 0
+
+```
+
+## Historical salmon
+
+Below the figure depicts all species harvested and the combined total of reports from any fishery across the state for the community. When final tables and figures are constructed, disaggregations may need to occur. Further, tables and figures in the final table will be split by species and incorporate any data not currently present in the ASFDB and the total harvest from "this year". Additionally, a different series will be presented to depict harvest amounts for the species from this year.
+
+```{r historical salmon data}
+
+histSalmFigData <- pivot_longer(historicalASFDBData, 
+                                cols=c('chinookEstimatedAmount'
+                        ,'sockeyeEstimatedAmount'
+                        ,'cohoEstimatedAmount'
+                        ,'chumEstimatedAmount'
+                        ,'pinkEstimatedAmount'),
+                                names_to="resName", values_to = "estimatedNumber")
+
+histSalmFisheryList = unique(historicalASFDBData$fisheryName)
+histSalmFisheryFootnote = paste(unique(historicalASFDBData$fisheryName), collapse=", ")
+histSalmFisheryFootnote = paste('Note ASFDB includes data from ',
+                                histSalmFisheryFootnote, 
+                                ', ', 
+                                min(histSalmFigData$year), ' - ', 
+                                max(histSalmFigData$year), '.', sep='')
+
+cat(warningMessage(histSalmFisheryFootnote))
+  
+histSalmFigData$resName = str_replace(histSalmFigData$resName, 'EstimatedAmount', ' salmon')
+histSalmFigData$resName = str_to_sentence(histSalmFigData$resName)
+
+histSalmFigAllData <- group_by(histSalmFigData, year, communty, commname, resName) %>%
+  summarize(estimatedNumber = sum(estimatedNumber, na.rm=TRUE)) %>%
+  ungroup()
+
+colrs = getColors(nColors=5)
+for(comm in popData$commname)
+{
+  tmpPlotHistData <- filter(histSalmFigAllData, commname == comm)
+  
+  plotHistOut <- ggplot(tmpPlotHistData, aes(x=year, y=estimatedNumber, group=resName)) +
+    ggtitle(str_interp("Estimated harvests of salmon by species, ${comm}.")) +
+    geom_point(aes(shape=resName, color=resName))  +
+    geom_line(aes(color=resName)) +
+    scale_fill_manual(values = colrs) +
+    xlab("Year") +
+    ylab("Estimated salmon harvest") +
+    theme(text=element_text(family="serif")) +    
+    theme(legend.title = element_blank(), legend.position = "bottom") +
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+    panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+    theme(legend.position="bottom") +
+    theme(plot.margin = margin(t=1,r=0,b=1,l=1, "cm"))
+  
+print(plotHistOut)
+}
+
+# Incorporate CSIS information.
+histOthSalmData <- dplyr::bind_rows(historicalCSISData, harvData)
+# Note for the filter below there are capitalization issues;
+histOthSalmData <- filter(histOthSalmData, rescode < 120000000  & 
+                            (speclist == 1 | specList == 1)) %>%
+               select(year, commcode, rescode, xtotnum)
+histOthSalmData <- left_join(histOthSalmData, resNameData,
+                                by=c("rescode"="resource"))
+histOthSalmData <- left_join(histOthSalmData, commNameData,
+                         by=c("commcode"="communty"))
+histOthSalmData$resName = trimws(histOthSalmData$resName, which="both")
+
+# Rename a couple of columns for consistency.
+histOthSalmData = dplyr::rename(histOthSalmData, 
+                                'communty' = 'commcode',
+                                'estimatedNumber' = 'xtotnum')
+
+# Remove columns that aren't going to be used
+histOthSalmData <- select(histOthSalmData, -rescode, -specList)
+
+# Initilize a couple of variables for use with excel tables.
+histOthSalmData$order = 0
+histOthSalmData$resLabel = ''
+
+# Add a label for CSIS sourced info
+histOthSalmData$resLabel[histOthSalmData$year != studyear] = paste(histOthSalmData$resName[histOthSalmData$year != studyear], ' (CSIS)', sep='')
+histOthSalmData$order[histOthSalmData$year != studyear] = 2
+
+# Add a label for 'This study' info & a sorting order for excel.
+histOthSalmData$resLabel[histOthSalmData$year == studyear] = paste(histOthSalmData$resName[histOthSalmData$year == studyear], ' (This study)', sep='')
+histOthSalmData$order[histOthSalmData$year != studyear] = 3
+
+# Label and order properly  
+histSalmFigAllData$resLabel = paste(histSalmFigAllData$resName, ' (ASFDB)', sep='')
+histSalmFigAllData$order = 1
+
+# Combine ASFDB / CSIS / 'this study'
+histSalmFigData <- dplyr::bind_rows(histSalmFigAllData, histOthSalmData)
+
+# Reorganize for excel.
+histSalmOutData <- select(histSalmFigData, year, communty, commname, order, 
+                          resName, resLabel, estimatedNumber)
+
+histSalmOutData <- pivot_wider(histSalmOutData, 
+                               names_from="year", 
+                               values_from = "estimatedNumber",
+                               names_sort = TRUE)
+histSalmOutData$footnote = ''
+histSalmOutData$footnote[histSalmOutData$order == 1] <- histSalmFisheryFootnote
+
+# File ready for output to excel.
+histSalmOutData <- arrange(histSalmOutData, communty, resName, order)
+
+
+# Figure palooza time.
+colrs = getColors(nColors = 3)
+for(comm in popData$commname)
+{
+  for(res in unique(histSalmFigData$resName))
+  {
+    tmpFigData <- filter(histSalmFigData, commname == comm, resName == res)
+    plotOut <- ggplot(tmpFigData, aes(x=year, y=estimatedNumber)) +
+      ggtitle(str_interp('Estimated historical harvests of ${res}, ${comm}')) +
+      geom_point(aes(color=resLabel, shape=resLabel)) +
+      geom_smooth(method=lm) +
+      scale_fill_manual(values = colrs) +
+      xlab("Year") +
+      ylab("Estimated salmon harvest") +
+      theme(text=element_text(family="serif")) +
+      theme(legend.title = element_blank(), legend.position = "bottom", 
+            legend.key = element_rect(fill = "transparent", colour = "transparent")) +
+      theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+      panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+      theme(legend.position="bottom") +
+      theme(plot.margin = margin(t=1,r=0,b=1,l=1, "cm"))
+    
+    print(plotOut)
+  }
+}
+
+
+
+
+```
+
+
+## Population history
+
+For this figure, historical U.S. Census decennial estimates are not included for now, this is a current data limitation of the CSIS.
+
+```{r population history data}
+
+# We need to combine the data and make sure it's properly annotated.
+
+# Neded - commname, order, Source, year, population
+popData$year = popData$studyear
+popData$order = 3
+popData$Source = "This study (estimate)"
+thisPopData <- select(popData, Source, communty, commname, order, studyear, NPopulation)
+
+censusPopData$Source = "U.S. Census (count)"
+censusPopData$order = 4
+
+historicalCompPopData$Source = "Previous Subsistence Division studies (estimate)"
+historicalCompPopData$order = 2
+
+historicalDOLPopData$Source = "Alaska Department of Labor (estimate)"
+historicalDOLPopData$order = 1
+
+# Bring them together (Other places first so we can bring commname into it)
+popHistFigData <- dplyr::bind_rows(historicalDOLPopData, censusPopData) %>%
+  dplyr::bind_rows(historicalCompPopData)
+
+popHistFigData <- left_join(popHistFigData, commNameData,
+                            by=c("communty"))
+
+# Bring in 'this years' data now
+popHistFigData <- dplyr::bind_rows(thisPopData, popHistFigData) 
+
+colrs = getColors(nColors = 4)
+for(comm in popData$commname)
+{
+  tmpFigData <- filter(popHistFigData, comm==commname)
+  plotOut <- ggplot(tmpFigData, aes(x=studyear , y=NPopulation)) +
+    ggtitle(str_interp("Historical population trends ${comm}.")) +
+    geom_point(aes(shape=Source, color=Source))+
+#      geom_smooth(method=lm) +
+    geom_smooth(method=glm, formula=y ~ poly(x, 2)) +
+      scale_fill_manual(values = colrs) +
+    xlab("Year") +
+    ylab("Number of people") +
+    ylim(0, max(tmpFigData$NPopulation)*1.1) +
+    theme(text=element_text(family="serif")) +
+      theme(legend.title = element_blank(), legend.position = "bottom", 
+            legend.key = element_rect(fill = "transparent", colour = "transparent"),
+            legend.box="vertical", legend.margin=margin()) +
+      theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+      panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+      theme(plot.margin = margin(t=1,r=0,b=1,l=1, "cm")) +
+        guides(linetype=guide_legend(nrow=2,byrow=TRUE))
+      
+  print(plotOut)
+}
+
+# Pivot this to final output and sort.
+# Re-order columns
+popFinalData <- arrange(popHistFigData, communty, studyear) %>%
+                select(communty, commname, order, Source, studyear, NPopulation) %>%
+                pivot_wider(names_from = studyear,
+                            values_from=NPopulation,
+                            names_sort = TRUE) %>%
+                arrange(commname, order)
+
+```
+
+
+# Write out CSV files
+
+```{r write csv files}
+
+# ##############################################################################
+# Write out CSV files.
+# ##############################################################################
+
+# Comprehensive history data.
+  fName = str_interp('../../CSV/05 - Final Analysis Output/histComps_raw.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, sep='')))
+  rio::export(histCompTableData, fName)
+
+#  Comprehensive history data (figure).
+  fName = str_interp('../../CSV/05 - Final Analysis Output/histCompsForFigure_raw.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, sep='')))
+  rio::export(histCompFigureData, fName)
+
+ # Salmon fishery data
+  fName = str_interp('../../CSV/05 - Final Analysis Output/histSalmon_raw.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, sep='')))
+
+  rio::export(histSalmOutData, fName) 
+  
+ # Population history data
+  fName = str_interp('../../CSV/05 - Final Analysis Output/histPopulation_raw.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, sep='')))
+
+  rio::export(popFinalData, fName) 
+  
+```
+
+<p class="h1footer"> End of Historical Data script. </p>

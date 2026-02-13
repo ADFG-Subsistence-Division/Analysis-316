@@ -1,0 +1,198 @@
+---
+title: "C04_NATIVE_NON_NATIVE_COMPARE - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-15"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">C04_NATIVE_NON_NATIVE_COMPARE - (316) NPS Ambler Comprehensive</div>
+</div>
+
+# Estimate native population
+
+Percentage of the population that is AK Native.
+
+## Change log
+
+### Change 1
+- Programmer: D.S.Koster  
+- Date: 05/21/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output. Cleaned up output table a bit so the headers a slightly cleaner.  
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates  
+
+### Change 2
+- Programmer: Jesse Coleman
+- Date: 03/18/2025
+- Change Description: Removed source() calls; all functions are included in the library adfgSubs.
+- Template Update [Y|N]: Y
+- One-Off: No-include in all future comprehensive templates 
+
+### Change 3
+- Programmer: Jesse Coleman
+- Date: 05/21/2025
+- Change Description: Refactor using tidyverse language and DRY ("don't repeat yourself") principles.
+- Template Update [Y|N]: Y
+- One-Off: No - include in all future comprehensive templates 
+
+## Input data
+  
+- /CSV/03 - Main/REC01_clean.csv  
+- /CSV/03 - Main/sample.csv  
+
+## Output data
+  
+- /CSV/05 - Final Analysis Output/ethnic_compare(T)_raw.csv  
+
+## Background
+
+## Checklist
+  
+- Update 'Author' to your name  
+- Update the project information in 'title' to the current project  
+- Update the development log with any changes you've made to the template file, including your name  
+- Update the table template with the data and double-check that the final table matches tables from this one  
+
+## Additional information
+
+### Required libraries (adjust as needed)
+
+- tidyVerse  
+- rio  
+- knitr  
+- kableExtra
+- adfgSubs
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+
+# Additional licenses
+library(knitr)
+library(kableExtra)
+library(adfgSubs)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+```
+
+## Load data
+
+```{r load data}
+
+# ##############################################################################
+# Load data from intermediate files.
+# ##############################################################################
+
+personData <- read.csv(str_interp('../../CSV/03 - Main/REC01_clean.csv'), 
+                       na = '', 
+                       header = TRUE, 
+                       strip.white = TRUE)
+
+count <- nrow(personData)
+cat(formatSummaryBlock(paste("Opening file: REC01_clean.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+sampleData <- read.csv(str_interp('../../CSV/03 - Main/sample.csv'), 
+                       na = '', 
+                       header = TRUE, 
+                       strip.white = TRUE)
+
+count <- nrow(sampleData)
+cat(formatSummaryBlock(paste("Opening file: sample.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+personData <- left_join(personData, sampleData, by=c('projID', 'studyear', 'communty', 'strata'))
+
+
+
+
+```
+
+## Summarize & Estimate
+
+```{r summarize and estimate}
+
+personData <- personData %>% 
+  mutate(ethnic = case_when(ethnic < 0 ~ NA_real_,
+                            ethnic == 2 ~ 0,
+                            TRUE ~ ethnic)) %>% 
+  group_by(projID, studyear, communty, strata) %>%
+  mutate(ethMean = mean(ethnic, na.rm=TRUE), # Calculate mean for missing replacement
+         ethnic = coalesce(ethnic, ethMean)) # Missing replacement; anywhere `ethnic` is NA, use ethMean
+
+natCompData <- group_by(personData, projID, studyear, 
+                        communty, commname, NHouseholds, NPopulation) %>%
+  summarize(akNative_sum = sum(ethnic * strataWt, na.rm=TRUE)) %>%
+  ungroup()
+
+tmpTblData <- select(natCompData, commname, NPopulation, akNative_sum)
+tmpTblData$pctAkNative = tmpTblData$akNative_sum / tmpTblData$NPopulation
+
+tmpTblData$NPopulation = round(tmpTblData$NPopulation, 0)
+tmpTblData$akNative_sum = round(tmpTblData$akNative_sum, 0)
+tmpTblData$pctAkNative = paste(as.character(round(tmpTblData$pctAkNative * 100,1)),'%',sep='')
+
+# Create table with Alaska Native data; iterate over each community
+
+purrr::walk(tmpTblData$commname, function(comm) {
+  tmpOutData <- filter(tmpTblData, commname == comm) %>%
+    select(-c("commname"))
+  kbl(tmpOutData,
+      caption = formatTableHeader(glue::glue("Alaska Native population, {comm}, {tmpTblData$studyear}")),
+      col.names = c("Total population", "Number AK Native", "Percent AK Native"),
+      align = 'lccc') %>%
+    kable_styling(full_width = FALSE) %>%
+    print()
+})
+
+```
+
+# Write CSV files
+
+```{r write csv files}
+
+# ##############################################################################
+# Write out CSV files.
+# ##############################################################################
+  fName = '../../CSV/05 - Final Analysis Output/ethnic_compare(T)_raw.csv'
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(natCompData), ' records to be written', sep='')))
+
+# For 2023; we are, by default, working exclusively with R code..
+  rio::export(natCompData, fName)
+
+```
+
+<p class="h1footer"> End of native/non-native comparison script. </p>

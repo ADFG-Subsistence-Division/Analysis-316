@@ -1,0 +1,63 @@
+Headers:
+
+# [File desc] Summary
+
+[What does this file do]
+
+## Changelog
+- Programmer:  
+- Date:  
+- Change Description:  
+- Template Update [Y|N]:  
+- One-Off:  
+
+## Input data
+
+- dfgjnusql-db71p/Sub_SDS.dbo.[table/sp]
+- ../../CSV/05 - Main/[filename]
+
+*NOTE:* No files from file-system are read-in.
+*NOTE:* No database extracts are executed.
+ 
+## Output data
+
+- ../../CSV/01 - CSIS/csisDB.db [dat_harvest]
+- ../../CSV/05 - Main/[filename]
+
+## Background
+[Omit if unecessary]
+
+## Checklist
+- Update header
+- Check values
+- etc...
+
+## Additional information
+Provide additional information if necessary
+
+
+
+## Required libraries
+- tidyVerse  
+- odbc  
+- rio  
+- knitr  
+
+# Data Processing
+
+## Initiate Environment
+
+## Load data
+
+## Clean and organize
+
+## Estimates
+
+## Reports
+
+## Final clean-up
+
+## Write SQLite
+
+## Write CSV
+

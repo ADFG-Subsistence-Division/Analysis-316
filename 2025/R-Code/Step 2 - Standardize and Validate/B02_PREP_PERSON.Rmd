@@ -1,0 +1,265 @@
+---
+title: "B02_PREP_PERSON - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-19"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">B02_PREP_PERSON - (316) NPS Ambler Comprehensive</div>
+</div>
+
+
+# Prepare Person record
+
+Organize and rename person (Record Type 01) data so that it works with standard processing code. 
+
+## Change log
+
+### Change 1
+- Programmer: D.S.Koster  
+- Date: 05/21/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output.  
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates
+
+### Change 2
+- Programmer: Jesse Coleman
+- Date: 03/18/2025
+- Change Description: Removed source() calls; all functions are included in the library adfgSubs.
+- Template Update [Y|N]: Y
+- One-Off: No-include in all future comprehensive templates 
+
+## Input data
+  
+- /CSV/01 - Database Extract/REC01_raw.csv  
+- /CSV/03 - Main/sample.csv  
+- /CSV/00 - Lookup Codes/fullCommuntyList.csv  
+
+*NOTE:* No database extracts are required for this script.
+
+## Output files
+  
+- /CSV/03 - main/REC01_clean.csv
+
+## Background
+
+In order to properly characterize a community and it's subsistence economy, an evaluation of demographics must occur. Over the years, this information has include as little information as household size, to far more comprehensive information including age, sex, ethnicity, and participation. The standard for subsistence is to include all of this information and possibly more depending on the project. In order to ensure consistent processing from project to project, this file provides a step included to facilitate standardization of column names and coding.
+
+## Checklist
+
+- Update 'Author' to your name  
+- Update the project information in 'title' to the current project  
+- Update the development log with any changes you've made to the template file, including your name  
+- Ensure that columns processed specially for missing data (including birth year and length of residency) do not include too much missing information  
+- Check the record count for inputs and outputs and verify they agree  
+
+## Additional information
+
+Note, this code only reorganizes and standardizes the data in order to facilitate later steps to minimize the need for significant annual updates to code. For projects having additional questions per person, modifications may be required.
+
+## Required libraries (adjust as needed)
+
+- tidyVerse  
+- rio  
+- knitr
+- adfgSubs
+
+```{r setup, echo=FALSE}
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE,
+                      include = TRUE,
+                      message = FALSE,
+                      warning = FALSE,
+                      results='asis')
+
+options(knitr.kable.NA = '')
+```
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment, echo = FALSE, message = FALSE, warning = FALSE}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+library(knitr)
+library(adfgSubs)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+```
+
+## Load data
+
+```{r load data}
+
+# ##############################################################################
+# Load data
+# ##############################################################################
+
+# Load person data from initial database extract
+personData <- read.csv('../../CSV/01 - Database Extract/REC01_raw.csv', 
+                     na = '', 
+                     header = TRUE, 
+                     strip.white = TRUE)
+
+count <- nrow(personData)
+cat(formatSummaryBlock(paste("Opening file: REC01_raw.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+# Load prepped sample information for integration into prepped person file.
+sampleData <- read.csv('../../CSV/03 - Main/sample.csv', 
+                       na = '', 
+                       header = TRUE, 
+                       strip.white = TRUE)
+count <- nrow(sampleData)
+cat(formatSummaryBlock(paste("Opening file: sample.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+# Load community codes from lookup folder.
+commcodeData <- read.csv('../../CSV/00 - Lookup Codes/fullCommuntyList.csv', 
+                         na = '', 
+                         header = TRUE, 
+                         strip.white = TRUE)
+
+count <- nrow(commcodeData)
+cat(formatSummaryBlock(paste("Opening file: fullCommuntyList.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+
+```
+
+## Recode and standardize
+
+Re-code and ensure all 'standard' person record columns are present and create a version of the data frame containing sample information for production of demographics-specific tables.
+
+```{r Recode and standardize}
+
+# Missing variables.
+#personData$residpar = -6
+#personData$harvFish = -6
+#personData$procFish = -6
+#personData$harvLLM = -6
+#personData$procLLM = -6
+#personData$harvFur = -6
+#personData$procFur = -6
+#personData$procMM = -6
+#personData$harvMM = -6
+#personData$procBirds = -6
+#personData$harvBirds = -6
+#personData$procPlants = -6
+#personData$harvPlants = -6
+#personData$procMI = -6
+#personData$harvMI = -6
+#personData$birthPlaceName = "N/A"
+
+# Place of birth is renamed from residpar to be more readable.
+personData$birthPlace = personData$residpar
+
+# Bring in birth place name using codes.
+personData <- left_join(personData, commcodeData, by=c("birthPlace" = "communty"))
+
+# Rename commname to birthplace name to prevent confusion regarding birthplace vs. current community.
+personData <- rename(personData, "birthPlaceName" = "commname")
+
+# Compute variables and recode.
+personData$personID = personData$person
+
+# #################################################
+# Standardize missing data codes.
+# #################################################
+
+count = length(personData$birthyear[personData$birthyear < 0])
+if(is.null(count)) {count = 0}
+personData$birthyear[personData$birthyear < 0] = NA
+
+cat(formatSummaryBlock(paste("Missing person birth year recoded to NA, ", 
+                             count, 
+                             " records affected.", sep="")))
+
+if(count / nrow(personData) == 0) {
+  cat(greenMessage("No birth year data is missing."))
+}
+if(count / nrow(personData) <= 0.05 & count & nrow(personData) > 0)
+{
+  cat(warningMessage("Between 0 and 5% of person records had missing birth year, this is acceptable. Be sure to carefully evaluate person age output tables  for each community."))
+}
+
+if(count / nrow(personData) > 0.05 & count)
+{
+  cat(warningMessage("More than 5% of person records had missing birth year, this requires attention. Please evaluate the missing data to ensure no systematic error or collection issue is present."))
+}
+
+personData$personAge = studyear - personData$birthyear
+personData$personAge[is.na(personData$personAge)] = -8
+personData$birthyear[is.na(personData$birthyear)]  = -8
+cat(formatSummaryBlock("Missing person age and birth year information recoded to -8."))
+
+count = nrow(personData$yrcomcat[is.na(personData$yrcomcat) | personData$yrcomcat == -9 | personData$yrcomcat == -7])
+if(is.null(count)) {count = 0}
+if(count / nrow(personData) == 0) {
+  cat(greenMessage("No length of residency (yrcomcat) data is missing."))
+}
+if(count / nrow(personData) <= 0.07 & count & nrow(personData) > 0)
+{
+  cat(warningMessage("Between 0 and 7% of person records had missing length residency (yrcomcat), this is acceptable. Be sure to carefully evaluate length of residency output tables for each community."))
+}
+
+if(count / nrow(personData) > 0.07 & count)
+{
+  cat(warningMessage("More than 7% of person records had missing length residency (yrcomcat), this requires attention. Please evaluate the missing data to ensure no systematic error or collection issue is present."))
+}
+
+personData <- personData %>%
+  mutate(yrcomcat = case_when(
+    is.na(yrcomcat) | yrcomcat %in% c(-9, -7) ~ -8,  # Recode missing values to -8
+    TRUE ~ yrcomcat  # Keep existing values for all other cases
+  ))
+
+cat(formatSummaryBlock(paste("Missing person length of residency (yrcomcat) recoded to -8, ", 
+                             count, 
+                             " records affected.", sep="")))
+
+# Create a version of the person file containing sample information for
+#       development of the demographics files.
+personSampData <- left_join(personData, sampleData, by=c("projID","studyear","communty","strata"))
+
+```
+
+
+# Write CSV files
+
+```{r write csv files}
+
+# ##############################################################################
+# Write out CSV files.
+# ##############################################################################
+
+# Write out the standardized person file.
+  fName = '../../CSV/03 - main/REC01_clean.csv'
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(personData), ' records to be written', sep='')))
+
+  rio::export(personData, fName)
+  
+```
+
+<p class="h1footer"> End of Prep person data script. </p>
+

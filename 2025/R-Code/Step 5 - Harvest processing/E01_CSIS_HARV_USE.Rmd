@@ -1,0 +1,1070 @@
+---
+title: "E01_CSIS_HARV_USE - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-15"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">E01_CSIS_HARV_USE - (316) NPS Ambler Comprehensive</div>
+</div>
+
+# CSIS Harvest and Use
+
+This file creates the primary harvest and use file for the CSIS, which is aggregated to the community level. It shouldn't really be used for  the final report tables. A different file will create those outputs.
+
+## Change log
+
+Change 1
+Programmer: D. Koster, 08/2022, Template/methods update. This change involves summarizing the units using a mean instead of max or min. The purpose of this change is to capture sub-totals where there is a mix of units so that cases where units are mixed will be reported using 'lb' as the unit. For species where there are no mixed units, such as is often the case with salmon then 'number' will be reported. This has been done to support writing we often see regarding salmon overall. It is also reasonable to count birds in this fashion. This is a permanent change to all analysis moving forward.  
+
+Change 2
+Programmer: D. Koster, 08/2022, Template/methods update. During R-conversion all methods have been reviewed for accuracy. During the review it was discovered that a minor adjustment needed to be made to stratified samples (only stratified) for the degrees of freedom used in calculation of confidence intervals. comparative analysis with other projects indicates this error will be too small to be noticed on published tables and figures, and will only be present for stratified sampling designs
+
+Change 3
+Programmer: D. Koster, 07/2023, IM will NO LONGER be revising lower bounds of confidence intervals as this interferes with interpretation of confidence. Relevant code has been removed.
+
+Change 4
+- Programmer: D.S.Koster  
+- Date: 05/21/2024  
+- Change Description: This template now exports data into a SQLite database for improved portability and also to work toward future data organization goals.  
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates  
+
+Change 5
+- Programmer: Jesse Coleman
+- Date: 03/18/2025
+- Change Description: Removed source() calls; all functions are included in the library adfgSubs.
+- Template Update [Y|N]: Y
+- One-Off: No-include in all future comprehensive templates 
+
+Change 6
+- Programmer: Jesse Coleman
+- Date: 06/18/2025
+- Change Description: Refactor using tidyverse language and DRY ("don't repeat yourself") principles.
+- Template Update [Y|N]: Y
+- One-Off: No - include in all future comprehensive templates 
+
+## Input data
+  
+- /CSV/03 - Main/harvData_HH_finalPrepped.csv  
+- /CSV/03 - Main/REC01_clean.csv
+
+## Output data
+  
+- /CSV/07 - CSIS Uploads/dat_harvest.csv  
+- /CSV/03 - main/full_community_harvest_raw.csv  
+- ../../SQLite/csisDB.db [dat_harvest]
+
+## Background
+
+The data processed for inclusion in the CSIS is a fully pre-aggregated dataset, allowing us to compute certain, important, summary stats such as confidence interval at aggregate levels. Resource codes are also reported with 'detail' where we report lumping of important aspects of harvest detail such as sex, gear category, and month of harvest, depending on species. The output of this file is a super-set of resources and resource categories reported in technical papers. It does not include full resolution of coding as the outputs are designed for input directly into the CSIS database.
+
+## Checklist
+
+- Update 'Author' to your name, 
+- Update the project information in 'title' to the current project.
+- Update the development log with any changes you've made to the template file, including your name.
+
+## Additional information
+
+### Methods
+
+Some of the summary statistics rely on the principle of 'weighted means', where each stratum is weighted differently. If only a single stratum is present, weighted means simplifies to the use of a sample mean as an unbiased estimator of the population mean. Thus, before community means can be calculated, they are 'imputed' first. This also applies to the calculation of percentages. As an example the percent of households using a resource will use the following series of calculations:  
+
+$$ \hat{k}\% = \frac{1}{N}\sum_{l=1}^{L}{\sum_{i=1}^{n_l}{x_{li}}}$$  
+Where:  
+- $\hat{k}\%$ = The estimated percent of households using,  
+- N = the total number of occupied and eligible households in all strata combined,  
+- L = the total number of strata,  
+- n = the total number of households in strata $l$,  
+- $x_{li}$ = For each household $i$ in strata $l$, 1 indicates affirmative for use.  
+
+The formula above is applicable for any statistic where a percentage of households engaged, such as attempt, give away, etc...
+
+Methods for developing confidence intervals can be found described in Cochran 1977. Relevant formulas are described here:
+
+$$s^2_\bar{y} = \frac{1}{N^2}\sum_{l=1}^{n}N_l(N_l - n_l)\frac{s^2_l}{n_l}$$  
+$$n_e = \frac{\left( \sum_{l=1}^L{\left( \frac{N_l(N_l - n_l)}{n_l}s_l^2 \right)} \right)^2}{\sum_{l=1}^L{\left( \frac{\left(N_l(N_l - n_l) \right)^2}{n_l - 1}s^4_l\right)}}$$  
+$$CI\%(\pm) = \frac{1}{\hat{x}}\left(t_{\alpha/2,n_e} \times \sqrt{s^2_{\bar y}}\right)$$  
+
+Where:  
+- $\hat x$ = estimated population (household mean),  
+- L = total number of strata (this can be 1),  
+- N = the total number of occupied and eligible households in all strata combined,  
+- $N_l$ = the total number of occupied and eligible households for strata $l$ (this is the same as total community households *commhh* if there is only 1 strata),  
+- $n_l$ = the total number of returned surveys for strata l (this is the same as sampled households in the community *samphh* if there is only 1 strata),  
+- $n_e$ = effective degrees of freedom (Cochran 1977, p.96), this simplifies to n-1 if there is only 1 strata,  
+- $t_{\alpha/2, n_e}$ = Student's two-tailed critical value for $\alpha = $ 0.95 and $n_e$ degrees of freedom obtained from the inverse CDF in R with the function: qt().
+
+Note that these formulas include a set of terms for finite population correction. The finite population correction factor can be formulated and incorporated in the computation of standard error in a few ways. The method above matches the formulation present in Cochran. This term is calculated separately throughout the code to simplify computations and simplify the readability for identification of errors.
+
+Percentages no longer represented by numbers 1-100 with 1 decimal point (this was a change created several years ago, and older SPSS scripts and output files may depict data this way. All new projects will need to use numbers from 0-1 with no restriction on the number of decimal points.  
+
+Ignore the geartypes/timing columns - focus just on the CSIS information and calculate relevant statistics.  
+
+Shift in reporting. Categories and sub-totals where mixed gear are present will be converted to pounds (in the amount columns), with an lb unit code. The difference here is that for sub-categories where the units are uniform, amounts are aggregated. This has been done, largely, to accommodate salmon overall. This is used frequently for write-ups and boards reports.
+
+### Relevant references:  
+  
+- TP261 Wild Food Consumption Rates  
+- CSIS/CPDB Documentation  
+- Statistical notebook / RA Handbook  
+- Goldsman & Goldsman 2021  
+- Cochran 1977 p. 95, 96  
+
+### Functions used/dependencies
+
+
+### Required libraries (adjust as needed) 
+
+- tidyVerse  
+- rio  
+- knitr 
+- DBI
+- adfgSubs
+
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+
+# Additional libraries
+library(knitr)
+library(DBI)
+library(adfgSubs)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+```
+
+## Load data
+
+Import the final prepped HH file and create a Household-level 'household size' *hhSize* table for use in developing per capita and other metrics.
+
+```{r load data, message=FALSE}
+
+# This for each file opened.
+harvData <- read.csv('../../CSV/03 - Main/harvData_HH_finalPrepped.csv',
+                   na = '', 
+                   header = TRUE, 
+                   strip.white = TRUE)
+
+count <- nrow(harvData)
+cat(formatSummaryBlock(paste("Opening file: harvData_HH_finalPrepped.csv, ", 
+                             count, 
+                             " records loaded; two copies of this dataframe have been created.", sep="")))
+
+# Duplicate for consumption rates later.
+rawHarvData <- harvData
+
+# Create hhSize dataset for consumption rates later on.
+hhSizeData <- read.csv('../../CSV/03 - Main/REC01_clean.csv') %>%
+  group_by(projID, studyear, communty, strata, HHID) %>%
+  summarize(hhSize = n())
+
+count <- nrow(hhSizeData)
+nCol <- length(hhSizeData)
+cat(formatSummaryBlock(str_interp("Opened file: REC01std_raw.csv, ${count} 
+                              records and ${nCol} columns created for
+                              incorporating hhSize.")))
+knitr::kable(hhSizeData[1:10,],
+             caption=formatTableHeader("First ten household sizes"))
+
+
+```
+
+## Summarize to strata-level
+
+The division uses stratification for only limited circumstances, however, to ensure consistent data processing and prevent the need for special data-handling of stratified data, data is always processed as if it were stratified. It's important to note that mathematically, the multi-strata formulas will simlify to the non-stratified versions. Please review the implementation notes at the top of this document for relevant formulae described in the implementation notes above.
+
+```{r summarize to strata}
+
+# 2.0 Summarize data to get to the strata level
+
+iCount = nrow(harvData)
+
+# 2.1 Summarize essentials to strata level, recalling that certian statistics
+#     must be computed in two stages.
+
+harvData <- harvData %>%
+  group_by(projID, studyear, communty, commname, strata, commhh, samphh, strataWt,
+           sampPop, commPop, NHouseholds, NPopulation, resource, specList) %>%
+  summarize(
+    units = mean(units, na.rm = TRUE),
+    convFact = max(convFact, na.rm = TRUE),
+    used = sum(used, na.rm = TRUE),
+    attempt = sum(attempt, na.rm = TRUE),
+    harvestq = sum(harvestq, na.rm = TRUE),
+    giveaway = sum(giveaway, na.rm = TRUE),
+    received = sum(received, na.rm = TRUE),
+    reptHarvestAmt_sd = sd(reptHarvestAmt, na.rm = TRUE),
+    reptHarvestLbs_sd = sd(reptHarvestLbs, na.rm = TRUE),
+    reptHarvestAmt = sum(reptHarvestAmt, na.rm = TRUE),
+    reptHarvestLbs = sum(reptHarvestLbs, na.rm = TRUE),
+    estHarvestAmt_sum = sum(estHarvestAmt, na.rm = TRUE),
+    estHarvestLbs_sum = sum(estHarvestLbs, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    fpc = (commhh * (commhh - samphh)) / samphh,
+    reptHarvestAmt_var = fpc * (reptHarvestAmt_sd^2),
+    reptHarvestLbs_var = fpc * (reptHarvestLbs_sd^2),
+    gh_amt = (fpc^2 * reptHarvestAmt_sd^4) / (samphh - 1),
+    gh_lbs = (fpc^2 * reptHarvestLbs_sd^4) / (samphh - 1),
+    used = used * strataWt,
+    attempt = attempt * strataWt,
+    harvestq = harvestq * strataWt,
+    giveaway = giveaway * strataWt,
+    received = received * strataWt
+  )
+
+
+# harvData <- group_by(harvData, projID, studyear, communty, commname, strata, commhh, 
+#                      samphh, strataWt, sampPop, commPop, NHouseholds, NPopulation, resource, specList) %>%
+#   summarize(units = mean(units, na.rm=TRUE)
+#             , convFact= max(convFact, na.rm = TRUE)
+#             , used = sum(used, na.rm = TRUE)
+#             , attempt = sum(attempt, na.rm = TRUE)
+#             , harvestq = sum(harvestq, na.rm = TRUE)
+#             , giveaway = sum(giveaway, na.rm = TRUE)
+#             , received = sum(received, na.rm = TRUE)
+#             , reptHarvestAmt_sd = sd(reptHarvestAmt, na.rm = TRUE)
+#             , reptHarvestLbs_sd = sd(reptHarvestLbs, na.rm = TRUE)
+#             , reptHarvestAmt = sum(reptHarvestAmt, na.rm = TRUE)
+#             , reptHarvestLbs = sum(reptHarvestLbs, na.rm = TRUE)
+#             , estHarvestAmt_sum = sum(estHarvestAmt, na.rm = TRUE)
+#             , estHarvestLbs_sum = sum(estHarvestLbs, na.rm = TRUE)) %>%
+#   ungroup()
+# 
+# # Compute fpc term for use with estimating degrees of freedom later, and
+# #     calculating the variance within the strata.
+# harvData$fpc = 0
+# harvData$fpc = (harvData$commhh * (harvData$commhh - harvData$samphh)) / harvData$samphh
+# 
+# # Compute variance.
+# harvData$reptHarvestAmt_var = harvData$fpc * (harvData$reptHarvestAmt_sd^2)
+# harvData$reptHarvestLbs_var = harvData$fpc * (harvData$reptHarvestLbs_sd^2)
+# 
+# # This is another term that is required to estimate the effective degrees of
+# #     freedom (Cochran 1977). In that reference, this term was not given a separate
+# #     designation, so we will co-opt 'g_h', which is what Cochran uses for fpc.
+# harvData$gh_amt = 0
+# harvData$gh_lbs = 0
+# harvData$gh_amt = (harvData$fpc^2 * harvData$reptHarvestAmt_sd^4) /  (harvData$samphh - 1)
+# harvData$gh_lbs = (harvData$fpc^2 * harvData$reptHarvestLbs_sd^4) / (harvData$samphh - 1)
+# 
+# # Multiply relevant summaries by the strata weight to get weighted means and percentages later on.
+# harvData$used = harvData$used * harvData$strataWt
+# harvData$attempt = harvData$attempt * harvData$strataWt
+# harvData$harvestq = harvData$harvestq * harvData$strataWt
+# harvData$giveaway = harvData$giveaway * harvData$strataWt
+# harvData$received = harvData$received * harvData$strataWt
+
+fCount = nrow(harvData)
+cat(formatSummaryBlock(str_interp("Summarized to the 'strata' level, ${iCount} records have been aggregated to ${fCount}.")))
+
+```
+
+
+## Summarize to community level
+
+```{r summarize to community}
+
+iCount = nrow(harvData)
+
+harvData <- group_by(harvData, projID, studyear, communty, commname, NHouseholds, NPopulation, resource, specList)%>%
+  summarize(units = mean(units, na.rm=TRUE)
+            , convFact= max(convFact, na.rm = TRUE)
+            , samphh = sum(samphh, na.rm = TRUE)
+            , used = sum(used, na.rm = TRUE)
+            , attempt = sum(attempt, na.rm = TRUE)
+            , harvestq = sum(harvestq, na.rm = TRUE)
+            , giveaway = sum(giveaway, na.rm = TRUE)
+            , received = sum(received, na.rm = TRUE)
+            , reptHarvestAmt = sum(reptHarvestAmt, na.rm = TRUE)
+            , reptHarvestLbs = sum(reptHarvestLbs, na.rm = TRUE)
+            , reptHarvestAmt_var = sum(reptHarvestAmt_var, na.rm = TRUE)
+            , reptHarvestLbs_var = sum(reptHarvestLbs_var, na.rm = TRUE)
+            , estHarvestAmt_sum = sum(estHarvestAmt_sum, na.rm = TRUE)
+            , estHarvestLbs_sum = sum(estHarvestLbs_sum, na.rm = TRUE)
+            , gh_amt = sum(gh_amt, na.rm = TRUE)
+            , gh_lbs = sum(gh_lbs, na.rm = TRUE)) %>%
+  arrange(projID, studyear, communty, resource) %>%
+  ungroup()
+
+fCount = nrow(harvData)
+cat(formatSummaryBlock(str_interp("Summarized to the community level, ${iCount} records have been aggregated to ${fCount}; if communities have NOT been stratified, this should be the same as above.")))
+
+commnameList <- distinct(harvData, commname)
+
+for(comm in commnameList$commname)
+{
+  count = nrow(harvData[harvData$specList == 1 & harvData$commname == comm,])
+  cat(formatSummaryBlock(str_interp("${count} species-level records present for ${comm}.")))
+    
+  count = nrow(harvData[harvData$specList != 1 & harvData$commname == comm,])
+  cat(formatSummaryBlock(str_interp("${count} summary and detail records present for ${comm}.")))
+}
+
+
+```
+
+## Calculate confidence intervals
+
+For the CSIS, confidence intervals are produced as a percentage around the pounds harvested as well as a lower-upper range of 'amount' in 'units' as well as a lower-upper range for pounds.
+
+Research Director Jim Fall, directed IM to set the lower confidence bound to no lower than the reported harvest amount. In 2023, based on standard statistical principles from linear modelling, IM has changed it's advice and interpretation to the following: A lower confidence bound that falls BELOW the reported harvest amount implies that the estimate is not statistically significantly different from the reported amount. Thus, for infrequently harvested resources we cannot assert that the estimated harvest differs from the reported harvest (the reported harvest may be the complete harvest for the community). To extend that concept further, the lower bound of a confidence interval falling below 0 implies that the sample is not adequate for developing an estimate of that resource and that the estimate is not statistically different from 0, again implying the reported amount may be the entirety of the harvest of that resource for a community.  
+
+**CAUTION** This guidance is for initial review only. To assert this in written reports, IM will need to calculate p-values for reporting. It's important to note that the p-value may contradict the statement above. Further, confidence intervals that do not fall below the reported value cannot be assumed statistically significant. With that in mind, if the results of a finding are important enough to highlight in the technical paper, hypothesis testing may be employed - further development is required.  
+
+```{r calc confidence intervals}
+
+
+# Compute the effective degrees of freedom for calculating
+#       the t-value. We must do this for each amount and lbs.
+harvData$ne_amt = 0
+harvData$ne_lbs = 0
+harvData$ne_amt = harvData$reptHarvestAmt_var^2 / harvData$gh_amt
+harvData$ne_lbs = harvData$reptHarvestLbs_var^2 / harvData$gh_lbs
+
+# Calculate the CI around the mean for both amount and pounds. Use the
+#     97.5% quantile with the effective degrees of freedom (ne_[]), to calculate
+#     a 2-tailed 95% confidence interval.
+harvData$CI_Amt = sqrt((1/(harvData$NHouseholds^2)) * harvData$reptHarvestAmt_var) * qt(c(0.975), harvData$ne_amt)
+harvData$CI_Lbs = sqrt((1/(harvData$NHouseholds^2)) * harvData$reptHarvestLbs_var) * qt(c(0.975), harvData$ne_lbs)
+
+# 4.3 Compute households mean overall
+harvData$harvestAmt_mean = harvData$estHarvestAmt_sum / harvData$NHouseholds
+harvData$harvestLbs_mean = harvData$estHarvestLbs_sum / harvData$NHouseholds
+
+# 4.4 Calculate upper CI harvest
+harvData$numupper = harvData$estHarvestAmt_sum + (harvData$CI_Amt * harvData$NHouseholds)
+
+# 4.5 Calculate lower CI bound for amount of units without regard to the lower bound
+harvData$numlower = harvData$estHarvestAmt_sum - (harvData$CI_Amt * harvData$NHouseholds)
+
+# 4.8 Calculate upper CI Lbs harvest.
+harvData$lbsupper = harvData$estHarvestLbs_sum + (harvData$CI_Lbs * harvData$NHouseholds)
+
+# 4.9 Compute lower CI bound for pounds harvested without regard to reported pounds.
+harvData$lbslower = harvData$estHarvestLbs_sum - (harvData$CI_Lbs * harvData$NHouseholds)
+
+# 4.12 Calculate confidence intervals as a percentage.
+harvData$CIP_Amt = 0
+harvData$CIP_Lbs = 0
+
+harvData$CIP_Amt[harvData$harvestAmt_mean > 0] = harvData$CI_Amt[harvData$harvestAmt_mean > 0] / harvData$harvestAmt_mean[harvData$harvestAmt_mean > 0]
+harvData$CIP_Lbs[harvData$harvestLbs_mean > 0] = harvData$CI_Lbs[harvData$harvestLbs_mean > 0] / harvData$harvestLbs_mean[harvData$harvestLbs_mean > 0]
+
+# Sort for preview tables.
+harvData <- arrange(harvData, communty, resource)
+
+# Table for each community.
+for(comm in distinct(select(harvData, commname), commname)$commname)
+{
+  tempData <- select(harvData, commname, resource, reptHarvestAmt, estHarvestAmt_sum, units,
+                     CIP_Amt, reptHarvestLbs, estHarvestLbs_sum, CIP_Lbs) %>%
+    filter(commname == comm)
+  
+  print(knitr::kable(tempData[1:20,], 
+                     caption=formatTableHeader(
+                       str_interp("First twenty CSIS harvest records for ${comm}."))))
+}
+
+# Leave the code below; this will, at some point, serve as the basis for the computation
+#   of p-values as a hypothesis test to discuss the validity of an estimate. Note that
+#   this assessment should only be carried out by the RAIV.
+#   TODO: The null hypothesis for this p-value must be evaluated. This method appears
+#   incomplete or incorrectly constructed. More research is necessary.
+
+# https://www.bmj.com/content/343/bmj.d2304
+# Calculate SE for computation of p-value
+# harvData$SE.p = (harvData$lbsupper - harvData$lbslower) - qt(c(0.975), harvData$ne_lbs)*2
+# harvData$z.p = harvData$estHarvestLbs_sum / harvData$SE.p
+
+# Method for calculating a p-value
+# https://www.jstor.org/stable/2347681?origin=crossref
+# Lin, Jinn-Tyan. “Approximating the Normal Tail Probability and Its Inverse for Use on a 
+# Pocket Calculator.” Journal of the Royal Statistical Society. Series C (Applied Statistics),
+# vol. 38, no. 1, 1989, pp. 69–70. JSTOR, https://doi.org/10.2307/2347681. Accessed 22 July 
+# 2023.
+
+# harvData$pValue = exp((-0.717) * harvData$z.p - 0.416*(harvData$z.p^2))
+
+# tmpData <- select(harvData, commname, resource, reptHarvestLbs, estHarvestLbs_sum, CIP_Lbs, 
+#                  lbslower, lbsupper, pValue)
+
+#  print(knitr::kable(tempData, 
+#                     caption=formatTableHeader(
+#                       str_interp("P-values for estimates."))))
+
+# tempData <- filter(harvData, lbslower < reptHarvestLbs)
+
+```
+
+## Calculate other summary stats
+
+The CSIS contains several columns of information that are intended to provide a simplified mechanism for reporting and for individuals using the data. These are calculated below.
+
+```{r other statistics}
+
+# 5.0 Compute additional summary statistics.
+#
+# These include summary stats used for both harvest and use output tables and
+#  the extended values available from the CSIS, not including consumption.
+#
+
+# 5.1 Calculate 'household activity' percentages
+
+harvData <- harvData %>%
+  mutate(across(
+    c(used, attempt, harvestq, giveaway, received),
+    ~ .x / NHouseholds,
+    .names = "{.col}_pct"
+  )) %>%
+  mutate(across(
+    ends_with("_pct"),
+    ~ replace(., is.na(.) | is.infinite(.), 0)
+  )) %>% 
+  mutate(
+    # Mean harvest per capita
+    percap = estHarvestLbs_sum / NPopulation,
+    # Mean harvest per capita in grams per day
+    percapg = percap * 453.59 / 365,
+    # Mean per capita pounds used
+    mupch = if_else(used_pct > 0, percap / used_pct, 0),
+    # Mean per capita grams used per day
+    mupchg = mupch * 453.59 / 365,
+    # 95% confidence limit of the mean use in pounds
+    ulmupch = mupch * (1 + CIP_Amt),
+    # 95% confidence limit of the mean use in grams per day
+    ulmupchg = ulmupch * 453.59 / 365
+  ) %>% 
+  group_by(projID, studyear, communty) %>%
+  mutate(totalEstHarvest = max(estHarvestLbs_sum),
+         pcttotal = estHarvestLbs_sum / totalEstHarvest)
+
+
+```
+
+## Calculate consumption rates
+
+We use a method described by Bob Wolfe and Bob Walker that produces a proxy consumption rate for different resources: TP261 Wild Food Consumption Rates 
+
+```{r consumption rates}
+
+# Merge household size
+useData <- left_join(rawHarvData, hhSizeData, by = c("projID", "studyear", "communty", "strata", "HHID"))
+
+# Create user group indicators (dummy variables)
+useData <- useData %>%
+  mutate(
+    userGroup1 = as.integer(harvestq == 1 & giveaway == 0),
+    userGroup2 = as.integer((harvestq == 1 & giveaway == 1) | (harvestq == 0 & received == 1))
+  )
+
+# Find relevant group totals and use levels
+useData <- useData %>%
+  group_by(projID, studyear, communty, strata, resource, userGroup2) %>%
+  mutate(
+    totGroupLbs = sum(harvestLbs_MR, na.rm = TRUE),
+    totGroupPop = sum(hhSize, na.rm = TRUE)
+  ) %>%
+  ungroup() %>%
+  mutate(
+    useLevelW = (estHarvestLbs / (hhSize * strataWt)) * userGroup1 +
+      ((totGroupLbs * strataWt) / (totGroupPop * strataWt)) * userGroup2,
+    useLevel = (harvestLbs_MR / hhSize) * userGroup1 +
+      (totGroupLbs / totGroupPop) * userGroup2
+  ) %>% 
+
+#  Calculate daily use levels (grams per day)
+  mutate(
+    useLevelgpd = useLevel * 453.59 / 365,
+    useLevelWgpd = useLevelW * 453.59 / 365
+  ) %>% 
+
+#  Rank households (by resource)
+  group_by(projID, studyear, communty, resource) %>%
+  mutate(
+    useRank = rank(useLevelWgpd, ties.method = "first"),
+    nCases = n()
+  ) %>%
+  ungroup() %>% 
+
+# Percentile and top user calculations
+  mutate(
+    fiftyPctCase = round(nCases * 0.5, 0),
+    nintyFifthPctCase = round(nCases * 0.95, 0),
+    topCase = nCases,
+    mupc = if_else(useRank == fiftyPctCase, useLevelgpd, 0),
+    uclupc = if_else(useRank == nintyFifthPctCase, useLevelgpd, 0),
+    xupc = if_else(useRank == topCase, useLevelgpd, 0)
+  )
+
+# 6.10: Aggregate to community/resource level
+useDataAgg <- useData %>%
+  group_by(projID, studyear, communty, resource) %>%
+  summarize(
+    mupc = max(mupc, na.rm = TRUE),
+    uclupc = max(uclupc, na.rm = TRUE),
+    xupc = max(xupc, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# 6.11: Merge into harvest data
+harvData <- left_join(harvData, useDataAgg, by = c("projID", "studyear", "communty", "resource"))
+
+
+
+# # 6.0 Compute consumption rates based on the method described by Bob Wolfe.
+# 
+# # 6.1 Merge in Household size.
+# useData <- left_join(rawHarvData, hhSizeData, by=c("projID","studyear","communty","strata","HHID"))
+#                      
+# # 6.2 Initailize user groups and use level variables.
+# useData$userGroup1 = 0
+# useData$userGroup2 = 0
+# 
+# useData$useLevel = 0
+# useData$useLevelW = 0
+# 
+# # 6.3 To simplify the math later on, we will use 'dummy' variables as if we were 
+# #     calculating a linear model, rather than using coded values. The historical SPSS 
+# #     code accomplishes this with 'if' statements. In R, if no records are selected 
+# #     for certian criteria, the list of values to replace is of 0 length, and 
+# #     results in an error. The dummy variable approach gets around this limitation.
+# 
+# useData$userGroup1[useData$harvestq == 1 & useData$giveaway == 0] = 1
+# 
+# useData$userGroup2[(useData$harvestq == 1 & useData$giveaway == 1) | 
+#                     (useData$harvestq == 0 & useData$received == 1)] = 1
+# 
+# 
+# # 6.4 Find the relevant totals per user group .
+# # Since this is being done at the resource level and each HH may only be counted 
+# # one time for each resource we can get away with a single summarize 
+# # NOTE: the two use level variables present are meant to represent weighted (W) and
+# #       unweighted (no W). Both are calculated for comparative purposes, but the
+# #       weighted version should be used to account for stratified samples. 
+# 
+# useData <- group_by(useData, projID, studyear, communty, strata, resource, userGroup2) %>%
+#   mutate(totGroupLbs = sum(harvestLbs_MR),
+#          totGroupPop = sum(hhSize))
+# 
+# useData$useLevelW = (useData$estHarvestLbs / (useData$hhSize * useData$strataWt)) * useData$userGroup1 +
+#   ((useData$totGroupLbs * useData$strataWt) / (useData$totGroupPop * useData$strataWt)) * useData$userGroup2
+# 
+# useData$useLevel = (useData$harvestLbs_MR / useData$hhSize) * useData$userGroup1 + 
+#   (useData$totGroupLbs / useData$totGroupPop) * useData$userGroup2
+# 
+# 
+# # 6.5 Calculate daily use levels in grams per day, both weighted and unweighted.
+# useData$useLevelgpd = 0
+# useData$useLevelWgpd = 0
+# 
+# useData$useLevelgpd = useData$useLevel * 453.59 / 365
+# useData$useLevelWgpd = useData$useLevelW * 453.59 / 365
+# 
+# # 6.6 Rank households. Note this is done by resource code
+# useData <- group_by(useData, projID, studyear, communty, resource) %>%
+#   mutate(useRank = order(order(useLevelWgpd)),
+#          nCases = n())
+# 
+# # 6.7 50th percentile use (median user) in g/day
+# 
+# # 6.7.1 Finding cases at the 50th percentile for each resource/community
+# useData$fiftyPctCase = 0
+# useData$fiftyPctCase = round(useData$nCases * .5, 0)
+# 
+# # 6.7.2 Create variable and store the 50th percentile values.
+# useData$mupc = 0
+# useData$mupc[useData$useRank == useData$fiftyPctCase] = useData$useLevelgpd[useData$useRank == useData$fiftyPctCase]
+# 
+# 
+# # 6.8 95th percentile use (High-end user) in g/day
+# 
+# # 6.8.1 Finding cases at the 95th percentile for each resource/community
+# useData$nintyFifthPctCase = 0
+# useData$nintyFifthPctCase = round(useData$nCases * .95, 0)
+# 
+# # 6.8.2 Create variable and store the 95th percentile values.
+# useData$uclupc = 0
+# useData$uclupc[useData$useRank == useData$nintyFifthPctCase] = useData$useLevelgpd[useData$useRank == useData$nintyFifthPctCase]
+# 
+# # 6.9 Top user in g/day
+# 
+# # 6.9.1 Finding top cases for each resource/community
+# useData$topCase = 0
+# useData$topCase = useData$nCases
+# 
+# # 6.9.2 Create variable and store the top values.
+# useData$xupc = 0
+# useData$xupc[useData$useRank == useData$topCase] = useData$useLevelgpd[useData$useRank == useData$topCase]
+# 
+# # 6.10 Aggregate consumption to the community / resource level so that we have a 
+# #      community-level summary containing just join variables and the consumption data.
+# useData <- group_by(useData, projID, studyear, communty, resource) %>%
+#   summarize(mupc = max(mupc, na.rm=TRUE),
+#             uclupc = max(uclupc, na.rm=TRUE),
+#             xupc = max(xupc, na.rm=TRUE))
+# 
+# # 6.11 Merge the consumption data into the main harvest data file.
+# harvData <- left_join(harvData, useData, by=c("projID", "studyear", "communty", "resource"))
+
+```
+
+## Tidy up units
+
+Note: a trick was used to determine whether or not mixed units are present in subtotals. If all 'units' reported by households have been standardized to one code (uniform units), then the mean of those will line up perfectly with  the default units code, which we can then use to determine whether or not units are mixed. There is a possibility that mixed units will produce a mean that does equal to one of the standard unit codes. Analysts must be cautious to review units for each species and CSIS sub-totals to ensure that unusual units are not present. The usual standard amounts for CSIS are:  
+- Individual animals (1 - ind),  
+- Pounds harvested (2 - lb) - for highly variable species,  
+- Volumetric measures, which should be converted to gallons (gal - 4), and  
+- Cords for wood only (6 - cord).  
+
+*NOTE* In the event that a sub-total, such as 'all resources' happens to be calculated evenly at one of the approved values inappropriately it must be dealt with explicitly in the code.
+
+```{r tidy for CSIS}
+
+# Anything that doesn't fit the standards as described above is assumed a
+#   sub-total with mixed units. Change `units` into a label and add `unitCD`.
+
+harvData <- harvData %>%
+  rename(unitCD = units) %>%
+  mutate(
+    unitCD = if_else(unitCD %in% c(1, 2, 4, 6), unitCD, 0),
+    units = case_when(
+      unitCD == 1 ~ "ind",
+      unitCD == 2 ~ "lb",
+      unitCD == 4 ~ "gal",
+      unitCD == 6 ~ "cord",
+      TRUE        ~ ""
+    )
+  )
+
+
+```
+
+## Final CSIS formatting
+
+<style>
+.tblhdr {
+               border-bottom: 2px solid black;
+               font-size: 12pt;}
+              .tblrow {
+               border-bottom: 1px solid LightGray;
+               font-size: 11pt; }
+              .tbl tr:nth-child(even){
+               background: #edf4fa; }
+</style>
+
+The data included in the CSIS comes primarily from analysis conducted on survey data collected by the Alaska Department of Fish and Game, Division of Subsistence. The research conducted by the Division is largely targeted and focused on comprehensive surveys roughly once every ten years for each community, thus full time-series data is not available for most resources and communities. Other sources, including data collected by other agencies prior to the creation of the Subsistence Section in 1978, have been added to this dataset. Additionally, not all studies included in the CSIS asked all of the questions necessary to generate a full CSIS record. If the data you have selected includes empty cells, this information can be interpreted as not available for the specified column and row. The table below describes the contents of each column of data available from the CSIS Data Download tool.
+            <table style="width: 100%" class="tbl">
+              <tr>
+                <th width="25%" class="tblhdr">Column Name</th>
+                <th width="75%" class="tblhdr">Column Definition</th>
+              </tr>
+              <tr class="tblrow">
+                <td>year</td>
+                <td>Data year - The year in which harvest amounts, use, and sharing occurred.</td>
+              </tr>
+              <tr class="tblrow">
+                <td>commname</td>
+                <td>Name of the community or census designated place (CDP) where data was collected.</td>
+              </tr>
+              <tr class="tblrow">
+                <td>resource</td>
+                <td>Name of the species or category of species. Note that this can also include additional detail such as sex, gear category or season of harvest.</td>
+              </tr>
+              <tr class="tblrow">
+                <td>used</td>
+                <td>Percentage of households in the community using the resource during the year. Rounded to 3 decimal places.</td>
+              </tr>
+              <tr class="tblrow">
+                <td>trying</td>
+                <td>Percentage of households in the community trying (attempting) to harvest the resource during the year. Rounded to 3 decimal places.</td>
+              </tr>
+              <tr class="tblrow">
+                <td>hrvsting</td>
+                <td>Percentage of households in the community successfully harvesting the resource during the year. Rounded to 3 decimal places.</td>
+              </tr>
+              <tr class="tblrow">
+                <td>giving</td>
+                <td>Percentage of households in the community giving the resource to another household during the year. Rounded to 3 decimal places.</td>
+              </tr>
+              <tr class="tblrow">
+                <td>receving</td>
+                <td>Percentage of households in the community who recieved the resource during the year. Rounded to 3 decimal places.</td>
+              </tr>
+              <tr class="tblrow">
+                <td>xtotnum</td>
+                <td>Estimated total number of units harvested by the community.  Calculated as the product of the average number of units harvested by a 
+                          household (NUMHARV/SAMPHH) and the number of households in the community (COMMHH). Older data sets may be rounded to the nearest whole number.</td>
+              </tr>
+              <tr class="tblrow">
+                <td>xtotlbs</td>
+                <td>Estimated total pounds harvested by the community.  Calculated as the average pounds harvested by the sample (AVGLBHRV) 
+                          times the number of households in the community (COMMHH), rounded to an integer value. </td>
+              </tr>
+              <tr class="tblrow">
+                <td>units</td>
+                <td>Units used to measure the resource (individuals, gallons, buckets, etc.).</td>
+              </tr>
+              <tr class="tblrow">
+                <td>numharv</td>
+                <td>Total amount of the resource harvested by sample.</td>
+              </tr>
+              <tr class="tblrow">
+                <td>convfact</td>
+                <td>Conversion factor for resource used to convert units of measure to pounds of edible weight.</td>
+              </tr>
+              <tr class="tblrow">
+                <td>percap</td>
+                <td>Per capita pounds harvested. Computed by dividing estimated total pounds harvested by number of people in the community.</td>
+              </tr>
+              <tr class="tblrow">
+                <td>pm95pct</td>
+                <td>Confidence limits for the estimated total number harvested by the community expressed as a percent plus or minus.</td>
+              </tr>
+              <tr class="tblrow">
+                <td>totlbhrv</td>
+                <td>Total pounds harvested by sample.</td>
+              </tr>
+              <tr class="tblrow">
+                <td>numlower</td>
+                <td>Lower confidence limit for estimated total number of resource units harvested by the community.</td>
+              </tr>
+              <tr class="tblrow">
+                <td>numupper</td>
+                <td>Upper confidence limit for estimated total number of resource units harvested by the community.</td>
+              </tr>
+              <tr class="tblrow">
+                <td>lbslower</td>
+                <td>Lower confidence limit for the estimated total pounds harvested (XTOTLBS) by the community.</td>
+              </tr>
+              <tr class="tblrow">
+                <td>lbsupper</td>
+                <td>Upper confidence limit for the estimated total pounds harvested (XTOTLBS) by the community.</td>
+              </tr>
+              <tr class="tblrow">
+                <td>mupch</td>
+                <td>Mean per capita pounds used. Computed by dividing PERCAP by the percentage using the resource (used).</td>
+              </tr>
+              <tr class="tblrow">
+                <td>ulmupch</td>
+                <td>95% confidence limit of the mean use in pounds.  Computed by multiplying MUPCH by 1+ the 95% confidence limit of the per capita harvest (PM95PCT).</td>
+              </tr>
+              <tr class="tblrow">
+                <td>pcttotal</td>
+                <td>Percentage contribution to the total harvest.  Computed by dividing the resource PERCAP by per capita harvest of all resources.</td>
+              </tr>
+              <tr class="tblrow">
+                <td>mupc</td>
+                <td>50th percentile use (median user).  The amount of wild food used by the consumer at the 50th percentile rank, expessed as a per person measure.</td>
+              </tr>
+              <tr class="tblrow">
+                <td>uclupc</td>
+                <td>95th percentile use (high end user).  The amount of wild food used by the consumer at the 95th percentile rank, expessed as a per person measure.</td>
+              </tr>
+              <tr class="tblrow">
+                <td>xupc</td>
+                <td>100th percentile use (top user).  The amount of wild food used by the consumer at the 100th percentile rank, expessed as a per person measure.</td>
+              </tr>
+              <tr class="tblrow">
+                <td>speclist</td>
+                <td>ADF&amp;G Division of Subsistence code used to identify primary vs. secondary species. Primary species (coded 1) are those species that were asked about by name on our survey.  Secondary species (coded 2) are either summations of primary species (i.e. all land mammals) or are breakdowns of primary species (i.e. chinook salmon - rod and reel).</td>
+              </tr>
+              <tr class="tblrow">
+                <td>projid</td>
+                <td>ADF&amp;G Division of Subsistence code used to identify the project associated with this data.</td>
+              </tr>
+              <tr class="tblrow">
+                <td>projname</td>
+                <td>Name of the project associated with this data.</td>
+              </tr>
+              <tr class="tblrow">
+                <td>commcode</td>
+                <td>ADF&amp;G Division of Subsistence code to identify the community associated with this data.</td>
+              </tr>
+              <tr class="tblrow">
+                <td>commhh</td>
+                <td>The number of occupied and eligible households identified as being a part of the community for the year. This number does not include households or dwellings associated with group quarters or households that have not been in the community for a minimum amount of time.</td>
+              </tr>
+              <tr class="tblrow">
+                <td>samphh</td>
+                <td>The number households contacted and providing information during the survey effort.</td>
+              </tr>
+              <tr class="tblrow">
+                <td>region</td>
+                <td>The region of Alaska the community is located.</td>
+              </tr>
+              <tr class="tblrow">
+                <td>region</td>
+                <td>The sub-region of Alaska the community is located.</td>
+              </tr>
+              <tr class="tblrow">
+                <td>rescode</td>
+                <td>The ADF&amp;G Division of Subsistence code to uniquely identify resources.</td>
+              </tr>
+              <tr class="tblrow">
+                <td>uCommMethodID</td>
+                <td>The ADF&amp;G Division of Subsistence code to uniquely identify community/study year combinations - used for filtering.</td>
+              </tr>
+            </table>  
+Columns for export:  
+commcode,	year,	projID,	rescode,	specList,	trying,	hrvsting,	used,	giving,	receving,	units,	numharv,	convFact, totlbhrv,	avglbhrv,	xtotnum, numlower,	numupper,	xtotlbs,	lbslower,	lbsupper,	percap,	pm95pct, percapg,	mupch,	mupchg,	ulmupch,	ulmupchg,	pcttotal,	mupc,	uclupc,	xupc
+
+```{r final CSIS formatting}
+
+# #############################################################################
+# 8.0 - Final code and data cleanup.
+# ##############################################################################
+
+# Columns to output for CSIS
+#commcode	year	projID	rescode	specList	trying	hrvsting	used	giving	receving	units	numharv	convFact	
+#totlbhrv	avglbhrv	xtotnum	numlower	numupper	xtotlbs	lbslower	lbsupper	percap	pm95pct	
+#percapg	mupch	mupchg	ulmupch	ulmupchg	pcttotal	mupc	uclupc	xupc
+
+# 8.1 Remove variables that conflict during renaming.
+harvData <- delete_variables(harvData, c("used"))
+
+# 8.2 Rename variables to CSIS standards (note these are different than those used
+#     for tables and figures)
+harvData <- rename(harvData, 
+                   "commcode" = "communty",
+                   "year" = "studyear",
+                   "rescode" = "resource",
+                   "trying"="attempt_pct", 
+                   "hrvsting"="harvestq_pct", 
+                   "used"="used_pct", 
+                   "giving"="giveaway_pct", 
+                   "receving"="received_pct", 
+                   "numharv"="reptHarvestAmt", 
+                   "totlbhrv"="reptHarvestLbs", 
+                   "avglbhrv"="harvestLbs_mean", 
+                   "xtotnum"="estHarvestAmt_sum", 
+                   "xtotlbs"="estHarvestLbs_sum",
+                   "pm95pct" = "CIP_Lbs" )
+
+
+# 8.3 Adjust numharv values to be pounds when there were mixed units present.
+harvData <- harvData %>%
+  mutate(
+    numharv   = if_else(unitCD == 0, totlbhrv, numharv),
+    numlower  = if_else(unitCD == 0, lbslower, numlower),
+    numupper  = if_else(unitCD == 0, lbsupper, numupper),
+    xtotnum   = if_else(unitCD == 0, xtotlbs, xtotnum),
+    units     = if_else(unitCD == 0, "lb", units),
+    unitCD    = if_else(unitCD == 0, 2L, unitCD)
+  ) %>% 
+
+# 8.4 - Species not eaten.
+#       for species that were not eaten, use the 'amount' CI, rather than the
+#       lbs CI; comment this line if this project does not have these
+#       kinds of resources.
+  mutate(pm95pct = if_else(specList == 1 & (convFact == 0 | is.na(convFact)), CIP_Amt, pm95pct))
+
+
+# 8.5 - make sure all missing values are consistently NA for easier post-processing.
+harvData <- inf_to_NA(harvData, c("convFact"))
+harvData <- nan_to_NA(harvData, c("numlower","numupper","lbslower","lbsupper","pm95pct"))
+
+# 8.6 Make a copy of the CSIS data before reducing the number of columns.
+csisPrepped <- harvData
+
+# 8.7 - Reduce the just CSIS columns.
+csisPrepped <- select(harvData, commcode,	year,	projID,	rescode,	specList,	
+                   trying,	hrvsting,	used,	giving,	receving,	units,	numharv,
+                   convFact, totlbhrv,	avglbhrv,	xtotnum,	numlower,	numupper,
+                   xtotlbs,	lbslower,	lbsupper,	percap,	pm95pct, percapg,
+                   mupch,	mupchg,	ulmupch,	ulmupchg,	pcttotal,	mupc,	uclupc,	xupc)
+
+```
+
+# Write data into SQLite DB
+
+Writing the data into a SQL lite database for portability and management.
+
+```{r CSIS SQLite}
+
+# Put it into the SQLite database.
+csisDB <- dbConnect(RSQLite::SQLite(), "../../SQLite/csisDB.db")
+
+delSQL = 'DROP TABLE IF EXISTS "dat_harvest";'
+
+DBResult <- dbSendQuery(csisDB, delSQL)
+cat("<h4>Drop table:</h4>")
+print(DBResult)
+dbClearResult(DBResult)
+
+tblSQL = 'CREATE TABLE "dat_harvest" ("datHarvUID" INTEGER NOT NULL,
+                      "commcode" INTEGER NOT NULL,
+                      "year" INTEGER NOT NULL,
+                      "projID" INTEGER NOT NULL,	
+                      "rescode" NUMERIC(18,0),
+                      "specList" INTEGER,
+                      "trying" REAL,
+                      "hrvsting" REAL,	
+                      "used" REAL,
+                      "giving" REAL,
+                      "receving" REAL,
+                      "units" TEXT,
+                      "numharv" REAL,
+                      "convFact" REAL,
+                      "totlbhrv" REAL,
+                      "avglbhrv" REAL,
+                      "xtotnum" REAL,
+                      "numlower" REAL,
+                      "numupper" REAL,
+                      "xtotlbs" REAL,
+                      "lbslower" REAL,
+                      "lbsupper" REAL,
+                      "percap" REAL,
+                      "pm95pct" REAL,
+                      "percapg" REAL,
+                      "mupch" REAL,
+                      "mupchg" REAL,
+                      "ulmupch" REAL,
+                      "ulmupchg" REAL,
+                      "pcttotal" REAL,
+                      "mupc" REAL,
+                      "uclupc" REAL,
+                      "xupc" REAL,
+                      PRIMARY KEY ("datHarvUID" AUTOINCREMENT));'
+
+DBResult <- dbSendQuery(csisDB, tblSQL)
+cat("<h4>Create empty table:</h4>")
+print(DBResult)
+dbClearResult(DBResult)
+
+strSQL = 'INSERT INTO "dat_harvest" (commcode, 
+        year, 
+        projID, 
+        rescode, 
+        specList,
+        trying,
+        hrvsting,
+        used,
+        giving,
+        receving,
+        units,
+        numharv,
+        convFact,
+        totlbhrv,
+        avglbhrv,
+        xtotnum,
+        numlower,
+        numupper,
+        xtotlbs,
+        lbslower,
+        lbsupper,
+        percap,
+        pm95pct,
+        percapg,
+        mupch,
+        mupchg,
+        ulmupch,
+        ulmupchg,
+        pcttotal,
+        mupc,
+        uclupc,
+        xupc) VALUES (:commcode, 
+        :year, 
+        :projID, 
+        :rescode, 
+        :specList, 
+        :trying, 
+        :hrvsting, 
+        :used, 
+        :giving, 
+        :receving, 
+        :units, 
+        :numharv, 
+        :convFact, 
+        :totlbhrv, 
+        :avglbhrv, 
+        :xtotnum, 
+        :numlower, 
+        :numupper, 
+        :xtotlbs, 
+        :lbslower, 
+        :lbsupper, 
+        :percap, 
+        :pm95pct, 
+        :percapg, 
+        :mupch, 
+        :mupchg, 
+        :ulmupch, 
+        :ulmupchg, 
+        :pcttotal, 
+        :mupc, 
+        :uclupc, 
+        :xupc);'
+
+dbBegin(csisDB)
+DBResult <- dbSendQuery(csisDB, strSQL, csisPrepped)
+cat("<h4>Insert data:</h4>")
+print(DBResult)
+dbClearResult(DBResult)
+dbCommit(csisDB)
+
+dbDisconnect(csisDB)
+
+```
+
+# Write out CSV files
+
+```{r write csv files}
+
+# ##############################################################################
+# Write out CSV files.
+# ##############################################################################
+
+# Write out the community harvest raw file to be used for subsequent analysis tasks.
+  fName = '../../CSV/03 - main/full_community_harvest_raw.csv'
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(harvData), ' records to be written', sep='')))
+
+  rio::export(harvData, fName)
+
+# CSIS Input file
+  fName = '../../CSV/07 - CSIS Uploads/dat_harvest.csv'
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(csisPrepped), ' records to be written', sep='')))
+
+  rio::export(csisPrepped, fName)  
+  
+```
+
+<p class="h1footer"> End of create CSIS harvest and use script. </p>

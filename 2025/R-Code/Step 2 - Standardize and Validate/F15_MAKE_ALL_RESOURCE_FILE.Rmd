@@ -1,0 +1,554 @@
+---
+title: "F15_MAKE_ALL_RESOURCE_FILE - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-19"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">F15_MAKE_ALL_RESOURCE_FILE - (316) NPS Ambler Comprehensive</div>
+</div>
+
+# Make all resource file
+
+Create the summary rows and adjust resource codes to line up with CSIS codes. This file also compresses down details so that we have a wide file, instead of a long file. The output of this script is ready for specific analysis tasks & formatting for inclusion in the HH Database.
+
+## Changelog
+- Programmer: D.S.Koster  
+- Date: 05/21/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output.  
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive template
+
+## Input data
+  
+- /CSV/03 - Main/  
+- /CSV/00 - Lookup Codes/fullResList_raw  
+- /CSV/03 - Main/convFact.csv  
+- /CSV/03 - Main/*_CSIS_ORG_clean.csv  
+
+*Note* *_CSIS_ORG_clean.csv represents all harvest record types that should have been standardized and organized in previous steps.
+
+## Ouput data
+  
+- /CSV/03 - Main/harvData_HH_finalPrepped.csv  
+
+## Background
+
+Major change in IM processing from historical processes. To do a better job of summarizing information at aggregate levels, units are summarized using a mean instead of max or min. The purpose of this change is to capture sub-totals where there is a mix of units so that cases where units are mixed will be reported using 'lb' as the unit. For species where there are no mixed units, such as is often the case with salmon then 'number' will be reported. This has been done to support writing we often see regarding salmon overall. It is also reasonable to count birds in this fashion. This is a permanent change to all analysis moving forward that was implemented in 2022.
+
+## Checklist
+  
+- Update 'Author' to your name   
+- Update the project information in 'title' to the current project  
+- Update the development log with any changes you've made to the template file, including your name  
+
+## Additional information
+
+### Functions used/dependencies
+
+- f_manageVariables.r  
+
+### Required libraries (adjust as needed)
+  
+- tidyVerse  
+- rio  
+- knitr  
+
+```{r setup}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE,
+                      include = TRUE,
+                      message = FALSE,
+                      warning = FALSE,
+                      results='asis')
+
+options(knitr.kable.NA = '')
+
+
+```
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+library(knitr)
+library(adfgSubs)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+
+```
+
+## Load data
+
+```{r load data}
+
+# ##############################################################################
+# Load data from intermediate files.
+# ##############################################################################
+
+#empty data frame
+harvData <- data.frame()
+
+# dynamically identify harvest record types.
+dPath = "../../CSV/03 - Main/"
+harvRecTypes <- list.files(dPath, pattern="*_CSIS_ORG_clean.csv")
+
+for(loadFile in harvRecTypes)
+{
+    harvRECRawData <- read.csv(str_interp('${dPath}${loadFile}'), 
+                         na = '', header = TRUE, strip.white = TRUE)
+    count <- nrow(harvRECRawData)
+    cat(formatSummaryBlock(str_interp("Opening file: ${loadFile}, ${count} records loaded.")))
+    harvData <- dplyr::bind_rows(harvData, harvRECRawData)    
+}
+
+# clean-up
+rm(harvRECRawData)
+harvData <- select(harvData, -convFact)
+count = nrow(harvData)
+
+cat(formatSummaryBlock(str_interp('Combined harvest record types resulting in ${count} records total.')))
+
+resData <- read.csv(str_interp('../../CSV/00 - Lookup Codes/fullResList_raw.csv'), 
+                    na = '', header = TRUE, strip.white = TRUE)
+
+count <- nrow(resData)
+cat(formatSummaryBlock(paste("Opening file: fullResList_raw.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+# Load original conversion factor file
+convFactData_raw <- read_csv('../../CSV/03 - Main/convFact.csv') 
+
+# Bind original and calculated conversion factors into '_final' data frame.
+convFactData_final <- tryCatch(
+  {
+    # Load csv files with calculated conversion factors.
+    calcConvFact <-
+      list.files(path = "../../CSV/03 - Main/", 
+                 pattern = "^REC\\d{2}_calc_convFact\\.csv$", 
+                 full.names = TRUE) %>% 
+      lapply(function(f) {
+        read_csv(f,col_types = c("iiiciddddc"))
+      }) %>% 
+      bind_rows()
+    
+    assign("calcConvFact", calcConvFact, envir = .GlobalEnv)
+    
+    bind_rows(calcConvFact %>% 
+              rename(Source = source) %>% 
+              mutate(Source = "Calculated",
+                     projID = as.numeric(projID)),
+              convFactData_raw %>% filter(!resName %in% calcConvFact$resName))
+
+  },
+    # If we fail here, there is nothing to bind from the calc file, so just use
+    #  the raw input as the _final output.
+    error = function(e) {
+      convFactData_raw
+  }) %>% 
+  arrange(resource)
+
+
+# Reduce the final conversion factor file to just the essentials for data 
+#   processing. Need to retain rows with no conversion factor for later processing.
+convFactData <- convFactData_final %>% 
+        select(projID, studyear, communty, resource, resName, units, convFact, defaultUnits) %>%
+        filter(!is.na(convFact) & !str_detect(resName, "Unspecified"))
+
+cat(formatSummaryBlock(paste("Opening file: convFact.csv, ", 
+                             nrow(convFactData), 
+                             " records loaded.", sep="")))
+
+```
+
+## Automation lists
+
+Create lists/vectors for use with summarize functions to simplify the development of summary rows. Note that this list contains all of the columns we'd like to preserve through each iteration of the summary computation.
+
+```{r make automation lists}
+
+# Grouping variables for summarize are long and repeated.
+groupByList <- c('projID', 
+                 'studyear', 
+                 'communty',
+                 'commname',
+                 'strata', 
+                 'strataWt',
+                 'samphh',
+                 'commhh',
+                 'sampPop',
+                 'commPop',
+                 'NHouseholds',
+                 'NPopulation',
+                 'HHID')
+
+# Allows us to pass a list into the tidyverse summarize variables.
+groupByData <- syms(groupByList)
+
+# The first vector is to be used to iterate over the levels.
+resLevelList = c("L5","L4","L3","L2","L1","L0")
+
+# we use rev to reverse the order of the list for use in the summarize
+resLevelData = syms(rev(resLevelList))
+
+```
+
+# Impute data for estimates
+
+To simplify data processing and production of estimates at various levels, we create estimated columns. These are expanded harvest numbers that can be summed across all households to produce an estimate. This follows a data processing method described in Cochran 1977 that uses sample means to estimate population means. The derivation of the process is as follows:
+
+$$\hat X = N\bar x = N \times \frac{\sum_{i=1}^{n}x_i}{n} = \frac{N}{n} \times \sum_{i=1}^{n}x_i = \sum_{i=1}^{n}\frac{N}{n}\times x_i$$
+
+Where:  
+- N = total households in the community or strata  
+- n = sampled households in the community or strata  
+- $x_i$ a quantity to be expanded (pounds or amount harvested)  
+
+Depending on the survey and results, the SRS may determine that the total harvest has been captured by the sample and that expansion or estimates are unwarranted. By default, we assume this is true for polar bear, bowhead whale, and Muskoxen. Frequently, we will apply this to bison as well and less frequently other species such as beluga and dall sheep.
+
+Before not expanding:  
+- Approved by the SRS or PI for the project  
+- Reviewed by D. Koster  
+
+*Expansion criteria are set in the Z00_PROJECT_PARAMETERS.R file.*
+
+```{r impute data for estimates}
+
+# 2.1 Calculate estimates
+harvData$estHarvestAmt = harvData$harvestAmt_MR
+harvData$estHarvestLbs = harvData$harvestLbs_MR
+
+# 2.2 Estimate with mean.
+aData <- filter(harvData, !! rlang::parse_expr(noExpansionCriteria))
+bData <- filter(harvData, !! rlang::parse_expr(noExpansionCriteriaNot))
+
+if(nrow(aData) > 0) {
+  tmpData <- distinct(aData, commname, communty, resName, resource)
+  count <- nrow(tmpData)
+  cat(warningMessage(str_interp('${count} resources will not be expanded')))
+  print(knitr::kable(tmpData,
+             caption=formatTableHeader("List of unexpanded resources:"),
+             align="l"))
+  aData$expansion = 1
+} else {
+  cat(greenMessage('All resources will be expanded.'))
+}
+
+bData$expansion = bData$strataWt
+
+harvData <- dplyr::bind_rows(aData,bData)
+
+harvData$estHarvestAmt = harvData$estHarvestAmt * harvData$expansion
+harvData$estHarvestLbs = harvData$estHarvestLbs * harvData$expansion
+
+harvData <- select(harvData, -expansion)
+
+rm(aData, bData)
+
+```
+
+## Make summary rows
+
+Loop through each resource level and create a HH aggregate that represents the bulk of 'detail' as columns that are consistent with the HH database/CSIS organization.
+
+```{r summary rows, message=FALSE, warning=FALSE}
+
+# ensure mRepl flag is properly set this is necessary for future
+#       computations.
+
+harvData$mRepl = 0
+harvData$mRepl[is.na(harvData$reptHarvestAmt) & harvData$harvestAmt_MR > 0] = 1
+
+#Create an empty temp dataset 
+#  I don't think we need to worry about the names: ... that has the same columns as our combined harvData data frame.
+#tempData <- filter(harvData, communty==0) 
+tempData <- data.frame()
+
+# Create a detail digit for use in preventing double-counting.
+harvData$detailDigit = harvData$resource - (trunc(harvData$resource/10) * 10)
+
+# Create aggregate resource levels  
+harvData$L0 = 0
+harvData$L1 = (trunc(harvData$resource/100000000)*100000000) + harvData$detailDigit
+harvData$L2 = (trunc(harvData$resource/10000000)*10000000) + harvData$detailDigit
+harvData$L3 = (trunc(harvData$resource/100000)*100000) + harvData$detailDigit
+harvData$L4 = (trunc(harvData$resource/1000)*1000) + harvData$detailDigit
+harvData$L5 = harvData$resource
+
+# adjust for 'used last year'. Comment if not needed.
+harvData$used[harvData$used == 2 & (harvData$harvestq == 0 | harvData$received == 0)] = 0
+harvData$used[harvData$used == 2] = 1
+
+# Set the group by for harvData; use the group by Data, insert the detail digit here to prevent double counting when we go to resource == 0. 
+harvData <- group_by(harvData, !!!groupByData, detailDigit, !!!resLevelData)
+
+count = nrow(harvData)
+
+# Loop to create summary rows. the group by will shrink by 1 for each loop below.
+for(resLevel in resLevelList) 
+{
+  # Aggregate for each 'resLevel'
+  harvData <- harvData %>%
+    summarize(mRepl = max(mRepl, na.rm=TRUE),
+              specList = min(specList, na.rm=TRUE),
+              unit_min = min(units, na.rm=TRUE),
+              unit_max = max(units, na.rm=TRUE),
+              units = mean(units, na.rm=TRUE),
+              used = max(used, na.rm=TRUE),
+              attempt = max(attempt, na.rm=TRUE),
+              harvestq = max(harvestq, na.rm=TRUE),
+              giveaway = max(giveaway, na.rm=TRUE),
+              received = max(received, na.rm=TRUE),
+              harvestAmt_MR = sum(harvestAmt_MR, na.rm=TRUE),
+              reptHarvestAmt = sum(reptHarvestAmt, na.rm=TRUE),
+              harvestLbs_MR = sum(harvestLbs_MR, na.rm=TRUE),
+              reptHarvestLbs = sum(reptHarvestLbs, na.rm=TRUE),
+              estHarvestAmt = sum(estHarvestAmt, na.rm=TRUE),
+              estHarvestLbs = sum(estHarvestLbs, na.rm=TRUE),
+              harvJan = sum(harvJan, na.rm=TRUE),
+              harvFeb = sum(harvFeb, na.rm=TRUE),
+              harvMar = sum(harvMar, na.rm=TRUE),
+              harvApr = sum(harvApr, na.rm=TRUE),
+              harvMay = sum(harvMay, na.rm=TRUE),
+              harvJun = sum(harvJun, na.rm=TRUE),
+              harvJul = sum(harvJul, na.rm=TRUE),
+              harvAug = sum(harvAug, na.rm=TRUE),
+              harvSep = sum(harvSep, na.rm=TRUE),
+              harvOct = sum(harvOct, na.rm=TRUE),
+              harvNov = sum(harvNov, na.rm=TRUE),
+              harvDec = sum(harvDec, na.rm=TRUE),
+              harvUnkn = sum(harvUnkn, na.rm=TRUE),
+              harvWin = sum(harvWin, na.rm=TRUE),
+              harvSpr = sum(harvSpr, na.rm=TRUE),
+              harvSum = sum(harvSum, na.rm=TRUE),
+              harvFal = sum(harvFal, na.rm=TRUE),
+              amtFurOnly = sum(amtFurOnly, na.rm=TRUE),
+              amtGavetoCrew = sum(amtGavetoCrew, na.rm=TRUE),
+              amtGaveOthers = sum(amtGaveOthers, na.rm=TRUE),
+              removeOwnUse = sum(removeOwnUse, na.rm=TRUE),
+              amtDriftGillNet = sum(amtDriftGillNet, na.rm=TRUE),
+              amtSetGillNet = sum(amtSetGillNet, na.rm=TRUE),
+              amtUnspecifiedGillNet = sum(amtUnspecifiedGillNet, na.rm=TRUE),
+              amtSeine = sum(amtSeine, na.rm=TRUE),
+              amtUnspecifiedSubsistenceNet = sum(amtUnspecifiedSubsistenceNet, na.rm=TRUE),
+              amtFishWheel = sum(amtFishWheel, na.rm=TRUE),
+              amtFishTrap = sum(amtFishTrap, na.rm=TRUE),
+              amtDipNet = sum(amtDipNet, na.rm=TRUE),
+              amtRodReel = sum(amtRodReel, na.rm=TRUE),
+              amtJigHandLine = sum(amtJigHandLine, na.rm=TRUE),
+              amtHookUnderIce = sum(amtHookUnderIce, na.rm=TRUE),
+              amtNetUnderIce = sum(amtNetUnderIce, na.rm=TRUE),
+              amtTrotLine = sum(amtTrotLine, na.rm=TRUE),
+              amtFishTrapUnderIce = sum(amtFishTrapUnderIce, na.rm=TRUE),
+              amtUnspecifiedIceFishing = sum(amtUnspecifiedIceFishing, na.rm=TRUE),
+              amtLongLineSkate = sum(amtLongLineSkate, na.rm=TRUE),
+              amtTrolling = sum(amtTrolling, na.rm=TRUE),
+              amtSpearGaff = sum(amtSpearGaff, na.rm=TRUE),
+              amtCastNet = sum(amtCastNet, na.rm=TRUE),
+              amtOtherGear = sum(amtOtherGear, na.rm=TRUE),
+              usePrevious = sum(usePrevious, na.rm=TRUE),
+              roadkill = sum(roadkill, na.rm=TRUE),
+              amtDogFood = sum(amtDogFood, na.rm=TRUE))   
+
+  # Make sure that the current aggregate level is put into the 'resource'
+  #   code column so that we have a consistent file.
+  colnames(harvData)[colnames(harvData) == resLevel] = "resource"
+  tempData <- dplyr::bind_rows(tempData, harvData)
+
+  # After the first aggregate, we're moving beyond 'base' species and detail
+  #       rows where conversion factors and specList are all basically 
+  #       the same; note that we create a mean for units as we proceed to 
+  #       determine whether or not an aggregate summary row has mixed units.
+
+  harvData$specList = 2
+  harvData$convfact = 0
+  
+}
+
+# Note that when we've left in 'detail' rows when we aggregate to all
+#       resources. To prevent double counting, these need to be removed. This
+#       is done outside the loop to protect the 'group_by'.
+tempData <-  filter(tempData, !(resource == 0 & detailDigit > 0))
+  
+count = nrow(tempData) - count
+cat(formatSummaryBlock(str_interp("${count} summary records have been added.")))
+
+# 5.1 Fix resource names.
+tempData = left_join(tempData, select(resData, -specList), by=c("resource"))
+  
+# 5.2 Re-introduce conversion factors.
+tempData <- left_join(tempData, 
+                      convFactData, 
+                      by=c("projID","studyear", "communty", "resource","units"))
+
+```
+
+## Remove duplicates
+
+During the creation of summary (aggregate) rows a large number of duplicates are create. This occurs when resources, such as moose 211800000 or Chinook 113000000 are summarized at the deeper levels of detail. max() is used to prevent double-counting for the most part. 
+
+The specList variable will use min() to ensure that resources that would tend to have duplicates still wind up with a 'primary species'.
+
+Units will be combined using 'mean' - in cases where the mean is a whole number AND corresponds to a standard reporting unit: 1, 2, 4, or 6, indicates that the aggregate row has the same units as the constituent parts. Thus, those will be reported in the CSIS and harvest and use tables with a harvest amount. If the units are not 1, 2, 4, or 6 then it is assumed that units are mixed and harvest amount for the aggregate row will be reported in pounds.
+
+```{r remove duplicates, message=FALSE}
+
+count = nrow(tempData)
+
+# Suppress absurd warning messages:
+tempData$convFact[is.na(tempData$convFact)] = 0
+
+# summarize to remove dups.
+harvData <- tempData %>%
+  group_by(!!!groupByData, resource, resName) %>%
+  summarize(mRepl = max(mRepl, na.rm=TRUE),
+            specList = min(specList, na.rm=TRUE),
+            unit_min = min(units, na.rm=TRUE),
+            unit_max = max(units, na.rm=TRUE),            
+            units = mean(units, na.rm=TRUE),
+            convFact = max(convFact, na.rm=TRUE),
+            used = max(used, na.rm=TRUE),
+            attempt = max(attempt, na.rm=TRUE),
+            harvestq = max(harvestq, na.rm=TRUE),
+            giveaway = max(giveaway, na.rm=TRUE),
+            received = max(received, na.rm=TRUE),
+            harvestAmt_MR = max(harvestAmt_MR, na.rm=TRUE),
+            reptHarvestAmt = max(reptHarvestAmt, na.rm=TRUE),
+            harvestLbs_MR = max(harvestLbs_MR, na.rm=TRUE),
+            reptHarvestLbs = max(reptHarvestLbs, na.rm=TRUE),
+            estHarvestAmt = max(estHarvestAmt, na.rm=TRUE),
+            estHarvestLbs = max(estHarvestLbs, na.rm=TRUE),
+            harvJan = max(harvJan, na.rm=TRUE),
+            harvFeb = max(harvFeb, na.rm=TRUE),
+            harvMar = max(harvMar, na.rm=TRUE),
+            harvApr = max(harvApr, na.rm=TRUE),
+            harvMay = max(harvMay, na.rm=TRUE),
+            harvJun = max(harvJun, na.rm=TRUE),
+            harvJul = max(harvJul, na.rm=TRUE),
+            harvAug = max(harvAug, na.rm=TRUE),
+            harvSep = max(harvSep, na.rm=TRUE),
+            harvOct = max(harvOct, na.rm=TRUE),
+            harvNov = max(harvNov, na.rm=TRUE),
+            harvDec = max(harvDec, na.rm=TRUE),
+            harvUnkn = max(harvUnkn, na.rm=TRUE),
+            harvWin = max(harvWin, na.rm=TRUE),
+            harvSpr = max(harvSpr, na.rm=TRUE),
+            harvSum = max(harvSum, na.rm=TRUE),
+            harvFal = max(harvFal, na.rm=TRUE),
+            amtFurOnly = max(amtFurOnly, na.rm=TRUE),
+            amtGavetoCrew = max(amtGavetoCrew, na.rm=TRUE),
+            amtGaveOthers = max(amtGaveOthers, na.rm=TRUE),
+            removeOwnUse = max(removeOwnUse, na.rm=TRUE),
+            amtDriftGillNet = max(amtDriftGillNet, na.rm=TRUE),
+            amtSetGillNet = max(amtSetGillNet, na.rm=TRUE),
+            amtUnspecifiedGillNet = max(amtUnspecifiedGillNet, na.rm=TRUE),
+            amtSeine = max(amtSeine, na.rm=TRUE),
+            amtUnspecifiedSubsistenceNet = max(amtUnspecifiedSubsistenceNet, na.rm=TRUE),
+            amtFishWheel = max(amtFishWheel, na.rm=TRUE),
+            amtFishTrap = max(amtFishTrap, na.rm=TRUE),
+            amtDipNet = max(amtDipNet, na.rm=TRUE),
+            amtRodReel = max(amtRodReel, na.rm=TRUE),
+            amtJigHandLine = max(amtJigHandLine, na.rm=TRUE),
+            amtHookUnderIce = max(amtHookUnderIce, na.rm=TRUE),
+            amtNetUnderIce = max(amtNetUnderIce, na.rm=TRUE),
+            amtTrotLine = max(amtTrotLine, na.rm=TRUE),
+            amtFishTrapUnderIce = max(amtFishTrapUnderIce, na.rm=TRUE),
+            amtUnspecifiedIceFishing = max(amtUnspecifiedIceFishing, na.rm=TRUE),
+            amtLongLineSkate = max(amtLongLineSkate, na.rm=TRUE),
+            amtTrolling = max(amtTrolling, na.rm=TRUE),
+            amtSpearGaff = max(amtSpearGaff, na.rm=TRUE),
+            amtCastNet = max(amtCastNet, na.rm=TRUE),
+            amtOtherGear = max(amtOtherGear, na.rm=TRUE),
+            usePrevious = max(usePrevious, na.rm=TRUE),
+            roadkill = max(roadkill, na.rm=TRUE),
+            amtDogFood = max(amtDogFood, na.rm=TRUE))
+
+count = count - nrow(harvData)
+cat(formatSummaryBlock(str_interp("${count} Duplicate records have been removed.")))
+
+# remove unnecessary data frames.
+rm(tempData)
+
+# final adjustment on specList based on detail digit; basically make the specList == 3 if we have a detail row below the 
+#    species level.
+harvData$specList[harvData$specList == 1 & ((harvData$resource - trunc(harvData$resource/10)*10) != 0)] = 3 
+
+# Make sure that for cases where the mean replaced sum = 0 AND mRepl = 1, that the 
+#       reported amount and reported pounds remain NA. This will ensure proper computation
+#       of variance. For cases where we've got non-0 amounts for summary rows, we make sure
+#       that those amounts are represented as non-0, again, to properly account for variability
+#       at the appropriate level.
+
+harvData$reptHarvestAmt[harvData$mRepl == 1 & harvData$reptHarvestAmt == 0] = NA
+harvData$reptHarvestLbs[harvData$mRepl == 1 & harvData$reptHarvestLbs == 0] = NA
+
+harvData$reptHarvestAmt[harvData$mRepl == 1 & harvData$specList == 1 & harvData$reptHarvestAmt == 0] = NA
+harvData$reptHarvestLbs[harvData$mRepl == 1 & harvData$specList == 1 & harvData$reptHarvestLbs == 0] = NA
+
+# final step for mixed units.
+harvData$units[harvData$specList == 2 & harvData$unit_min != harvData$unit_max] = 0
+
+# Dolly Varden 125006000 was causing duplication of Dolly Varden, unknown type harvests. Recoding specList to avoid duplication.
+
+harvData <- harvData %>% mutate(specList = if_else(resource == 125006000, 2, specList))
+
+# Market resources are showing up for some reason, and causing NAs.
+
+harvData <- harvData %>% filter(!is.na(commname))
+
+
+# Clean up coding issues.
+
+harvData <- inf_to_NA(harvData, c("convFact", "used","attempt", "received", "harvestq", "giveaway"))
+harvData <- nan_to_NA(harvData, c("convFact", "used","attempt", "received", "harvestq", "giveaway"))
+
+
+```
+
+## Write out CSV files
+
+```{r write csv files}
+
+# ##############################################################################
+# Write out CSV files.
+# ##############################################################################
+
+# Write out full final prepped HH-level resource harvest file.
+  fName = str_interp('../../CSV/03 - Main/harvData_HH_finalPrepped.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(harvData), ' records to be written', sep='')))
+
+  rio::export(harvData, fName)
+
+# Export final conversion factor file
+  fName = str_interp('../../CSV/05 - Final Analysis Output/convFact_final.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(convFactData_final), ' records to be written', sep='')))
+  
+  rio::export(convFactData_final, fName)
+  
+```
+
+<p class="h1footer"> End of MAKE ALL RESOURCE file script. </p>

@@ -1,0 +1,1040 @@
+---
+title: "D05_MAKE_RAW_DATA_FILES - (294) Yukon Comprehensives 2024"
+author: "Jesse Coleman"
+date: "2025-08-11"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">D05_MAKE_RAW_DATA_FILES - (294) Yukon Comprehensives 2024</div>
+</div>
+
+# Make Raw employment data files
+
+Organize and format raw data for copy-paste into excel templates. This markdown file also produces most of the tables and figures (or similar) as produced in excel for comparison and quick-review. The previous script ALSO produced output files for review, those were intended for debugging evaluation only. These are closer to the actual excel templates.
+
+## Change log
+
+Change 1
+- Programmer: D.S. Koster  
+- Date: 09/2023
+- Change Description: There were errors present in the calculation of weeks worked per person. This has been corrected  
+- Template Update [Y|N]: Yes - all projects should include  
+- One-Off: N  - All projects should include.
+
+Change 2
+- Programmer: D.S.Koster  
+- Date: 05/21/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output. Cleaned up some of the table formatting  
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates 
+
+Change 3
+- Programmer: Jesse Coleman
+- Date: 03/18/2025
+- Change Description: Removed source() calls; all functions are included in the library adfgSubs.
+- Template Update [Y|N]: Y
+- One-Off: No-include in all future comprehensive templates 
+
+## Input data
+  
+- /CSV/04 - Employment Processing/income_estimates.csv  
+- {bootSampPath}/REC23_FULL_CLEAN_BOOT.csv  
+- /CSV/01 - Database Extract/REC01_raw.csv  
+- /CSV/03 - Main/sample.csv  
+
+## Output data
+  
+- /CSV/05 - Final Analysis Output/employCharacteristics(T)_raw.csv  
+- /CSV/05 - Final Analysis Output/estEarnedAndOtherIncome_raw.csv  
+- /CSV/05 - Final Analysis Output/employ_by_industry_raw.csv  
+- /CSV/05 - Final Analysis Output/AllIncomeByCategory_raw.csv  
+- /CSV/05 - Final Analysis Output/median_employ_income_raw.csv  
+
+## Checklist
+  
+- Update 'Author' to your name  
+- Update the project information in 'title' to the current project  
+- Update the development log with any changes you've made to the template file, including your name  
+- Create tables for each table template file and check the results  
+
+## Additional information
+
+### Functions used/dependencies
+
+### Required libraries
+  
+- tidyverse  
+- rio  
+- knitr  
+- kableExtra  
+- data.table  
+- adfgSubs
+
+```{r setup, echo=FALSE}
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE,
+                      include = TRUE,
+                      message = FALSE,
+                      warning = FALSE,
+                      results='asis')
+
+options(knitr.kable.NA = '')
+```
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+
+# Additional libraries
+library(knitr)
+library(data.table)
+library(kableExtra)
+library(adfgSubs)
+library(censusapi)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+```
+
+## Load data
+
+```{r load data}
+
+# Load data from intermediate files.
+
+# 1.1 - Load working data files; 
+estIncData <- read.csv('../../CSV/04 - Employment Processing/income_estimates.csv', 
+                      na = '', 
+                      header = TRUE, 
+                      strip.white = TRUE)
+count <- nrow(estIncData)
+cat(formatSummaryBlock(paste("Opening file: income_estimates.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+REC23Data <- fread(str_interp('${bootSampPath}/REC23_FULL_CLEAN_BOOT.csv'), 
+                      na = '', 
+                      header = TRUE, 
+                      strip.white = TRUE) %>% filter(samp == 0)
+count <- nrow(REC23Data)
+cat(formatSummaryBlock(paste("Opening file: REC23_FULL_CLEAN_BOOT.csv, filtered to raw sample ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+personData <- read.csv(str_interp('../../CSV/01 - Database Extract/REC01_raw.csv'), 
+                       na = '', 
+                       header = TRUE, 
+                       strip.white = TRUE) %>% 
+  left_join(read.csv('../../CSV/03 - Main/sample.csv', 
+                      na = '', 
+                      header = TRUE, 
+                      strip.white = TRUE),
+             by=c("projID","studyear","communty","strata"))
+
+count <- nrow(personData)
+cat(formatSummaryBlock(paste("Opening file: REC01_raw.csv, joined with sample.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+commnameList <- select(REC23Data, commname) %>% distinct(commname)
+
+```
+
+
+## Recoding and sorting
+
+```{r recoding and sorting}
+
+# Adjust the coding of category/source (SIC/SOC) so that it sorts properly.
+estIncData <- estIncData %>% 
+  mutate(incsrce = if_else(incsrce == 991 & incTypeCD == 1, 1991, incsrce),
+         incsrceDesc = if_else(incsrce == 1991, "Occupation not specified", incsrceDesc),
+         incCategory = if_else(incCategory == 991 & incTypeCD == 1, 1991, incCategory),
+         incCategoryDesc = if_else(incCategory == 1991, "Industry not specified", incCategoryDesc)
+         ) %>% 
+# Give the data a base order 
+  arrange(estIncData, projID, studyear, communty, incCategory, incsrce)
+
+```
+
+## Automation lists
+
+Produce lists of labels and columns, as necessary to produce tables & figures more dynamically.
+
+```{r automation lists}
+
+charTableLabelList = c('Number', 'Mean weeks employed',
+                   'Number', 'Percentage',
+                   'Number', 'Mean', 'Minimum', 'Maximum',
+                   'Mean', 'Minimum', 'Maximum',
+                   'Percentage employed year-round',
+                   'Mean weeks employed',
+                   'Number', 'Number', 'Percentage',
+                   'Mean', 'Minimum', 'Maximum',
+                   'Employed households',
+                   'Total households',
+                   'Minimum', 'Maximum',
+                   'Mean person-weeks of employment')
+
+
+```
+
+## Employment characteristics
+
+### Get the number of adults
+
+<div class="todoBlock"> TO DO: This block develops a separate estimate of the number of adults, this should be replaced with the results of the demographic characteristics in the template. This has been left as a re-calculation to allow for simultaneous translations. </div>
+
+```{r calc number adults}
+
+# 2.1 - Calculate values to calculate nAdults (as necessary)
+
+personData <- personData %>% 
+  mutate(birthyear = if_else(birthyear < 0, NA, birthyear),
+         personAge = studyear - birthyear,
+         adult = if_else(personAge >= 16, 1, 0),
+         validAge = if_else(is.na(personAge), 0, 1)
+         )
+
+
+# 2.2 - get the number of people in the community, a count of those who provided
+#       birth year information, and a count of known adults.
+nAdultsData <- personData %>% 
+  group_by(projID, studyear, communty, strata, strataWt) %>%
+  summarize(nValidAge = sum(validAge, na.rm=TRUE),
+            nPeople = n(),
+            nAdults = sum(adult, na.rm=TRUE)) %>%
+  ungroup()
+
+# 2.3 - impute count of total adults in the community.
+nAdultsData <- nAdultsData %>% 
+  mutate(nAdults = (nPeople/nValidAge) * nAdults,
+         estAdults = nAdults * strataWt) %>% 
+# 2.4 - tidy up the data frame.
+  select(-nValidAge, -nPeople) %>% 
+
+# 2.5 - summarize to the community to use for the employment
+#       characteristics file.
+  group_by(projID, studyear, communty) %>%
+  summarize(estAdult = sum(estAdults, na.rm=TRUE)) %>%
+  ungroup()
+
+```
+
+### Calculate weeks of employment
+
+For most of employment data we use the bootstrapped estimate, this is generally done to accommodate gaps in the larger model that produces income. However, because 'months employed' is straight-forward, the bootstrapping method is not required to produce an estimate of weeks employed. Results of the bootstrapping should be identical within a decimal point of the sample mean.
+
+```{r weeks of employment}
+
+# 3.0 - Weeks of wage employment
+
+# 3.1 - Make an estimate of person-weeks of employment to use for calculation
+#       of means.
+employMonthsData <- REC23Data %>% 
+  mutate(monthsEmployed = rowSums(select(., janWork:decWork), na.rm = TRUE),
+         # Weeks of employment.
+         weeksEmployed = monthsEmployed * (52/12),
+         # Logical: year-round employment
+         yrRound = if_else(monthsEmployed == 12, 1, 0)) %>% 
+# deal with missing data (if a household IS employed and 0 has been 
+#    supplied for months, then we mark as unknown)
+  mutate(across(c("weeksEmployed","monthsEmployed","yrRound"), ~if_else(. == 0, NA, .)),
+         validWeeks = if_else(is.na(weeksEmployed), 0, 1))
+
+
+# Develop totals and stats - do this in two steps because people may have 
+#   more than one job; Households also have more than one job, but we allow
+#   that data to be duplicative. The summarize MUST be split int two because 
+#   two columns are required to uniquely identify a person.
+#   (inf_to_NA) In the event we have no week information provided, we need to prevent a possible 'max == -Inf'
+weeksEmployData <- group_by(employMonthsData, projID, studyear, 
+                            communty, strata, strataWt, HHID, person) %>%
+  summarize(weeksEmployed = max(weeksEmployed, na.rm=TRUE),
+            yrRound = max(yrRound, na.rm=TRUE),
+            validWeeks = max(validWeeks, na.rm=TRUE),
+            #nCases = n(), # - I don't think we need nCases to be counted here.
+            minMonthsEmplAdults = min(monthsEmployed, na.rm=TRUE), # Min and max are correctly calculated per job.
+            maxMonthsEmplAdults = max(monthsEmployed, na.rm=TRUE),
+            .groups = "drop") %>%
+  # Replace any instances of "Inf" with "NA"
+  inf_to_NA(c('weeksEmployed', 'yrRound', 'validWeeks', 'minMonthsEmplAdults', 'maxMonthsEmplAdults')) %>%
+  group_by(projID, studyear, communty, strata, strataWt) %>%
+  summarize(weeksEmployed = sum(weeksEmployed, na.rm=TRUE),
+            yrRound = sum(yrRound, na.rm=TRUE),
+            validWeeks = sum(validWeeks, na.rm=TRUE),
+            nCases = n(),
+            minMonthsEmplAdults = min(minMonthsEmplAdults, na.rm=TRUE),
+            maxMonthsEmplAdults = max(maxMonthsEmplAdults, na.rm=TRUE)) %>% 
+  mutate(estWeeksEmploy = weeksEmployed * (nCases/validWeeks) * strataWt,
+         estYrRound = yrRound * (nCases/validWeeks) * strataWt) %>% 
+  group_by(projID, studyear, communty) %>% 
+  summarize(estWeeksEmploy = sum(estWeeksEmploy, na.rm=TRUE),
+            estYrRound = sum(estYrRound, na.rm=TRUE),
+            minMonthsEmplAdults = min(minMonthsEmplAdults, na.rm=TRUE),
+            maxMonthsEmplAdults = max(maxMonthsEmplAdults, na.rm=TRUE),
+            .groups = "drop")
+
+# tidy-up a bit.
+rm(employMonthsData)
+
+```
+
+### Min and Max employment stats
+
+Again, this syntax relies on the fact that the bootstrapping method will produce identical results to a much simpler calculation. The minimum and maximum number of jobs per person, jobs per household, and employed adults per household do not change from the sampled values.
+
+```{r min max jobs}
+
+# ##############################################################################
+# 4.0 - Min / Max values for jobs/people/households.
+# ##############################################################################
+
+# We can swim right past strata with these metrics.
+employAdultData <- group_by(REC23Data, projID, studyear, communty, commname, NHouseholds, NPopulation, HHID, person) %>%
+  summarize(minNJobsPerEmplAdults = sum(validEmployRecord, na.rm=TRUE), 
+            maxNJobsPerEmplAdults = sum(validEmployRecord, na.rm=TRUE),
+            nHHJobs = sum(validEmployRecord, na.rm=TRUE)) %>%
+  summarize(minNJobsPerEmplAdults = min(minNJobsPerEmplAdults, na.rm=TRUE),
+            maxNJobsPerEmplAdults = max(maxNJobsPerEmplAdults, na.rm=TRUE),
+            nEmplAdults = n(),
+            nHHJobs = sum(nHHJobs)) %>%
+  summarize(minNJobsPerEmplAdults = min(minNJobsPerEmplAdults, na.rm=TRUE),
+            maxNJobsPerEmplAdults = max(maxNJobsPerEmplAdults, na.rm=TRUE),
+            minJobsPerEmplHHs = min(nHHJobs, na.rm=TRUE),
+            maxJobsPerEmplHHs = max(nHHJobs, na.rm=TRUE),
+            minEmplAdultsPerHH = min(nEmplAdults, na.rm=TRUE),
+            maxEmplAdultsPerHH = max(nEmplAdults, na.rm=TRUE))
+
+```
+
+### Build employ characteristics file
+
+```{r build employ char file}
+
+# 4.0 - Build final employment characteristics file.
+
+# 4.1 - base data frame from the estimated income file.
+
+library(dplyr)
+
+emplCharData <- estIncData %>%
+  # Filter to income category 1000
+  filter(incCategory == 1000) %>%
+  # Select relevant variables
+  select(projID, studyear, communty, estIncome_mean, estHHCount_mean, 
+         estPersonCount_mean, estJobCount_mean) %>%
+  left_join(nAdultsData, by = c("projID", "studyear", "communty")) %>%
+  left_join(weeksEmployData, by = c("projID", "studyear", "communty")) %>%
+  left_join(employAdultData, by = c("projID", "studyear", "communty")) %>%
+  mutate(
+    # Average weeks employed per adult
+    weeksEmployedAllAdults = estWeeksEmploy / estAdult,
+    # Number of employed adults
+    employedAdults = estPersonCount_mean,
+    # Number of jobs
+    numberJobs = estJobCount_mean,
+    # Mean number of jobs per employed adult
+    meanNJobsPerEmplAdults = numberJobs / employedAdults,
+    # Mean months employed per adult
+    meanMonthsEmplAdults = (estWeeksEmploy / (52/12)) / employedAdults,
+    # Percent of adults employed year-round
+    pctAdultEmplYrRound = estYrRound / estPersonCount_mean,
+    # Mean weeks employed per adult
+    meanWeeksEmplAdults = estWeeksEmploy / employedAdults,
+    # Total households
+    totalHHs = NHouseholds,
+    # Number of employed households
+    employedHHs = estHHCount_mean,
+    # Mean jobs per employed household
+    meanJobsPerEmplHHs = estJobCount_mean / employedHHs,
+    # Mean employed adults per employed household
+    meanEmplAdultsPerEmplHH = estPersonCount_mean / estHHCount_mean,
+    # Mean employed adults per household (employed and unemployed)
+    meanEmplAdultsPerAllHH = estPersonCount_mean / NHouseholds,
+    # Mean household weeks employed
+    meanHHWeeksEmpl = estWeeksEmploy / estHHCount_mean,
+    # Percent of households with employment
+    pctEmplHHs = employedHHs / totalHHs,
+    # Percent of adults employed
+    pctEmplAdults = employedAdults / estAdult
+  )
+
+library(dplyr)
+library(tidyr)
+
+# 4.4 - Select just the relevant columns, in the desired order for the output table.
+emplCharData <- emplCharData %>%
+  # Select only needed columns, in desired output order
+  select(
+    projID, studyear, communty, commname, NHouseholds, NPopulation, estAdult,
+    weeksEmployedAllAdults, employedAdults, pctEmplAdults, numberJobs,
+    meanNJobsPerEmplAdults, minNJobsPerEmplAdults, maxNJobsPerEmplAdults,
+    meanMonthsEmplAdults, minMonthsEmplAdults, maxMonthsEmplAdults,
+    pctAdultEmplYrRound, meanWeeksEmplAdults, totalHHs, employedHHs, pctEmplHHs,
+    meanJobsPerEmplHHs, minJobsPerEmplHHs, maxJobsPerEmplHHs,
+    meanEmplAdultsPerEmplHH, meanEmplAdultsPerAllHH, minEmplAdultsPerHH,
+    maxEmplAdultsPerHH, meanHHWeeksEmpl
+  )
+
+# Make table for review: reshape, format, and label
+tmpEmplCharData <- emplCharData %>%
+  ungroup() %>%
+  # Select only columns needed for the review table
+  select(
+    commname, estAdult, weeksEmployedAllAdults, employedAdults, pctEmplAdults,
+    numberJobs, meanNJobsPerEmplAdults, minNJobsPerEmplAdults,
+    maxNJobsPerEmplAdults, meanMonthsEmplAdults, minMonthsEmplAdults,
+    maxMonthsEmplAdults, pctAdultEmplYrRound, meanWeeksEmplAdults,
+    totalHHs, employedHHs, pctEmplHHs, meanJobsPerEmplHHs, minJobsPerEmplHHs,
+    maxJobsPerEmplHHs, meanEmplAdultsPerEmplHH, meanEmplAdultsPerAllHH,
+    minEmplAdultsPerHH, maxEmplAdultsPerHH, meanHHWeeksEmpl
+  ) %>%
+  # Convert proportions to percentages for columns starting with 'pct'
+  mutate(across(starts_with('pct'), ~ . * 100)) %>%
+  # Round all numeric columns to 1 decimal place
+  mutate(across(where(is.numeric), ~ round(., 1))) %>%
+  # Convert all numeric columns to character
+  mutate(across(where(is.numeric), ~ as.character(.))) %>%
+  # Add '%' to all percentage columns
+  mutate(across(starts_with('pct'), ~ paste0(., '%'))) %>%
+  # Reshape: columns become rows by community, for tabular output
+  pivot_longer(
+    cols = -commname,
+    names_to = "column",
+    values_to = "value"
+  ) %>%
+  pivot_wider(
+    id_cols = "column",
+    names_from = commname,
+    values_from = value
+  ) %>%
+  # Remove 'column' (will replace with row labels)
+  select(-column) %>%
+  # Add row labels as first column
+  { data.frame(charTableLabelList, .) } %>%
+  # Add formatting rows at specified positions for output table readability
+  add_row(charTableLabelList = "All adults", .before = 1) %>%
+  add_row(.before = 4) %>%
+  add_row(charTableLabelList = "Employed adults", .before = 5) %>%
+  add_row(charTableLabelList = "Jobs", .before = 8) %>%
+  add_row(charTableLabelList = "Months employed", .before = 13) %>%
+  add_row(.before = 19) %>%
+  add_row(charTableLabelList = "Households", .before = 20) %>%
+  add_row(charTableLabelList = "Employed", .before = 22) %>%
+  add_row(charTableLabelList = "Jobs per employed household", .before = 25) %>%
+  add_row(charTableLabelList = "Employed adults", .before = 29) %>%
+  add_row(charTableLabelList = "Mean", .before = 30)
+
+
+# emplCharData <- filter(estIncData, incCategory == 1000) %>% 
+#     select(projID, studyear, communty, estIncome_mean, estHHCount_mean, 
+#            estPersonCount_mean, estJobCount_mean)
+#   
+# # 4.2 - Combine various characteristics built-up from previous steps.  
+# emplCharData <- left_join(emplCharData, nAdultsData, by=c("projID", "studyear", "communty")) %>%
+#   left_join(weeksEmployData, by=c("projID", "studyear", "communty")) %>%
+#   left_join(employAdultData, by=c("projID", "studyear", "communty"))
+# 
+# # 4.3 - Calculated values
+# emplCharData$weeksEmployedAllAdults = emplCharData$estWeeksEmploy / emplCharData$estAdult
+# emplCharData$employedAdults = emplCharData$estPersonCount_mean
+# emplCharData$numberJobs = emplCharData$estJobCount_mean
+# 
+# emplCharData$meanNJobsPerEmplAdults = emplCharData$numberJobs / emplCharData$employedAdults
+# 
+# emplCharData$meanMonthsEmplAdults =(emplCharData$estWeeksEmploy / (52/12)) / emplCharData$employedAdults
+# emplCharData$pctAdultEmplYrRound = (emplCharData$estYrRound) / emplCharData$estPersonCount_mean
+# emplCharData$meanWeeksEmplAdults = emplCharData$estWeeksEmploy / emplCharData$employedAdults
+# 
+# emplCharData$totalHHs = emplCharData$NHouseholds
+# emplCharData$employedHHs = emplCharData$estHHCount_mean
+# emplCharData$meanJobsPerEmplHHs = emplCharData$estJobCount_mean / emplCharData$employedHHs
+# 
+# emplCharData$meanEmplAdultsPerEmplHH = emplCharData$estPersonCount_mean / emplCharData$estHHCount_mean
+# emplCharData$meanEmplAdultsPerAllHH = emplCharData$estPersonCount_mean / emplCharData$NHouseholds
+# emplCharData$meanHHWeeksEmpl = emplCharData$estWeeksEmploy / emplCharData$estHHCount_mean
+# emplCharData$pctEmplHHs = emplCharData$employedHHs / emplCharData$totalHHs
+# emplCharData$pctEmplAdults = emplCharData$employedAdults / emplCharData$estAdult
+# 
+# # 4.4 - Select just the relevant columns, in the desired order for the output table.
+# emplCharData <- select(emplCharData, projID,
+#                        studyear,
+#                        communty,
+#                        commname,
+#                        NHouseholds,
+#                        NPopulation,
+#                        estAdult,
+#                        weeksEmployedAllAdults,
+#                        employedAdults,
+#                        pctEmplAdults,
+#                        numberJobs,
+#                        meanNJobsPerEmplAdults,
+#                        minNJobsPerEmplAdults,
+#                        maxNJobsPerEmplAdults,
+#                        meanMonthsEmplAdults,
+#                        minMonthsEmplAdults,
+#                        maxMonthsEmplAdults,
+#                        pctAdultEmplYrRound,
+#                        meanWeeksEmplAdults,
+#                        totalHHs,
+#                        employedHHs,
+#                        pctEmplHHs,
+#                        meanJobsPerEmplHHs,
+#                        minJobsPerEmplHHs,
+#                        maxJobsPerEmplHHs,
+#                        meanEmplAdultsPerEmplHH,
+#                        meanEmplAdultsPerAllHH,                       
+#                        minEmplAdultsPerHH,
+#                        maxEmplAdultsPerHH,
+#                        meanHHWeeksEmpl)
+# 
+# #
+# #  Make table for review
+# #
+# 
+# tmpEmplCharData <- ungroup(emplCharData) %>%
+#   select(commname, estAdult,
+#                        weeksEmployedAllAdults,
+#                        employedAdults,
+#                        pctEmplAdults,
+#                        numberJobs,
+#                        meanNJobsPerEmplAdults,
+#                        minNJobsPerEmplAdults,
+#                        maxNJobsPerEmplAdults,
+#                        meanMonthsEmplAdults,
+#                        minMonthsEmplAdults,
+#                        maxMonthsEmplAdults,
+#                        pctAdultEmplYrRound,
+#                        meanWeeksEmplAdults,
+#                        totalHHs,
+#                        employedHHs,
+#                        pctEmplHHs,
+#                        meanJobsPerEmplHHs,
+#                        minJobsPerEmplHHs,
+#                        maxJobsPerEmplHHs,
+#                        meanEmplAdultsPerEmplHH,
+#                        meanEmplAdultsPerAllHH,
+#                        minEmplAdultsPerHH,
+#                        maxEmplAdultsPerHH,         
+#                        meanHHWeeksEmpl)
+# 
+# tmpEmplCharData <- mutate(tmpEmplCharData, across(starts_with('pct'), ~ . * 100))
+# tmpEmplCharData <- mutate(tmpEmplCharData, across(where(is.numeric), ~ round(., 1)))
+# tmpEmplCharData <- mutate(tmpEmplCharData, across(where(is.numeric), ~ as.character(.)))
+# tmpEmplCharData <- mutate(tmpEmplCharData, across(starts_with('pct'), ~ paste(.,'%',sep='')))
+# 
+# tmpEmplCharData <- tmpEmplCharData %>% 
+#               pivot_longer(cols=all_of(names(select(tmpEmplCharData, -commname))),
+#                            names_to="column", values_to="value") %>%
+#               pivot_wider(id_cols="column", names_from=commname, values_from=value)
+# 
+# # Replace column names with row labels.
+# tmpEmplCharData <- select(tmpEmplCharData, -column)
+# tmpEmplCharData <- data.frame(charTableLabelList, tmpEmplCharData)
+# 
+# #Add some formatting rows in.
+# tmpEmplCharData <- tmpEmplCharData %>% add_row(charTableLabelList="All adults", .before=1)
+# tmpEmplCharData <- tmpEmplCharData %>% add_row(.before=4)
+# tmpEmplCharData <- tmpEmplCharData %>% add_row(charTableLabelList="Employed adults", .before=5)
+# tmpEmplCharData <- tmpEmplCharData %>% add_row(charTableLabelList="Jobs", .before=8)
+# tmpEmplCharData <- tmpEmplCharData %>% add_row(charTableLabelList="Months employed", .before=13)
+# tmpEmplCharData <- tmpEmplCharData %>% add_row(.before=19)
+# tmpEmplCharData <- tmpEmplCharData %>% add_row(charTableLabelList="Households", .before=20)
+# tmpEmplCharData <- tmpEmplCharData %>% add_row(charTableLabelList="Employed", .before=22)
+# tmpEmplCharData <- tmpEmplCharData %>% add_row(charTableLabelList="Jobs per employed household", .before=25)
+# tmpEmplCharData <- tmpEmplCharData %>% add_row(charTableLabelList="Employed adults", .before=29)
+# tmpEmplCharData <- tmpEmplCharData %>% add_row(charTableLabelList="Mean", .before=30)
+
+kbl(tmpEmplCharData,
+    col.names = c("", names(select(tmpEmplCharData, -charTableLabelList))),
+    caption=formatTableHeader(str_interp("Employment characteristics, ${studyear}"))) %>%
+      kable_styling(full_width = F) %>%
+      row_spec(1,bold=T,hline_after = T) %>%
+      row_spec(5,bold=T,hline_after = T) %>%
+      row_spec(20,bold=T,hline_after = T) %>%
+      add_indent(c(2,3,6,7,8,9,10,11,12,13,14,15,16,17,18,
+                   21,22,23,24,25,26,27,28,29,30,31,32,33,34,35)) %>%
+      add_indent(c(9,10,11,12,14,15,16,17,23,24,
+                   26, 27, 28, 30,31,32,33,34)) %>%
+      add_indent(c(31,32))
+
+
+```
+
+## Estimated earned and other income
+
+Build estimated and earned and other income output. In prior versions of this code, these items were built separately, largely owing to the fact that SPSS produced these items through separate processes. Because the R scripts do not use separate processes, they have been combined.
+
+In the tables below, evaluate that results to determined whether or not those are reasonable, and whether or not some elements of income are even representative of the community (one-off items that should not be expanded, for example).
+
+```{r Estimated earned and other income}
+
+# # 4.1–4.3 - Copy, fix, compute, filter, sort, select, and create summaries all in a single pipeline
+# estEarnOtherData <- estIncData %>%
+#   # If incTypeCD is 1, set incsrceDesc to incCategoryDesc
+#   mutate(
+#     incsrceDesc = if_else(incTypeCD == 1, incCategoryDesc, incsrceDesc),
+#     # If incTypeCD is 1, set incCategoryDesc to 'All sources of income'
+#     incCategoryDesc = if_else(incTypeCD == 1, "All sources of income", incCategoryDesc),
+#     # Set incTypeCD for sorting purposes
+#     incTypeCD = case_when(
+#       incCategory == -2 ~ 3,
+#       incCategory == -1 ~ 2.5,
+#       incCategory == 1000 ~ 1.5,
+#       TRUE ~ as.numeric(incTypeCD)
+#     ),
+#     # Rename variables for clarity
+#     nPerson = estPersonCount_mean,
+#     nHH = estHHCount_mean,
+#     estIncome = estIncome_mean,
+#     # Calculate mean household earnings
+#     hhMeanEarn = estIncome_mean / Nhouseholds
+#   ) %>%
+#   # Filter for relevant income sources and categories
+#   filter(incsrce <= 1000 & !(incsrce == 0 & incCategory > 0)) %>%
+#   # Arrange for output
+#   arrange(projID, studyear, communty, incTypeCD, desc(estIncome_mean)) %>%
+#   # Select relevant columns for the output table
+#   select(
+#     projID, studyear, communty, commname, incTypeCD, Nhouseholds, NPopulation,
+#     incCategoryDesc, incsrceDesc, nPerson, nHH, estIncome,
+#     lower_estIncome, upper_estIncome, hhMeanEarn
+#   ) %>%
+#   # Group for summary calculations
+#   group_by(projID, studyear, communty, commname) %>%
+#   # Add totalIncome column for percent calculations
+#   mutate(totalIncome = max(estIncome)) %>%
+#   ungroup() %>%
+#   # Calculate percent of total earnings per row
+#   mutate(pctTotalEarn = estIncome / totalIncome) %>%
+#   # Remove helper column now that percent is calculated
+#   select(-totalIncome) %>%
+#   # Indent source descriptions for main and subtotal rows
+#   mutate(
+#     incsrceDesc = if_else(
+#       incTypeCD %in% c(1, 2),
+#       paste0("     ", incsrceDesc),
+#       incsrceDesc
+#     ),
+#     # If nHH and estIncome are zero, set upper_estIncome to 0
+#     upper_estIncome = if_else(nHH == 0 & estIncome == 0, 0, upper_estIncome)
+#   )
+# 
+# # Prepare for output table and format values
+# tmpEarnOtherData <- estEarnOtherData %>%
+#   # For certain rows, set nPerson to NA
+#   mutate(nPerson = if_else(incTypeCD %in% c(2, 2.5), NA_real_, nPerson)) %>%
+#   # Round and format all numeric columns as needed
+#   mutate(
+#     nPerson = round(nPerson, 1),
+#     nHH = round(nHH, 1),
+#     estIncome = round(estIncome, 0),
+#     lower_estIncome = round(lower_estIncome, 0),
+#     upper_estIncome = round(upper_estIncome, 0),
+#     hhMeanEarn = round(hhMeanEarn, 1),
+#     # Format percent of total earnings as a percent string
+#     pctTotalEarn = paste0(as.character(round(pctTotalEarn * 100, 1)), "%"),
+#     # Create confidence interval string
+#     CL = paste0(lower_estIncome, "–", upper_estIncome)
+#   ) %>%
+#   # Select and order columns for output table
+#   select(
+#     commname, incsrceDesc, nPerson, nHH, estIncome,
+#     CL, hhMeanEarn, pctTotalEarn
+#   ) %>%
+#   # Relabel subtotal/total rows for printout
+#   mutate(
+#     incsrceDesc = case_when(
+#       incsrceDesc == "All industries" ~ "Earned income subtotal",
+#       incsrceDesc == "All other sources of income" ~ "Other income subtotal",
+#       incsrceDesc == "All income sources" ~ "Community income total",
+#       TRUE ~ incsrceDesc
+#     )
+#   )
+
+# 4.1 - Copy of the main data frame to work with
+estEarnOtherData <- estIncData
+
+# Fix the issue with income source and category being different things
+estEarnOtherData$incsrceDesc[estEarnOtherData$incTypeCD == 1] = estEarnOtherData$incCategoryDesc[estEarnOtherData$incTypeCD == 1]
+estEarnOtherData$incCategoryDesc[estEarnOtherData$incTypeCD == 1] = 'All sources of income'
+
+# Deal with sorting for output table, but properly.
+estEarnOtherData$incTypeCD[estEarnOtherData$incCategory == -2] = 3
+estEarnOtherData$incTypeCD[estEarnOtherData$incCategory == -1] = 2.5
+estEarnOtherData$incTypeCD[estEarnOtherData$incCategory == 1000] = 1.5
+
+
+# 4.2 - Renaming of variables to clarify contents slightly better.
+estEarnOtherData$nPerson = estEarnOtherData$estPersonCount_mean
+estEarnOtherData$nHH = estEarnOtherData$estHHCount_mean
+estEarnOtherData$estIncome = estEarnOtherData$estIncome_mean
+
+estEarnOtherData$hhMeanEarn = estEarnOtherData$estIncome_mean / estEarnOtherData$Nhouseholds
+
+# 4.3 - final summary.
+estEarnOtherData <- filter(estEarnOtherData, incsrce <= 1000 & !(incsrce == 0 & incCategory > 0)) %>%
+  arrange(projID, studyear, communty, incTypeCD, desc(estIncome_mean)) %>%
+  select(projID,	studyear,	communty,	commname,
+         incTypeCD,	Nhouseholds, NPopulation,	incCategoryDesc, incsrceDesc, nPerson,
+         nHH, estIncome, lower_estIncome, upper_estIncome, hhMeanEarn) %>%
+  ungroup()
+
+estEarnOtherData <- group_by(estEarnOtherData, projID,	studyear,	communty,	commname) %>%
+  mutate(totalIncome = max(estIncome)) %>%
+  ungroup()
+
+estEarnOtherData$pctTotalEarn = estEarnOtherData$estIncome / estEarnOtherData$totalIncome
+estEarnOtherData <- select(estEarnOtherData, -totalIncome)
+
+# Final output table formatting
+estEarnOtherData$incsrceDesc[estEarnOtherData$incTypeCD %in% c(1,2)] =  paste('     ', estEarnOtherData$incsrceDesc[estEarnOtherData$incTypeCD %in% c(1,2)],sep='')
+
+# The bootstrapping procedure forces a 1 into the upper CI for income sources
+# not reported, make this a 0 for reporting purposes.
+estEarnOtherData$upper_estIncome[estEarnOtherData$nHH == 0 &
+                                   estEarnOtherData$estIncome == 0] = 0
+
+# Prepare for output tables.
+tmpEarnOtherData <- estEarnOtherData
+tmpEarnOtherData$nPerson[tmpEarnOtherData$incTypeCD == 2 | tmpEarnOtherData$incTypeCD == 2.5] = NA
+
+# Formatting.
+tmpEarnOtherData$nPerson = round(tmpEarnOtherData$nPerson, 1)
+tmpEarnOtherData$nHH = round(tmpEarnOtherData$nHH, 1)
+tmpEarnOtherData$estIncome = round(tmpEarnOtherData$estIncome, 0)
+tmpEarnOtherData$lower_estIncome = round(tmpEarnOtherData$lower_estIncome, 0)
+tmpEarnOtherData$upper_estIncome = round(tmpEarnOtherData$upper_estIncome, 0)
+tmpEarnOtherData$hhMeanEarn = round(tmpEarnOtherData$hhMeanEarn, 1)
+tmpEarnOtherData$pctTotalEarn = paste(as.character(round(tmpEarnOtherData$pctTotalEarn * 100, 1)), '%', sep='')
+
+tmpEarnOtherData$CL = paste(tmpEarnOtherData$lower_estIncome, "–", tmpEarnOtherData$upper_estIncome)
+# Organize file
+tmpEarnOtherData <- select(tmpEarnOtherData, commname, incsrceDesc, nPerson,
+         nHH, estIncome, CL, hhMeanEarn, pctTotalEarn)
+
+# Re-label for print out.
+tmpEarnOtherData$incsrceDesc[which(tmpEarnOtherData$incsrceDesc == 'All industries')] = 'Earned income subtotal'
+tmpEarnOtherData$incsrceDesc[which(tmpEarnOtherData$incsrceDesc == 'All other sources of income')] = 'Other income subtotal'
+tmpEarnOtherData$incsrceDesc[which(tmpEarnOtherData$incsrceDesc == 'All income sources')] = 'Community income total'
+
+# set up final formatting community by community.
+for(comm in commnameList$commname) 
+{
+  tmpTableData <- filter(tmpEarnOtherData, comm == commname) %>%
+    select(-commname)
+  
+  tmpTableData <- tmpTableData %>% add_row(incsrceDesc='Earned income', .before=1)
+  tmpTableData <- tmpTableData %>% add_row(incsrceDesc='Other income',
+                                   .after = which(tmpTableData$incsrceDesc == 'Earned income subtotal'))
+  tmpTableData <- tmpTableData %>% add_row(.after = which(tmpTableData$incsrceDesc == 'Earned income subtotal'))
+  boldList <- c(which(tmpTableData$incsrceDesc == 'Earned income' |
+                        tmpTableData$incsrceDesc == 'Earned income subtotal' |
+                        tmpTableData$incsrceDesc == 'Other income' |
+                        tmpTableData$incsrceDesc == 'Other income subtotal' |
+                        tmpTableData$incsrceDesc == 'Community income total'))
+  indentList <- c(seq(1:nrow(tmpTableData)))
+  indentList <- indentList[-which(tmpTableData$incsrceDesc == 'Earned income' |
+                        tmpTableData$incsrceDesc == 'Other income')]
+  
+  tblOut <- kbl(tmpTableData,
+                col.names = c('Income source',
+                              'Number of employed adults',
+                              'Number of households',
+                              'Total for community',
+                              '+/- 95% CI',
+                              'Mean per household',
+                              'Percentage of total community income'),
+                align='lcccccc',
+    caption=formatTableHeader(str_interp("Estimated earned and other income, ${comm}, ${studyear}."))) %>%
+      kable_styling(full_width = F) %>% 
+    row_spec(boldList,bold=T,hline_after = T) %>%
+    add_indent(indentList)
+  
+  print(tblOut)
+}
+
+
+```
+
+## Income by industry
+
+Summarize the data so that is shows up by occupation and industry, this will include percentage of jobs, households, employed adults, and total income.
+
+<div class="todoBlock"> TO DO: The line at the top with totals currently only contains % values. These need to be replaced with the actual estimates. The trick will involve formatting of percentages because we want different formats numerical 1 decimal vs % 1 decimal in subsequent rows. For validation, the output table below should be adequate for now.</div>
+
+```{r Income by industry}
+
+# Create industry summary table with percent calculations and output formatting
+estByIndustry <- estIncData %>%
+  # Filter to only industry-level income sources
+  filter(incsrce >= 1000) %>%
+  # Group by project, year, and community for max calculations
+  group_by(projID, studyear, communty) %>%
+  mutate(
+    # Maximums for percent calculations
+    estJobCount_max = max(estJobCount_mean, na.rm = TRUE),
+    estHHCount_max = max(estHHCount_mean, na.rm = TRUE),
+    estPersonCount_max = max(estPersonCount_mean, na.rm = TRUE),
+    estIncome_max = max(estIncome_mean, na.rm = TRUE),
+    # Calculate percent of max for each summary value
+    pctJobs = estJobCount_mean / estJobCount_max,
+    pctHHs = estHHCount_mean / estHHCount_max,
+    pctPerson = estPersonCount_mean / estPersonCount_max,
+    pctIncome = estIncome_mean / estIncome_max
+  ) %>%
+  ungroup() %>%
+  # Select only relevant columns for output
+  select(
+    projID, studyear, communty, commname, Nhouseholds, NPopulation,
+    incCategoryDesc, incsrceDesc, estJobCount_mean, estHHCount_mean,
+    estPersonCount_mean, estIncome_mean, pctJobs, pctHHs, pctPerson, pctIncome
+  ) %>%
+  # Add indent and format industry description
+  mutate(
+    # Default indent value
+    indent = if_else(incsrceDesc == "All Occupations", 0L, 1L),
+    # Indent all descriptions except 'All Occupations'
+    incsrceDesc = if_else(
+      incsrceDesc != "All Occupations",
+      paste0("     ", incsrceDesc),
+      incCategoryDesc
+    )
+  ) 
+  
+
+# Prepare tmpEstByIndustry for output table
+tmpEstByIndustry <- estByIndustry %>%
+  # Format all percent columns as percent strings
+  mutate(
+    pctJobs = paste0(round(pctJobs * 100, 1), "%"),
+    pctHHs = paste0(round(pctHHs * 100, 1), "%"),
+    pctPerson = paste0(round(pctPerson * 100, 1), "%"),
+    pctIncome = paste0(round(pctIncome * 100, 1), "%")
+  ) %>%
+  # Select only the columns needed for the final table
+  select(commname, indent, incsrceDesc, pctJobs, pctHHs, pctPerson, pctIncome) 
+# %>% 
+#   group_by(commname) %>% 
+#   mutate(sort_key = case_when(str_detect(incsrceDesc, "Industry not specified") ~ 0,
+#     TRUE ~ 1)) %>% # Assign 0 to row 2 for sorting
+#   arrange(commname, sort_key) %>%
+#   select(-sort_key) %>% 
+#   ungroup()
+
+
+
+for(comm in commnameList$commname)
+{
+  tmpTableData <- filter(tmpEstByIndustry, comm==commname) %>%
+    select(-commname)
+
+  # Format gaps & prep for additional formatting stuff.
+  spaceList = which(tmpTableData$indent == 0)
+  spaceList = spaceList[-1]
+  
+  for(ii in 1:length(spaceList))
+  {
+    kk = spaceList[ii]
+    tmpTableData <- tmpTableData %>% add_row(.before=kk)
+    spaceList = spaceList + 1
+  }
+  
+  boldList = which(tmpTableData$indent == 0)
+  indentList = which(tmpTableData$indent == 1)
+  tmpTableData <- select(tmpTableData, -indent)
+  
+  tblOut <- kbl(tmpTableData,
+                col.names = c('Industry',
+                              'Jobs',
+                              'Employed households',
+                              'Employed individuals',
+                              'Percentage of wage earnings'),
+                align='lcccc',
+    caption=formatTableHeader(str_interp("Employment by industry, ${comm}, ${studyear}."))) %>%
+      kable_styling(full_width = F) %>% 
+    row_spec(boldList,bold=T,hline_after = T) %>%
+    add_indent(indentList)
+  
+  print(tblOut)
+    
+}
+
+
+```
+
+## All income by category
+
+Income by category for pie-charts. Here, we will be applying the rule that the top 10 sources + everything else. The figure in excel is largely constructed from the basic output. Below, the pie chart is constructed fully in R, but the plain output file has been retained in order to provide flexibility in figure construction, so that if the top 10 sources + everything else do not depict a readable figure, then it can be modified to sources contributing more than 1% -- or a third alternative as discussed with the PI, RA4, and in consultation with the research director. Changes would also require notification to pubs and possible addition of footnotes.
+
+```{r All income by category}
+
+estByCategoryData <- filter(estIncData, (incsrce == 1000 | incsrce == 0 | incsrce == -2) & incCategory != 1000 & incCategory != -1) %>%
+  arrange(projID, studyear, communty, desc(estIncome_mean)) %>%
+  select(projID, studyear, communty, commname, Nhouseholds, NPopulation, incCategoryDesc, estIncome_mean, 
+         estPersonCount_mean, estHHCount_mean)
+
+for(comm in commnameList$commname)
+{
+  # Two-step filter & Select to just the basics.
+  tmpFigData <- filter(estByCategoryData, commname==comm) %>%
+    select(incCategoryDesc, estIncome_mean) %>%
+    filter(incCategoryDesc != 'All income sources')
+  
+  # Split the file up.
+  tmpFigDataTop = tmpFigData[1:10,]
+  tmpFigOther = tmpFigData[11:nrow(tmpFigData),]
+  tmpFigOther$incCategoryDesc = 'All other sources'
+  tmpFigOther <- group_by(tmpFigOther, incCategoryDesc) %>%
+    summarize(estIncome_mean = sum(estIncome_mean)) %>%
+    ungroup()
+  
+  tmpFigData <- dplyr::bind_rows(tmpFigDataTop, tmpFigOther)
+  
+  colrs <- getColors(nColors = nrow(tmpFigData))
+  catPlot <- ggplot(tmpFigData, 
+         aes(x = "", 
+             y = estIncome_mean, 
+             fill = incCategoryDesc)) +
+    ggtitle(str_interp("Income by category ${comm}, ${studyear}.")) +
+    geom_bar(width = 1, 
+             stat = "identity", 
+             color = "white") +
+    coord_polar("y", 
+                start = 0, 
+                direction = -1) +
+    xlab("") + ylab("") +
+    scale_fill_manual(values = colrs) +    
+     theme_void() +
+    theme(text=element_text(family="serif"))
+
+  print(catPlot)
+  
+}
+
+```
+
+## Median HH income
+
+Because this is a comparative figure, no additional figure will be presented here. Please take care when developing the Excel version of the figure that you have copy-pasted the data properly and have correctly identified Alaska and local area estimates for median income and standard error.
+
+```{r median HH Income}
+
+# 8.0 - Median household employment income.
+
+# Overall employment.
+medianEmployData <- filter(estIncData, incCategory == 1000 & incsrce == 1000) %>%
+  select(projID, studyear, communty, commname, estIncome_median, lower_medIncome, upper_medIncome)
+
+acsMedIncData <- 
+  bind_rows(
+    getCensus(
+      name = "acs/acs5/profile",
+      vintage = 2023,
+      key = "0e794b174764bdd4bc2e8173ac219d5efeac6c3c",
+      vars = c("NAME","DP03_0062E","DP03_0062M"),
+      region = "state:02"
+    ) %>% 
+      rename(geog = state),
+    getCensus(
+      name = "acs/acs5/profile",
+      vintage = 2023,
+      key = "0e794b174764bdd4bc2e8173ac219d5efeac6c3c",
+      vars = c("NAME","DP03_0062E","DP03_0062M"),
+      region = "us:*"
+    ) %>% 
+      rename(geog = us)
+  ) %>% 
+  rename(estIncome_median = DP03_0062E,
+         commname = NAME) %>% 
+  mutate(lower_medIncome = estIncome_median - DP03_0062M,
+         upper_medIncome = estIncome_median + DP03_0062M) %>% 
+  select(-geog, - DP03_0062M)
+
+plotMedIncData <- bind_rows(medianEmployData, acsMedIncData) %>% 
+ mutate(projID = max(projID, na.rm = TRUE),
+        studyear = max(studyear, na.rm = TRUE))
+
+
+# Plot
+
+plotMedIncData %>% 
+    ggplot(aes(x = factor(commname), 
+               y = estIncome_median)) +
+    geom_col(fill = "steelblue") +
+    geom_errorbar(aes(ymin = lower_medIncome, ymax = upper_medIncome), width = 0.2) +
+    ggtitle(glue::glue_collapse("Median Income")) +
+    labs(
+      x = "",
+      y = "Median Income (USD)"
+    ) +
+    scale_y_continuous(labels = scales::label_dollar(accuracy = 1, big.mark = ",", decimal.mark = ".", prefix = "$")) +
+    theme_minimal()
+
+
+  
+    
+```
+
+## Write CSV files
+
+```{r Write csv files}
+
+# Write out CSV files.
+
+# emplCharData -> Final Analysis Output/employCharacteristics(T)_raw.csv
+  fName = '../../CSV/05 - Final Analysis Output/employCharacteristics(T)_raw.csv'
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(emplCharData), ' records to be written', sep='')))
+  rio::export(emplCharData, fName)
+
+# estEarnOtherData -> estEarnedAndOtherIncome_raw.csv  
+  fName = '../../CSV/05 - Final Analysis Output/estEarnedAndOtherIncome_raw.csv'
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(estEarnOtherData), ' records to be written', sep='')))
+  rio::export(estEarnOtherData, fName)
+  
+# estByIndustry -> employ_by_industry_raw.csv
+  fName = '../../CSV/05 - Final Analysis Output/employ_by_industry_raw.csv'
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(estByIndustry), ' records to be written', sep='')))
+  rio::export(estByIndustry, fName)
+  
+# estByCategoryData -> AllIncomeByCategory_raw.csv  
+  fName = '../../CSV/05 - Final Analysis Output/AllIncomeByCategory_raw.csv'
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(estByCategoryData), ' records to be written', sep='')))
+  rio::export(estByCategoryData, fName)  
+  
+# medianEmployData -> median_employ_income_raw.csv  
+  fName = '../../CSV/05 - Final Analysis Output/median_employ_income_raw.csv'
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(medianEmployData), ' records to be written', sep='')))
+  rio::export(medianEmployData, fName)  
+  
+```
+
+<p class="h1footer"> End of MAKE RAW DATA FILES (income) script. </p>

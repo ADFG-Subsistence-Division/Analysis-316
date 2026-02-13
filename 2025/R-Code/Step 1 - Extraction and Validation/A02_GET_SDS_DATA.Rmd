@@ -1,0 +1,635 @@
+---
+title: "A02_GET_SDS_DATA - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-15"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">A02_GET_SDS_DATA - (316) NPS Ambler Comprehensive</div>
+</div>
+
+# Get SDS Data
+
+Extract data and lookup codes from the SDS for data validation and analysis.
+
+## Changelog
+- Programmer: D.S.Koster  
+- Date: 05/21/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output.  
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates 
+
+## Input data
+  
+- dfgjnusql-db71p/Sub_SDS.dbo.xref_community_master 
+- dfgjnusql-db71p/Sub_SDS.dbo.fullCommuntyList  
+- dfgjnusql-db71p/Sub_SDS.dbo.vw_sample  
+- dfgjnusql-db71p/Sub_SDS.dbo.sample_raw 
+- dfgjnusql-db71p/Sub_SDS.dbo.fullResList_raw  
+- dfgjnusql-db71p/Sub_SDS.dbo.vw_resAndMarketRes    
+- dfgjnusql-db71p/Sub_SDS.dbo.xref_ResourceMaster  
+- dfgjnusql-db71p/Sub_SDS.dbo.fullScientificResourceList  
+- dfgjnusql-db71p/Sub_SDS.dbo.definedColumnNames  
+- dfgjnusql-db71p/Sub_SDS.dbo.surveyPageInfo_raw  
+- dfgjnusql-db71p/Sub_SDS.dbo.fullCodesetList  
+- dfgjnusql-db71p/Sub_SDS.dbo.projectCodeSets  
+- dfgjnusql-db71p/Sub_SDS.dbo.vw_definedRecordTypes  
+- dfgjnusql-db71p/Sub_SDS.dbo.META_RECTYPE_SPEC  
+- dfgjnusql-db71p/Sub_SDS.dbo.SP_GET_DATA_BY_RECTYPE  
+- dfgjnusql-db71p/Sub_SDS.dbo.DAT_DM_PROJ_ID  
+
+*NOTE:* No files from file-system are read in.
+
+## Output data
+  
+- /CSV/00 - Lookup Codes/fullCommunityList.csv  
+
+- /CSV/00 - Lookup Codes/fullResList_raw.csv  
+- /CSV/00 - Lookup Codes/fullScientificResourceList.csv  
+- /CSV/00 - Lookup Codes/fullCodesetList.csv  
+- /CSV/00 - Lookup Codes/projectCodeSets.csv  
+- /CSV/00 - Lookup Codes/lookupCodeSetName.csv  
+- /CSV/01 - Database Extract/sample_raw.csv  
+- /CSV/01 - Database Extract/{dataSetName}.csv  
+- /CSV/07 - CSIS Uploads/ref_projname.csv
+- /csisDB.db [ref_projname]
+
+## Background
+
+Early in the development of the Subsistence Division methods for data processing, information was split into categories referred to as 'record types'. These grouped similar data to streamline certain data-wrangling aspects of the data analysis process. In 2007 and 2008, Dave Koster and Lili Naves developed the first comprehensive household survey database that combined meta-data and hybrid data-warehouse techniques that largely automated the extraction of each of these record types. This system futher automated various aspects of the data entry system and ensured consistency in data organization and naming since then. This system is referred to as the SDS.
+
+This file queries the database using vw_definedRecordTypes to identify record types specified for each community survey conducted for the project. That information is used to execute the SP_GET_DATA_BY_RECTYPE stored procedure, which returns the information for a specified record type and community. The information from vw_definedRecordTypes is iterated over step by step such that we obtain consolidated record type raw files, containing all entered household information for a project per record type. You must update the Z00_PROJECT_PARAMETERS.R file in this project's root folder: /Analysis.
+
+## Checklist
+
+- Update 'Author' to your name  
+- Update the project information in 'title' to the current project  
+- Update the development log with any changes you've made to the template file, including your name  
+- All communities that have have been entered are present  
+- All record types used on the survey form are present for each community  
+- The number of records reported in the knitted file  
+- Use DB Browser for SQLite to open csisDB.db and verify that ref_projname has been inserted properly
+
+## Additional information
+To loop through each record type code and community, we set up iterators and step through a list of valid record type codes and communities. [1] below illustrates the process. Note that we use c() to create a vector and we use the $ to reference ONLY the column data in the query called recordTypeCD.  
+
+```{r addnl info code, echo=TRUE, eval=FALSE}
+
+[1] recTypeCDList <- c(dbGetQuery(conn, strSQL)$recordTypeCD)  
+
+```
+
+## Required libraries  
+
+- tidyVerse  
+- odbc  
+- rio  
+- DBI
+- knitr  
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+
+# Additional libraries
+library(knitr)
+library(DBI)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+source('../Functions/f_RMD_HTML_FORMATTING_FUNCTIONS.r')
+
+# For this particular script, we need to include the ODBC Connections.
+source('../Functions/f_subsistenceDatabaseConnections.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+
+```
+
+```{r initiate server connection}
+
+# ##############################################################################
+# 1.0 - Instantiate server connection.
+# ##############################################################################
+
+# 1.1 Load the ODBC Library & Open a connection.
+loadODBCLibrary()
+conn = connectToSDS()
+
+# Create lists to export results at the end of the file rather than during
+#   execution.
+dataSets = list()
+lookupCodeSets = list()
+
+```
+
+## Extract Codesets & Sampling information
+
+Extracts sampling information and codesets for use with this analysis. Codesets may be fundamentally identical to those used in other projects, however these are replicated per-project to ensure full-documentation of the system state when analysis was run.
+
+### Extract community codes
+
+```{r extract community codes}
+
+# Get master community code list
+strSQL = sql('SELECT communty, commname  FROM dbo.xref_community_master')
+lookupCodeSets[['fullCommuntyList']] <- odbc::dbGetQuery(conn, strSQL)
+
+count = nrow(lookupCodeSets[['fullCommuntyList']])
+
+knitr::kable(head(lookupCodeSets[['fullCommuntyList']], n=10),
+             caption=formatTableHeader("First ten community codes"),
+             align="l")
+
+cat(formatSummaryBlock(paste("Community codes extracted: ", count, " codes found. Results will be written to: /CSV/00 - Lookup Codes/fullCommunityList.csv", sep="")))
+
+```
+
+### Extract sampling data
+
+```{r extract sampling summary}
+
+# Get project name.
+strSQL = sql(str_interp('SELECT proj_id as projid, 
+                     studyear as year, 
+                     proj_name as projname
+             FROM DAT_DM_PROJ_ID WHERE proj_id = ${projID} AND studyear = ${studyear}'))
+
+projNameData <- odbc::dbGetQuery(conn, strSQL)
+projNameData$source = "ADFG Division of Subsistence"
+count = nrow(projNameData)
+knitr::kable(projNameData,
+             caption="Project name information",
+             align="l")
+
+cat(formatSummaryBlock(paste("Project name records extracted: ", count, " codes found. Results will be written to: /CSV/07 - CSIS Uploads/ref_projname.csv", sep="")))
+
+# Get Sampling
+strSQL = sql(str_interp('SELECT proj_id AS projID, 
+                      studyear, 
+                      communty, 
+                      strata, 
+                      strataName, 
+                      interviewGoal, 
+                      movedInelegible, 
+                      initialEstimatedHHs, 
+                      surveysReceived, 
+                      samphh, 
+                      commhh, 
+                      refuse, 
+                      noContact  
+                      FROM dbo.vw_sample  
+                      WHERE (proj_id = ${projID} AND studyear = ${studyear})'))
+
+dataSets[['sample_raw']] <- odbc::dbGetQuery(conn, strSQL)
+
+# Temp dataset for data evaluation.
+tempData <- dataSets[['sample_raw']]
+
+tempData <- left_join(tempData, lookupCodeSets[['fullCommuntyList']],
+                      by=c("communty"))
+
+tempData <- select(tempData,
+                   commname,
+                   strataName,
+                   interviewGoal, 
+                   movedInelegible, 
+                   initialEstimatedHHs, 
+                   surveysReceived, 
+                   samphh, 
+                   commhh, 
+                   refuse, 
+                   noContact)
+
+knitr::kable(tempData,
+             caption=formatTableHeader('Sample summary'),
+             align='l',
+             col.names=c("Community",
+                   "Strata",
+                   "Interview Goal", 
+                   "Moved Inelegible", 
+                   "Initial Estimated of HHs", 
+                   'Surveys Received', 
+                   'Sample HHs (sampHH)', 
+                   'Community HHs (commHH)', 
+                   'Refuse', 
+                   'No Contact'))
+
+cat(formatSummaryBlock("Sampling summary extracted. Results will be written to: /CSV/01 - Database Extract/sample_raw.csv"))
+
+```
+
+### Extract resource codes
+
+Two resource code sets will be extracted - a basic one for use with most tables and figures, as well as one containing the scientific names. These are intended and saved into CSV/00 - Lookup Codes/.
+
+```{r extract resource codes}
+
+# ###########################################################################
+# Get primary resource code list.
+# ###########################################################################
+strSQL = sql('SELECT resource, resName, specList FROM dbo.vw_resAndMarketRes')
+resList <- odbc::dbGetQuery(conn, strSQL)
+
+# Trim out excess whitespace. 
+resList$resName = str_trim(resList$resName, side="left")
+
+# compute resource list levels.
+resList$L1 = trunc(resList$resource/100000000)*100000000
+resList$L2 = trunc(resList$resource/10000000)*10000000
+resList$L3 = trunc(resList$resource/100000)*100000
+resList$L4 = trunc(resList$resource/1000)*1000
+resList$L5 = trunc(resList$resource/10)*10
+
+resList$indent = 6
+resList$indent[resList$L1 == resList$L2 &
+             resList$L2 == resList$L3 &
+             resList$L3 == resList$L4 &
+             resList$L4 == resList$L5] = 1
+resList$indent[resList$L1 == 0] = 0
+resList$indent[resList$L1 != resList$L2] = 2
+resList$indent[resList$L2 != resList$L3] = 3
+resList$indent[resList$L3 != resList$L4] = 4
+resList$indent[resList$L4 != resList$L5] = 5
+resList$indent[resList$L5 != resList$resource] = resList$indent[resList$L5 != resList$resource] + 1
+
+resList$resName[resList$indent == 1] = paste(' ', resList$resName[resList$indent == 1], sep='')
+resList$resName[resList$indent == 2] = paste('  ', resList$resName[resList$indent == 2], sep='')
+resList$resName[resList$indent == 3] = paste('   ', resList$resName[resList$indent == 3], sep='')
+resList$resName[resList$indent == 4] = paste('    ', resList$resName[resList$indent == 4], sep='')
+resList$resName[resList$indent == 5] = paste('     ', resList$resName[resList$indent == 5], sep='')
+
+resList <- select(resList, -L1, -L2, -L3, -L4, -L5, -indent)
+
+count = nrow(resList)
+
+knitr::kable(head(resList, n=10),
+             caption=formatTableHeader("First ten resource codes"),
+             align="l")
+
+cat(formatSummaryBlock(paste("Extracted full resource code list: ", count, " codes extracted, results will be saved in: /CSV/00 - Lookup Codes/fullResList_raw.csv", sep="")))
+
+lookupCodeSets[['fullResList_raw']] <- resList
+
+# ###########################################################################
+# Get scientific resource list.
+# ###########################################################################
+
+# Get primary scientific resource code list
+strSQL = sql("SET CONCAT_NULL_YIELDS_NULL OFF SELECT CONVERT(int,[resource]) AS [resource],
+                    [properResName],
+                    ([taxonomyGenus] + ' ' + 
+                    [taxonomySpecies] + ' '  + 
+                    [taxonomySubSpecies]) AS scientificName  
+                     FROM [xref_ResourceMaster]")
+resList <- odbc::dbGetQuery(conn, strSQL)
+
+count = nrow(resList)
+
+knitr::kable(head(resList, n=10),
+             caption=formatTableHeader("First ten from scientific resource code names list"),
+             align="l")
+
+
+resList$properResName = str_trim(resList$properResName, side="left")
+
+resList$L1 = trunc(resList$resource/100000000)*100000000
+resList$L2 = trunc(resList$resource/10000000)*10000000
+resList$L3 = trunc(resList$resource/100000)*100000
+resList$L4 = trunc(resList$resource/1000)*1000
+resList$L5 = trunc(resList$resource/10)*10
+
+resList$indent = 6
+resList$indent[resList$L1 == resList$L2 &
+              resList$L2 == resList$L3 &
+              resList$L3 == resList$L4 &
+              resList$L4 == resList$L5] = 1
+resList$indent[resList$L1 == 0] = 0
+resList$indent[resList$L1 != resList$L2] = 2
+resList$indent[resList$L2 != resList$L3] = 3
+resList$indent[resList$L3 != resList$L4] = 4
+resList$indent[resList$L4 != resList$L5] = 5
+resList$indent[resList$L5 != resList$resource] = resList$indent[resList$L5 != resList$resource] + 1
+
+resList$properResName[resList$indent == 1] = paste(' ', resList$properResName[resList$indent == 1], sep='')
+resList$properResName[resList$indent == 2] = paste('  ', resList$properResName[resList$indent == 2], sep='')
+resList$properResName[resList$indent == 3] = paste('   ', resList$properResName[resList$indent == 3], sep='')
+resList$properResName[resList$indent == 4] = paste('    ', resList$properResName[resList$indent == 4], sep='')
+resList$properResName[resList$indent == 5] = paste('     ', resList$properResName[resList$indent == 5], sep='')
+
+resList <- select(resList, -L1, -L2, -L3, -L4, -L5, -indent)
+
+cat(formatSummaryBlock(paste("Extracted full resource code list with scientific names: ", count, " codes extracted, results will be saved in: /CSV/00 - Lookup Codes/fullScientificResourceList.csv", sep='')))
+
+lookupCodeSets[['fullScientificResourceList']] <- resList
+
+
+```
+
+### Extract defined column names
+
+```{r extract defined column names}
+
+# Get defined data columns - report information later for better output organization.
+strSQL = sql(str_interp('SELECT projID, 
+                                studyear, 
+                                communty, 
+                                recordTypeCD, 
+                                colName, 
+                                colDesc, 
+                                colDataType, 
+                                codeSetID 
+                                FROM dbo.vw_definedColumns  
+                                WHERE (projID = ${projID} AND 
+                        studyear = ${studyear} AND 
+                        defColID is not null)'))
+
+lookupCodeSets[['definedColumnNames']] <- odbc::dbGetQuery(conn, strSQL)
+
+count <- nrow(lookupCodeSets[['definedColumnNames']])
+cat(formatSummaryBlock(paste("SQL Extract:", strSQL ,", ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+```
+
+### Extract defined display group names
+
+```{r extract defined display group names}
+
+# Get defined data columns - report information later for better output organization.
+strSQL = sql(str_interp('SELECT [projID]
+                        ,[studyear]
+                        ,[communty]
+                        ,[commname]
+                        ,[displayGroup]
+                        ,[displayGroupDesc]
+                        ,[page]
+                        ,[order]
+                        FROM [Sub_SDS].[dbo].[vw_displayGroupsByCommunity]
+                        WHERE projID = 0 OR (projID = ${projID} AND studyear = ${studyear})'))
+
+lookupCodeSets[['definedDisplayGroups']] <- odbc::dbGetQuery(conn, strSQL)
+
+count <- nrow(lookupCodeSets[['definedDisplayGroups']])
+cat(formatSummaryBlock(paste("SQL Extract:", strSQL ,", ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+```
+
+
+### Extract survey page definition
+
+```{r survey page definition}
+
+strSQL = sql(str_interp('  SELECT [mDD].[projID],
+		 [mDD].[studyear],
+		 [mDD].[communty],
+		 [ddPC].[pageNum],
+		 [ddPC].[recordTypeCD],
+		 [mRS].[recordType], 
+		 [mRS].[recordTypeDetailDesc]
+		 FROM [Sub_SDS].[dbo].[META_DEF_DE_PAGE_CONNECTIONS] ddPC
+     LEFT JOIN [META_DATA_DEFINITION] mDD ON
+     ddPC.dataDefinitionID = mDD.dataDefinitionID
+     LEFT JOIN [META_RECTYPE_SPEC] mRS
+     ON ddPC.recordTypeCD = mRS.recordTypeCD
+     WHERE mDD.projID = ${projID} AND mDD.studyear = ${studyear}
+     AND ddPC.queryLevel = 2'))
+
+lookupCodeSets[['surveyPageInfo_raw']] <- odbc::dbGetQuery(conn, strSQL)
+
+knitr::kable(lookupCodeSets[['surveyPageInfo_raw']], 
+             caption=formatTableHeader("Record type - survey page reference"),
+             align='l')
+
+```
+
+### Extract lookup codes
+
+```{r extract full codesets}
+
+# Get full codeset list for reference
+strSQL = sql(str_interp('SELECT codeSetID, 
+                                codeSetName, 
+                                projID, 
+                                studyear, 
+                                code, 
+                                codeDescription,
+                                extendedCodeSetID  
+                                FROM dbo.vw_fullCodesetList
+                        WHERE projID = 0 OR (projID = ${projID} AND studyear = ${studyear})'))
+lookupCodeSets[['fullCodesetList']] <- odbc::dbGetQuery(conn, strSQL)
+
+# Project codebook:
+codesUsedList <- distinct(lookupCodeSets[['definedColumnNames']], codeSetID)$codeSetID
+
+lookupCodeSets[['projectCodeSets']] <- filter(lookupCodeSets[['fullCodesetList']], 
+                                        codeSetID %in% codesUsedList)
+
+knitr::kable(distinct(lookupCodeSets[['projectCodeSets']],
+                      codeSetID, codeSetName), 
+             caption=formatTableHeader("Codesets defined for project"),
+             align='l')
+
+
+count <- nrow(lookupCodeSets[['fullCodesetList']])
+
+# Print summary.
+cat(formatSummaryBlock(paste("Full database of codesets extracted. A total of: ", count, " rows were found. Results will be saved in: /CSV/00 - Lookup Codes/fullCodesetList.csv")))
+cat("<br>")
+
+# Print summary.
+count <- nrow(lookupCodeSets[['projectCodeSets']])
+
+cat(formatSummaryBlock(paste('Project-specific code record extracted:', count, ' rows. Results will be saved in /CSV/00 - Lookup Codes/projectCodeSets.csv')))
+
+```
+
+## Household survey data extract.
+
+```{r meta data extract}
+
+#Get the list of communities and record type codes so we don't have to 
+#   repeatedly re-query the database.
+strSQL = sql(str_interp('SELECT DISTINCT [communty], [recordTypeCD] FROM [vw_definedRecordTypes] 
+          WHERE [projID] = ${projID} AND [studyear] = ${studyear} AND definedRecordTypeCD is not null'))  
+
+# Create a tibble for defined record types.
+defRecTypeCDSet <- tibble(odbc::dbGetQuery(conn, strSQL))
+
+strSQL = sql(str_interp('SELECT recordTypeCD, recordType FROM [META_RECTYPE_SPEC]'))
+recTypeFullList <- tibble(odbc::dbGetQuery(conn, strSQL))
+
+#This creates a vector of distinct record type codes for the project that we 
+#  can iterate over, we use $recordTypeCD to ensure we get a vector instead 
+#  of a full tibble or dataframe.
+recTypeCDList <- distinct(defRecTypeCDSet, recordTypeCD)$recordTypeCD
+
+# Put together data for a summary output table.
+tempData <- left_join(defRecTypeCDSet,
+                     lookupCodeSets[["fullCommuntyList"]],
+                     by=c("communty")) %>%
+            left_join(recTypeFullList,
+                      by=c("recordTypeCD"))
+tempData$included = "Yes"
+
+# Pivot for readability.
+tempData <- pivot_wider(select(tempData, -communty, -recordTypeCD), 
+                         names_from = commname,
+                         values_from = included)
+
+knitr::kable(tempData,
+             caption = formatTableHeader("Record types included"))
+
+# ##############################################################################
+# Main data extract.
+# ##############################################################################
+
+for(recTypeCD in recTypeCDList) {
+  # Instantiate the temporary dataSet, if you don't, you can't append to it.
+  tDataSet = data.frame()
+  communtyList <- c(filter(defRecTypeCDSet, recordTypeCD == recTypeCD)$communty)
+
+  for(communty in communtyList) {
+      strSQL = sql(str_interp("exec [dbo].[SP_GET_DATA_BY_RECTYPE] ${projID}, ${studyear}, N'${recTypeCD}', ${communty}"))
+      tDataSet <- dplyr::bind_rows(tDataSet, odbc::dbGetQuery(conn, strSQL))
+  }
+
+  cat(
+    formatSummaryBlock(
+    paste(nrow(tDataSet), " rows extracted for Record Type ", recTypeCD, sep='')
+  ))
+  
+  dataSetName = paste('REC', recTypeCD, '_raw', sep='')
+  dataSets[[dataSetName]] <- tDataSet
+  rm(tDataSet)
+}
+
+
+```
+
+```{r disconnect}
+
+# Close server connection.
+dbDisconnect(conn)
+
+```
+
+## Write out SQLite
+
+Write the SQLite database file for the CSIS. This data will be stored in csisDB.db in the main project folder. If this database does not exist, it will be created. The existing data for ref_projname table will be deleted and the table reconstructed.
+
+```{r write SQLite database}
+# ##############################################################################
+# Write out CSV files.
+# ##############################################################################
+
+csisDB <- dbConnect(RSQLite::SQLite(), "../../SQLite/csisDB.db")
+
+delSQL = 'DROP TABLE IF EXISTS "ref_projname";'
+
+DBResult <- dbSendQuery(csisDB, delSQL)
+dbClearResult(DBResult)
+
+tblSQL = 'CREATE TABLE "ref_projname" ("projNameUID" INTEGER NOT NULL,
+        "projid" INTEGER,
+        "year" INTEGER,
+        "projname" TEXT,
+        "source" TEXT,
+        PRIMARY KEY ("projNameUID" AUTOINCREMENT));'
+
+DBResult <- dbSendQuery(csisDB, tblSQL)
+dbClearResult(DBResult)
+
+strSQL <- 'INSERT INTO "ref_projname" (
+        projid,
+        year,
+        projname,
+        source) VALUES (
+        :projid,
+        :year,
+        :projname,
+        :source);'
+
+dbBegin(csisDB)
+DBResult <- dbSendQuery(csisDB, strSQL, projNameData)
+print(DBResult)
+dbClearResult(DBResult)
+dbCommit(csisDB)
+
+dbDisconnect(csisDB)
+
+```
+
+## Write out CSV files
+
+```{r write csv files}
+
+# ##############################################################################
+# Write out CSV files.
+# ##############################################################################
+
+for (dataSetName in names(dataSets)) {
+
+  fName = str_interp("../../CSV/01 - Database Extract/${dataSetName}.csv")
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, sep='')
+  ))
+
+# For 2023; we are, by default, working exclusively with R code..
+  #write_sav(dataSets[[dataSetName]], str_interp("${dPath}SAV/${dataSetName}.sav"))
+  rio::export(dataSets[[dataSetName]], fName)
+}
+
+for (lookupCodeSetName in names(lookupCodeSets)) {
+
+  fName = str_interp("../../CSV/00 - Lookup Codes/${lookupCodeSetName}.csv")
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, sep='')
+  ))
+
+# For 2023; we are, by default, working exclusively with R code..
+  #write_sav(dataSets[[dataSetName]], str_interp("${dPath}SAV/${dataSetName}.sav"))
+  rio::export(lookupCodeSets[[lookupCodeSetName]], fName)
+}
+
+fName = str_interp("../../CSV/07 - CSIS Uploads/ref_projname.csv")
+cat(formatSummaryBlock(
+  paste('Writing file: ', fName, sep='')
+))
+
+rio::export(projNameData, fName)
+
+```
+
+
+<p class="h1footer"> End of get SDS data script. </p>
+

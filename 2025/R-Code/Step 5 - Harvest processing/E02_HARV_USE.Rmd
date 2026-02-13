@@ -1,0 +1,1139 @@
+---
+title: "E02_HARV_USE - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-15"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">E02_HARV_USE - (316) NPS Ambler Comprehensive</div>
+</div>
+
+# Harvest and Use
+
+This file uses the full CSIS formatted harvest and use file to produce tables and figures for the technical report.
+
+## Change log
+
+Change 1
+Programmer: D. Koster, 08/2022, Template/methods update. The historical SPSS files reanalyzed the data using the same general methods as the CSIS output moving forward, the harvest and use table, and associated information, will be derived from the CSIS output rather than reanalysis. This is a permanent change to all analysis moving forward.
+
+Change 2
+- Programmer: D.S.Koster  
+- Date: 05/21/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output. Cleaned up output table a bit so the headers a slightly cleaner.  
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates  
+
+Change 3
+- Programmer: Jesse Coleman
+- Date: 03/18/2025
+- Change Description: Removed source() calls; all functions are included in the library adfgSubs.
+- Template Update [Y|N]: Y
+- One-Off: No-include in all future comprehensive templates 
+
+Change 4
+- Programmer: Jesse Coleman
+- Date: 06/18/2025
+- Change Description: Refactor using tidyverse language and DRY ("don't repeat yourself") principles.
+- Template Update [Y|N]: Y
+- One-Off: No - include in all future comprehensive templates 
+
+## Input data
+  
+- /CSV/03 - main/full_community_harvest_raw.csv  
+- /CSV/00 - Lookup Codes/fullResList_raw.csv
+
+## Output data
+  
+- /CSV/06 - Final Analysis Output/harvest_use_raw.csv    
+- /CSV/06 - Final Analysis Output/harvest_use_categories_raw.csv  
+- /CSV/06 - Final Analysis Output/harvest_use_forCharts_raw.csv
+
+### Checklist
+  
+- Update 'Author' to your name  
+- Update the project information in 'title' to the current project  
+- Update the development log with any changes you've made to the template file, including your name  
+- Update the harvest and use tables and figures associated with the output files  
+- Check those tables against the output here.  
+
+## Additional information
+
+This file relies on inputs from E01_CSIS_HARV_USE.Rmd. If the CSIS harvest use file hasn't been run, this one will not work.
+
+### Required libraries (adjust as needed)
+  
+- tidyVerse  
+- rio  
+- knitr  
+- kableExtra
+- adfgSubs
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+
+# Additional libraries
+library(knitr)
+library(kableExtra)
+library(adfgSubs)
+library(glue)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+
+```
+
+## Load data
+
+```{r load data}
+
+# Load data
+
+# This for each file opened.
+commHarvData <- read.csv('../../CSV/03 - main/full_community_harvest_raw.csv',
+                   na = '', 
+                   header = TRUE, 
+                   strip.white = TRUE)
+
+count <- nrow(commHarvData)
+cat(formatSummaryBlock(paste("Opening file: full_community_harvest_raw.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+# Open and report on the full resource list, remove specList, we've already 
+#   resolved that in the commHarvData file.
+resCodeData <- read.csv('../../CSV/00 - Lookup Codes/fullResList_raw.csv',
+                   na = '', 
+                   header = TRUE, 
+                   strip.white = TRUE) %>% 
+  select(-specList)
+
+count <- nrow(resCodeData)
+cat(formatSummaryBlock(paste("Opening file: fullResList_raw.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+```
+
+## Prepare output files
+
+Organize the analyzed output from full_community_harvest_raw.csv.
+
+```{r harv use data file}
+
+# Refactor resource code logic. Fish and land mammals have top-level categories 
+#   specified by the 2nd digit code. All other resources have a single standard 
+#   top level reporting category with the second digit.
+resCodeData <- resCodeData %>%
+  mutate(
+    catCode = case_when(
+      resource < 300000000 ~ trunc(resource / 1e7),
+      TRUE                 ~ trunc(resource / 1e8) * 10
+    )
+  )
+
+# Flag detail rows and filter
+commHarvData <- commHarvData %>%
+  mutate(detailRow = as.integer((rescode - trunc(rescode / 10) * 10) > 0)) %>%
+  filter(detailRow == 0) %>%
+  # Remove summary rows except top-level categories (including feral)
+  filter(
+    specList == 1 |
+      (specList != 1 &
+         rescode %in% c(
+           0, 110000000, 120000000, 210000000, 220000000, 230000000,
+           300000000, 400000000, 500000000, 600000000
+         ))
+  ) %>%
+  # Rename columns to standards
+  rename(
+    communty = commcode,
+    studyear = year,
+    projID = projID,
+    resource = rescode,
+    used_pct = used,
+    attempt_pct = trying,
+    harvestq_pct = hrvsting,
+    received_pct = receving,
+    giveaway_pct = giving,
+    estHarvestLbs_sum = xtotlbs,
+    harvestLbs_mean = avglbhrv,
+    estHarvestAmt_sum = xtotnum,
+    reptHarvestAmt = numharv,
+    reptHarvestLbs = totlbhrv,
+    CIP_Lbs = pm95pct
+  ) %>%
+  # Merge in resource code names
+  left_join(resCodeData, by = c("resource")) %>%
+  # Trim and indent species names
+  mutate(
+    resName = str_trim(resName, side = "both"),
+    resName = if_else(specList == 1, paste0("     ", resName), resName),
+    harvestAmt_mean = estHarvestAmt_sum / NHouseholds
+  )
+
+# Organize columns and sort
+harvRawData <- commHarvData %>%
+  select(
+    projID, studyear, communty, commname, resource, resName, used_pct, attempt_pct,
+    harvestq_pct, received_pct, giveaway_pct, estHarvestLbs_sum, harvestLbs_mean,
+    percap, estHarvestAmt_sum, units, harvestAmt_mean, CIP_Lbs, CIP_Amt, specList,
+    convFact, reptHarvestAmt, reptHarvestLbs, NHouseholds, NPopulation, specList
+  ) %>%
+  arrange(projID, studyear, communty, resource)
+
+# Format output: scale percentages to 0-100
+harvOutputData <- harvRawData %>%
+  mutate(across(
+    c(used_pct, attempt_pct, harvestq_pct, received_pct, giveaway_pct, CIP_Lbs, CIP_Amt),
+    ~ .x * 100
+  ))
+
+count <- nrow(harvRawData)
+cCount <- length(harvRawData)
+
+
+
+cat(formatSummaryBlock(str_interp("Data prepped for output file: harvest_use_raw.csv, there are ${count} rows and ${cCount} columns.")))
+
+
+```
+
+## Harvest and use tables
+
+In this step, please review each table for obvious errors or issues. When re-running this data with updates, you can visually compare this output to the previous version in excel before pasting the output file into the excel template.
+
+```{r harv use table}
+
+commnameList <- harvRawData %>% distinct(commname) %>% pull(commname)
+
+studyearList <- harvRawData %>% select(studyear) %>% distinct(studyear) %>% pull(studyear)
+
+walk(commnameList, function(comm) {
+  tempData <- harvRawData %>%
+    filter(commname == comm) %>%
+    select(resName, used_pct, attempt_pct, harvestq_pct, received_pct,
+           giveaway_pct, estHarvestLbs_sum, harvestLbs_mean, percap,
+           estHarvestAmt_sum, units, harvestAmt_mean, CIP_Lbs, CIP_Amt, specList) %>%
+    mutate(
+      CIP = if_else(units == "lb", CIP_Lbs, CIP_Amt),
+      used_pct = round(used_pct * 100, 1),
+      attempt_pct = round(attempt_pct * 100, 1),
+      harvestq_pct = round(harvestq_pct * 100, 1),
+      received_pct = round(received_pct * 100, 1),
+      giveaway_pct = round(giveaway_pct * 100, 1),
+      estHarvestLbs_sum = round(estHarvestLbs_sum, 1),
+      harvestLbs_mean = round(harvestLbs_mean, 1),
+      percap = round(percap, 1),
+      estHarvestAmt_sum = round(estHarvestAmt_sum, 1),
+      harvestAmt_mean = round(harvestAmt_mean, 1),
+      CIP = round(CIP * 100, 1)
+    ) %>%
+    select(-CIP_Lbs, -CIP_Amt)
+  
+  indentList <- which(tempData$specList == 1)
+  boldList <- which(tempData$specList == 2)
+  tempData <- select(tempData, -specList)
+
+  studyear <- unique(harvRawData$studyear[harvRawData$commname == comm])
+  tblOut <- kbl(
+    tempData,
+    caption = formatTableHeader(str_interp("Harvest and use table for: ${comm}, ${studyear}")),
+    col.names = c(
+      "Resource", "Use %", "Attempt %", "Harvest %", "Receive %", "Gave %",
+      "Total", "Mean per household", "Per capita", "Total", "Unit",
+      "Mean per household", "CI 95% +-"
+    )
+  ) %>%
+    kable_styling(full_width = FALSE) %>%
+    add_indent(indentList) %>%
+    row_spec(boldList, bold = TRUE, hline_after = FALSE) %>%
+    add_header_above(c(
+      "  " = 1, "Percentage of households" = 5, "Harvest weight (lbs)" = 3,
+      "Harvest amount" = 3, "  " = 1
+    ))
+  
+  print(tblOut)
+})
+
+
+```
+
+## Harvest by category table
+
+Review the outputs below; see if they make sense.
+
+```{r harvest by category data}
+
+harvUseCatData <- harvRawData %>%
+  filter(specList == 2) %>%
+  select(projID, studyear, communty, commname, resource, resName, 
+         used_pct, attempt_pct, harvestq_pct, estHarvestAmt_sum, estHarvestLbs_sum, percap)
+
+walk(commnameList, function(comm) {
+  # Table 1: Harvest by category
+  tempData <- harvUseCatData %>%
+    filter(commname == comm) %>%
+    arrange(resource) %>%
+    select(resName, estHarvestLbs_sum, percap) %>%
+    mutate(
+      estHarvestLbs_sum = round(estHarvestLbs_sum, 1),
+      percap = round(percap, 1)
+    )
+  
+  tblOut <- kbl(
+    tempData,
+    caption = formatTableHeader(str_interp("Harvest by category for ${comm}, ${unique(harvUseCatData$studyear[harvUseCatData$commname == comm])}")),
+    col.names = c("Resource", "Total", "Per capita")
+  ) %>%
+    kable_styling(full_width = FALSE) %>%
+    add_header_above(c("  " = 1, "Harvest in pounds usable weight" = 2))
+  print(tblOut)
+  
+ 
+  
+  pieData <- tempData %>%
+    filter(resName != 'All resources', percap > 0) %>%
+    arrange(percap) %>%
+    mutate(resName = factor(resName, levels = rev(unique(resName))))
+
+  # Get colors (use your existing function or any palette)
+  colrs <- getColors(nColors = nrow(pieData))
+  
+  # Create labels: "Resource; XX%"
+  labels <- paste0(pieData$resName, "; ", round(pieData$percap / sum(pieData$percap) * 100), "%")
+  
+  # Draw the pie chart using base R
+  catPlot <- pie(
+    pieData$percap,
+    labels = labels,
+    col = colrs,
+    main = str_interp("Harvest by category for ${comm}, ${unique(harvUseCatData$studyear[harvUseCatData$commname == comm])}"),
+    font.main = 1,
+    family = "serif",
+    cex = 0.8
+  )
+  
+ catPlot
+
+  
+  # Bar plot: Use, attempt, and harvest by resource category
+  tempCatData <- harvUseCatData %>%
+    filter(commname == comm, resource != 0) %>%
+    arrange(resource) %>%
+    select(resName, used_pct, attempt_pct, harvestq_pct)
+  count <- nrow(tempCatData)
+  
+  plotData <- tibble(
+    category = rep(tempCatData$resName, 3),
+    label = rep(c("using", "attempting", "harvesting"), each = count),
+    useVar = c(tempCatData$used_pct, tempCatData$attempt_pct, tempCatData$harvestq_pct)
+  ) %>%
+    mutate(
+      category = str_wrap(category, width = 10)
+    )
+  labelOrder <- c("using", "attempting", "harvesting")
+  catOrder <- plotData %>% distinct(category) %>% pull(category)
+  colrs <- getColors(nColors = 3)
+  
+  plotOut <- ggplot(plotData, aes(
+      fill = factor(label, labelOrder), 
+      y = useVar, 
+      x = category,
+      label = scales::percent(useVar)
+    )) + 
+    ggtitle(str_interp("Use, attempt, and harvest by resource category, ${comm}, ${unique(harvUseCatData$studyear[harvUseCatData$commname == comm])}")) +
+    geom_bar(position = position_dodge(width = 0.5), stat = "identity") +
+    geom_text(position = position_dodge(width = 0.5), vjust = -0.5, size = 3) +
+    scale_x_discrete(limits = catOrder) +
+    scale_y_continuous(labels = scales::percent) +
+    scale_fill_manual(values = colrs) +
+    labs(fill = '') +
+    ylab("Percentage") + xlab("Resource category") +
+    theme(legend.position = "bottom", legend.title = element_blank()) +
+    theme(text = element_text(family = "serif")) +
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+          panel.background = element_blank(), axis.line = element_line(colour = "black"))
+  print(plotOut)
+})
+
+
+```
+
+## Category figure data
+
+Produce a dataset containing species by category for pie-charts by resource category.
+
+```{r category figure data, message = FALSE}
+
+# Group by category and calculate max harvests for use in percent calculations
+harvUseFigData <- commHarvData %>%
+  group_by(projID, studyear, communty, catCode) %>%
+  mutate(
+    catHarvLbs = max(estHarvestLbs_sum, na.rm = TRUE),
+    catHarvAmt = max(estHarvestAmt_sum, na.rm = TRUE)
+  ) %>%
+  ungroup() %>%
+  mutate(
+    pctCatByLbs = estHarvestLbs_sum / catHarvLbs,
+    pctCatByAmt = estHarvestAmt_sum / catHarvAmt,
+
+    # Furbearers will always be compared by individual harvests, because many are not eaten.
+    pctByCat = if_else(catCode == 22, pctCatByAmt, pctCatByLbs),
+
+    # Set a flag if the total contribution is between 0 and 1.5%, these
+    #   will be lumped into an 'other' category. This flag will help us
+    #   determine the number of these lumped species. If there is only 1 - no point
+    #   in aggregating as 'other'.
+    othIdx = if_else(pctByCat < 0.015 & pctByCat > 0, 1L, 0L)
+  ) %>%
+  # Get a count of resources by category
+  group_by(projID, studyear, communty, catCode) %>%
+  mutate(othCount = sum(othIdx, na.rm = TRUE)) %>%
+  ungroup() %>%
+  # Drop the 0 harvests of individual species, they just muck-up the figure 
+  #   - Leave in overall categories though, just for accounting purposes.
+  filter(pctByCat > 0 | specList != 1, 
+         # Remove wood.
+         resource != 604000000)
+
+# Helper function for vegetation lumping
+veg_lump <- function(data, resource_range, name, code = NULL) {
+  data %>%
+    filter(resource %in% resource_range) %>%
+    mutate(
+      resource = min(resource_range),
+      resName = name,
+      specList = 1
+    )
+}
+
+
+
+# Special handling for vegetation, we'll lump into sub-categories to start:
+#  Mushrooms, Berries, Other vegetation, seaweed, all other processing will work fine as below (I think).
+
+# Seaweed into its own data frame for a minute
+seaweedData <- veg_lump(harvUseFigData, resource_range = 603000000:(604000000 - 1), name = "Seaweed")
+
+# Mushrooms into their own data frame.
+mushroomData <- veg_lump(harvUseFigData, resource_range = c(602040000, 602046000, 602046010, 602046020, 602046030, 602046040), name = "Mushrooms")
+
+# Berries into their own data frame.
+berryData <- veg_lump(harvUseFigData, resource_range = 601000000:(602000000 - 1), name = "Berries")
+
+# Other vegetation
+otherPlantsData <- harvUseFigData %>%
+  filter(resource >= 602000000, resource < 603000000, !resource %in% c(602040000, 602046000, 602046010, 602046020, 602046030, 602046040)) %>%
+  mutate(
+    resource = 602000000,
+    resName = "Other plants and greens",
+    specList = 1
+  )
+
+# Remove vegetation from the main dataset.
+harvUseFigData_main <- harvUseFigData %>%
+  filter(resource < 600000000)
+
+# break-out lumped species from those we want to split out.
+lumpedSpecies1Data <- harvUseFigData_main %>%
+  filter(
+    pctByCat < 0.015,
+    (catCode < 30 | catCode == 43),
+    othCount > 1
+  ) %>%
+  mutate(
+    resName = case_when(
+      catCode == 11 ~ "All other salmon",
+      catCode == 12 ~ "All other nonsalmon fishes",
+      catCode == 21 ~ "All other large land mammals",
+      catCode == 22 ~ "All other small land mammals",
+      catCode == 23 ~ "All other feral animals",
+      catCode %in% c(41, 42, 43) ~ "All other birds and eggs",
+      TRUE ~ "All other"
+    ),
+    resource = (catCode * 10000000) + 9999999
+  )
+
+lumpedSpecies2Data <- harvUseFigData_main %>%
+  filter(
+    pctByCat < 0.015,
+    (catCode >= 30 & catCode < 60 & catCode != 43),
+    othCount > 1
+  ) %>%
+  mutate(
+    resName = case_when(
+      catCode == 30 ~ "All other marine mammals",
+      catCode == 50 ~ "All other marine invertebrates",
+      catCode %in% c(41, 42, 43) ~ "All other birds and eggs",
+      TRUE ~ "All other"
+    ),
+    resource = (catCode * 10000000) + 99999999
+  )
+
+splitSpeciesData <- harvUseFigData_main %>%
+  filter(pctByCat > 0.015 | othCount <= 1)
+
+# Bring all of the data back together now.
+harvUseFigData <- bind_rows(
+  seaweedData,
+  mushroomData,
+  berryData,
+  otherPlantsData,
+  lumpedSpecies1Data,
+  lumpedSpecies2Data,
+  splitSpeciesData
+) %>%
+  group_by(projID, studyear, communty, commname, catCode, resource, resName) %>%
+  summarize(
+    estHarvestAmt_sum = sum(estHarvestAmt_sum, na.rm = TRUE),
+    estHarvestLbs_sum = sum(estHarvestLbs_sum, na.rm = TRUE),
+    percap = sum(percap, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# Clean up species/resource names
+harvUseFigData$resName <- str_trim(harvUseFigData$resName, side = "both")
+
+```
+
+# Species composition by resoure category
+
+```{r create all species composition plots}
+
+# Helper function for pie plotting
+
+plot_species_pie <- function(data, comm, study_year, cat_code, resource_exclude, 
+                             title_prefix, yvar = "percap", 
+                             collapse_all_other = FALSE, n_collapse = 10) {
+  
+  tempData <- dplyr::filter(data, 
+                     .data$catCode == cat_code,
+                     .data$commname == comm,
+                     .data$resource != resource_exclude) 
+  
+  # For certain categories, collapse all but top n species
+  if (collapse_all_other && nrow(tempData) > n_collapse) {
+    tempData <- dplyr::select(tempData, resName, percap, estHarvestLbs_sum) %>%
+      dplyr::arrange(desc(!!rlang::sym(yvar)))
+    tempData$order <- seq_len(nrow(tempData))
+    tempData$order[tempData$order >= n_collapse] <- n_collapse
+    tempData$resName[tempData$order == n_collapse] <- "All other species"
+    tempData <- tempData %>%
+      dplyr::group_by(resName) %>%
+      dplyr::summarise(percap = sum(percap, na.rm = TRUE),
+                estHarvestLbs_sum = sum(estHarvestLbs_sum, na.rm = TRUE)) %>%
+      dplyr::ungroup()
+  }
+  
+  if (nrow(tempData) > 0) {
+    tempData <- dplyr::arrange(tempData, !!rlang::sym(yvar))
+    tempData$resName <- factor(tempData$resName, levels = rev(unique(tempData$resName)))
+    colrs <- getColors(nColors = nlevels(tempData$resName))
+    gg_title <- glue::glue("{title_prefix} {comm}, {study_year}.")
+    
+    # Calculate percentage and cumulative position for labels
+    tempData <- tempData %>%
+  mutate(
+    percent = !!rlang::sym(yvar) / sum(!!rlang::sym(yvar), na.rm = TRUE),
+    percent_label = paste0(round(percent * 100, 1), "%"),
+    ymax = cumsum(!!rlang::sym(yvar)),
+    ymin = lag(ymax, default = 0),
+    ymid = (ymax + ymin) / 2,
+    x = 1,
+    label = percent_label
+  )
+
+specPlot <- ggplot(tempData, 
+                   aes(x = "", y = !!rlang::sym(yvar), fill = resName)) +
+  ggtitle(gg_title) +
+  geom_bar(width = 1, stat = "identity", color = "white") +
+  coord_polar("y", start = 0, direction = -1) +
+  xlab("") + ylab("") +
+  scale_fill_manual(values = colrs) +
+  theme_void() +
+  theme(legend.title = element_blank(),
+        text = element_text(family = "serif")) +
+  ggrepel::geom_label_repel(
+    aes(x = x, y = ymid, label = label),
+    nudge_x = 1,
+    show.legend = FALSE,
+    size = 4,
+    color = "black",
+    segment.color = "grey30",
+    segment.size = 0.5,
+    box.padding = 0.2,
+    point.padding = 0.4,
+    direction = "y",
+    seed = 123
+  )
+    return(specPlot)
+  } else {
+    cat(warningMessage(glue::glue("No {tolower(title_prefix)} data present for {comm}, {study_year}")))
+    return(NULL)
+  }
+}
+
+# List of plots to make, specifying unique settings for each
+pie_plot_settings <- tibble::tribble(
+  ~plot_group,        ~cat_code, ~resource_exclude, ~title_prefix,                    ~yvar,              ~collapse_all_other, ~n_collapse,
+  "salmon",           11,       110000000,         "Salmon harvest by species",      "percap",           FALSE,               NA,
+  "non_salmon_fish",  12,       120000000,         "Non-salmon harvest by species",  "percap",           TRUE,                10,
+  "large_game",       21,       210000000,         "Large land mammal harvest by species", "percap",    FALSE,               NA,
+  "small_game",       22,       220000000,         "Small land mammal harvest by species", "estHarvestAmt_sum", FALSE,         NA,
+  "feral_game",       23,       230000000,         "Feral land mammal harvest by species", "percap",    FALSE,               NA,
+  "marine_mammals",   30,       300000000,         "Marine mammal harvest by species", "percap",         FALSE,               NA,
+  "birds",            40,       400000000,         "Bird harvest by species",        "percap",           TRUE,                10,
+  "marine_invert",    50,       500000000,         "Marine invertebrate harvest by species", "percap",   FALSE,               NA,
+  "vegetation",       60,       600000000,         "Vegetation harvest by species",  "percap",           FALSE,               NA
+)
+
+
+# Get all combinations of plot_group and comm
+plot_combos <- expand.grid(
+  plot_group = pie_plot_settings$plot_group,
+  comm = commnameList,
+  studyear = studyearList,
+  stringsAsFactors = FALSE
+)
+# Join the settings onto plot_combos
+combo_settings <- left_join(plot_combos, pie_plot_settings, by = "plot_group")
+
+# For each, find the setting and call the plotting function
+plot_list <- pmap(
+  combo_settings,
+  function(plot_group, comm, studyear, cat_code, resource_exclude, title_prefix, yvar, collapse_all_other, n_collapse, ...) {
+    plot_species_pie(
+      data = harvUseFigData,
+      comm = comm,
+      study_year = studyear,
+      cat_code = cat_code,
+      resource_exclude = resource_exclude,
+      title_prefix = title_prefix,
+      yvar = yvar,
+      collapse_all_other = collapse_all_other,
+      n_collapse = if (!is.na(n_collapse)) n_collapse else 10
+    )
+  }
+)
+
+# Name the list items for easy access
+names(plot_list) <- paste0(
+  plot_combos$plot_group, "_",
+  plot_combos$comm, "_",
+  plot_combos$studyear, "_SpeciesPieFig"
+)
+
+
+# Plot for each community and group
+# walk2(
+#   rep(pie_plot_settings$plot_group, each = length(commnameList)),
+#   rep(commnameList, times = nrow(pie_plot_settings)),
+#   function(group, comm) {
+#     setting <- pie_plot_settings %>% filter(.data$plot_group == group)
+#     plot_species_pie(
+#       data = harvUseFigData,
+#       comm = comm,
+#       study_year = studyear,
+#       cat_code = setting$cat_code,
+#       resource_exclude = setting$resource_exclude,
+#       title_prefix = setting$title_prefix,
+#       yvar = setting$yvar,
+#       collapse_all_other = setting$collapse_all_other,
+#       n_collapse = setting$n_collapse %||% 10
+#     )
+#   }
+# )
+```
+
+## Salmon
+
+```{r salmon species pie }
+
+pwalk(
+  unique(plot_combos[c("comm", "studyear")]), 
+  function(comm, studyear) {
+    plot_name <- paste0("salmon", "_", comm, "_", studyear, "_SpeciesPieFig")
+    if (!is.null(plot_list[[plot_name]])) {
+      print(plot_list[[plot_name]])
+    }
+  }
+)
+
+
+```
+
+## Non Salmon fish  
+  
+```{r nonsalmon species pie}
+
+pwalk(
+  unique(plot_combos[c("comm", "studyear")]), 
+  function(comm, studyear) {
+    plot_name <- paste0("non_salmon_fish", "_", comm, "_", studyear, "_SpeciesPieFig")
+    if (!is.null(plot_list[[plot_name]])) {
+      print(plot_list[[plot_name]])
+    }
+  }
+)
+
+
+```
+
+## Large game
+
+```{r large game species pie}
+
+pwalk(
+  unique(plot_combos[c("comm", "studyear")]), 
+  function(comm, studyear) {
+    plot_name <- paste0("large_game", "_", comm, "_", studyear, "_SpeciesPieFig")
+    if (!is.null(plot_list[[plot_name]])) {
+      print(plot_list[[plot_name]])
+    }
+  }
+)
+
+
+```
+
+## Small game / furbearers
+
+```{r small land mammals species pie}
+
+pwalk(
+  unique(plot_combos[c("comm", "studyear")]), 
+  function(comm, studyear) {
+    plot_name <- paste0("small_game", "_", comm, "_", studyear, "_SpeciesPieFig")
+    if (!is.null(plot_list[[plot_name]])) {
+      print(plot_list[[plot_name]])
+    }
+  }
+)
+
+
+```
+
+## Feral game
+
+```{r feral land mammals species pie}
+
+pwalk(
+  unique(plot_combos[c("comm", "studyear")]), 
+  function(comm, studyear) {
+    plot_name <- paste0("feral_game", "_", comm, "_", studyear, "_SpeciesPieFig")
+    if (!is.null(plot_list[[plot_name]])) {
+      print(plot_list[[plot_name]])
+    }
+  }
+)
+
+
+```
+
+## Marine Mammals
+
+```{r marine mammals species pie}
+
+pwalk(
+  unique(plot_combos[c("comm", "studyear")]), 
+  function(comm, studyear) {
+    plot_name <- paste0("marine_mammals", "_", comm, "_", studyear, "_SpeciesPieFig")
+    if (!is.null(plot_list[[plot_name]])) {
+      print(plot_list[[plot_name]])
+    }
+  }
+)
+
+
+```
+
+## Birds
+
+```{r bird species pie}
+
+pwalk(
+  unique(plot_combos[c("comm", "studyear")]), 
+  function(comm, studyear) {
+    plot_name <- paste0("birds", "_", comm, "_", studyear, "_SpeciesPieFig")
+    if (!is.null(plot_list[[plot_name]])) {
+      print(plot_list[[plot_name]])
+    }
+  }
+)
+
+
+```
+
+## Marine Invertebrate
+
+```{r marine invertebrates species pie}
+
+pwalk(
+  unique(plot_combos[c("comm", "studyear")]), 
+  function(comm, studyear) {
+    plot_name <- paste0("marine_invert", "_", comm, "_", studyear, "_SpeciesPieFig")
+    if (!is.null(plot_list[[plot_name]])) {
+      print(plot_list[[plot_name]])
+    }
+  }
+)
+
+
+```
+
+## Vegetation
+
+```{r large land mammals species pie}
+
+pwalk(
+  unique(plot_combos[c("comm", "studyear")]), 
+  function(comm, studyear) {
+    plot_name <- paste0("vegetation", "_", comm, "_", studyear, "_SpeciesPieFig")
+    if (!is.null(plot_list[[plot_name]])) {
+      print(plot_list[[plot_name]])
+    }
+  }
+)
+
+
+```
+
+# Final Error review
+
+The report items below will highlight items that require additional review.
+
+## Logic checking
+
+The checks below have all been combined into a single set of validation checks by community. The first set of checks reports on species where a harvest amount was provided, but no pounds calculated. There are several furbearing spaces that are not (usually) consumed. Other species indicated here may be an error and the conversion factor file (convFact.csv) should be checked or updated.
+
+Next, checks are performed for cases where pounds of harvest have been specified, but not any amount. This also may indicate problems with the conversion factor file.
+
+After that, final checks for harvest and use questions are carried out. Errors (if present) are described below, these should be corrected, or in rare cases, be annotated as footnotes. The general logic we apply and correct for is as follows:
+
+Household 'Use' of a resource applies to the study year. A subsistence use, as defined for data collection, is a household having harvested or received a resource at some point during the year. This would include not just explicitly consumptive uses, but also includes resources harvested or received that were used specifically for dog food, resources harvested or revived to be used just for fur or hide, resources harvested or received that were exclusively given away, and resources that were harvested or received, but is still put away in the freezer or jarred to be used (consumed, fed to dogs, given away) later. For a household to have 'used' a resource, they must have either harvested it or received it in the year. Uses of resources from last year do have a special code which can be used if the lead researcher in a community determines that an important pattern is multi-year use of a resource. Some communities, for example, may harvest and consume moose for two years before harvesting another.
+
+Household 'harvest' of a resource also applies to only the study year and requires that more than 0 units of harvest occurred. If a household marked harvest, but also marked 0 amount harvest, this is a logic error. Either that harvest quantity is unknown to the respondent or that household participated in a group harvesting activity, such as moose hunting, that was successful. Even though they were successful as a group we only mark 'harvest' for the household of the person who shot the animal. Other group harvesting activities where large quantities of animals (such as salmon), we apportion the harvest. However, there are instances where the household reported participating and taking none home. In this case, again, we mark harvest as 'no' for that household. However, in both of those circumstances, we mark 'attempt' as yes.
+
+Households 'attempting' to harvest a resource, again applies to the study year, but does not respect incidental harvest. If a household indicated harvesting more than 0 units of a resource, then we say they 'attempted' even if it was explicitly marked as incidental. In any case where a harvest amount is provided or 'harvest' is indicated, then attempt must also be marked as 'yes'. Attempt is also used to to indicate when a household did attempt to harvest a species, but was unsuccessful. A resource could have only a percentage attempting and that is valid.
+
+Giveaway only pertains to households that either harvested or received a resource in the study year. Giveaway doesn't include harvests from a previous year. Giving away is considered a subsistence use, so a household only receiving and giving away or only harvesting and giving away is engaging in a subsistence use.
+
+To correct any of these logic errors, use sound judgement based on the description above, validate the logic error is present the survey form itself, and if it's particularly unclear, check with the lead SRS on the project.
+
+```{r resources not eaten}
+
+# Temporary and semi-formatted data frame for tables with issues.
+
+fullTempData <- select(harvRawData, commname, resName, used_pct, attempt_pct, harvestq_pct, received_pct,
+           giveaway_pct, estHarvestLbs_sum, harvestLbs_mean, percap,
+           estHarvestAmt_sum, units, harvestAmt_mean, CIP_Lbs, CIP_Amt)
+# This bit of code does automation on the table
+fullTempData$CIP = 0
+fullTempData$CIP = fullTempData$CIP_Amt
+# Skip this step if there are no criteria that satisfy to prevent errors.
+if(nrow(fullTempData[which(fullTempData$units=='lb'),]) > 0)
+{
+  fullTempData$CIP[which(fullTempData$units == 'lb')] = fullTempData$CIP_Lbs[which(fullTempData$units == 'lb')]
+}
+
+fullTempData <- select(fullTempData, -CIP_Lbs, -CIP_Amt)
+
+# Format
+fullTempData$used_pct = round(fullTempData$used_pct * 100,1)
+fullTempData$attempt_pct = round(fullTempData$attempt_pct * 100,1)
+fullTempData$harvestq_pct = round(fullTempData$harvestq_pct * 100,1)
+fullTempData$received_pct = round(fullTempData$received_pct * 100,1)
+fullTempData$giveaway_pct = round(fullTempData$giveaway_pct * 100,1)
+fullTempData$estHarvestLbs_sum = round(fullTempData$estHarvestLbs_sum, 1)
+fullTempData$harvestLbs_mean = round(fullTempData$harvestLbs_mean, 1)
+fullTempData$percap = round(fullTempData$percap, 1)
+fullTempData$estHarvestAmt_sum = round(fullTempData$estHarvestAmt_sum, 1)
+fullTempData$harvestAmt_mean = round(fullTempData$harvestAmt_mean, 1)  
+fullTempData$CIP = round(fullTempData$CIP * 100,1) 
+
+# Reduce the number of times we have to repeat this in the tables below
+outputTblCols <- c("Resource",
+                     "Use %",
+                     "Attempt %",
+                     "Harvest %",
+                     "Receive %",
+                     "Gave %",
+                     "Total",
+                     "Mean per household",
+                     "Per capita",
+                     "Total",
+                     "Unit",
+                     "Mean per household",
+                     "CI 95% +-")
+hrdAboveCol <- c("  " = 1, "Percentage of households" = 5, 
+                           "Harvest weight (lbs)" = 3, 
+                           "Harvest amount" = 3,
+                           "  " = 1)
+
+for(comm in commnameList)
+{
+  # One community at a time and only necessary outputs, we'll simplify further
+  #   in the next step.
+  tempData <- filter(fullTempData, commname == comm & 
+                       estHarvestAmt_sum > 0 & estHarvestLbs_sum == 0) %>%
+    select(-commname)
+  
+  if(nrow(tempData))
+  {
+    tblOut <- kbl(tempData,
+          caption=formatTableHeader(str_interp("Resources not eaten: ${comm}, ${studyear}")),
+          col.names=outputTblCols) %>%
+        kable_styling(full_width = F) %>%
+        add_header_above(hrdAboveCol)
+      
+      print(tblOut)
+  } else {
+    cat(greenMessage(str_interp("No non-eaten resources for ${comm}")))
+  }
+
+  tempData <- filter(fullTempData, commname == comm & 
+                       estHarvestAmt_sum == 0 & estHarvestLbs_sum > 0) %>%
+    select(-commname)
+  
+  if(nrow(tempData))
+  {
+    tblOut <- kbl(tempData,
+          caption=formatTableHeader(str_interp("Pounds harvested without amount: ${comm}, ${studyear}")),
+          col.names=outputTblCols) %>%
+        kable_styling(full_width = F) %>%
+        add_header_above(hrdAboveCol)
+      
+      print(tblOut)
+  } else {
+    cat(greenMessage(str_interp("All pounds harvested have amounts for ${comm}")))
+  }  
+
+  # Received > used
+  tempData <- filter(fullTempData, commname == comm & 
+                       received_pct > used_pct) %>%
+    select(-commname)  
+  if(nrow(tempData) > 0) {
+    tblOut <- kbl(tempData,
+          caption=formatTableHeader(str_interp("More received than used: ${comm}, ${studyear}")),
+          col.names=outputTblCols) %>%
+        kable_styling(full_width = F) %>%
+        add_header_above(hrdAboveCol)
+      
+      print(tblOut)
+  } else
+  {
+    cat(greenMessage(str_interp("All received less than or equal to used")))
+  }
+
+  # Giveaway > used
+  tempData <- filter(fullTempData, commname == comm & 
+                       giveaway_pct > used_pct) %>%
+    select(-commname)  
+  if(nrow(tempData) > 0) {
+    tblOut <- kbl(tempData,
+          caption=formatTableHeader(str_interp("More given away than used: ${comm}, ${studyear}")),
+          col.names=outputTblCols) %>%
+        kable_styling(full_width = F) %>%
+        add_header_above(hrdAboveCol)
+      
+      print(tblOut)
+  } else
+  {
+    cat(greenMessage(str_interp("All giveaway less than or equal to used")))
+  }
+  
+  # harvest > used
+  tempData <- filter(fullTempData, commname == comm & 
+                       harvestq_pct > used_pct) %>%
+    select(-commname)  
+  if(nrow(tempData) > 0) {
+    tblOut <- kbl(tempData,
+          caption=formatTableHeader(str_interp("More harvested than used: ${comm}, ${studyear}")),
+          col.names=outputTblCols) %>%
+        kable_styling(full_width = F) %>%
+        add_header_above(hrdAboveCol)
+      
+      print(tblOut)
+  } else
+  {
+    cat(greenMessage(str_interp("All harvest less than or equal to used")))
+  }
+
+  # harvest > attempt
+  tempData <- filter(fullTempData, commname == comm & 
+                       harvestq_pct > attempt_pct) %>%
+    select(-commname)  
+  if(nrow(tempData) > 0) {
+    tblOut <- kbl(tempData,
+          caption=formatTableHeader(str_interp("More harvested than attempted: ${comm}, ${studyear}")),
+          col.names=outputTblCols) %>%
+        kable_styling(full_width = F) %>%
+        add_header_above(hrdAboveCol)
+      
+      print(tblOut)
+  } else
+  {
+    cat(greenMessage(str_interp("All harvest less than or equal to attempt")))
+  }
+
+  # received + harvest < used
+  tempData <- filter(fullTempData, commname == comm & 
+                       received_pct + harvestq_pct < used_pct) %>%
+    select(-commname)  
+  if(nrow(tempData) > 0) {
+    tblOut <- kbl(tempData,
+          caption=formatTableHeader(str_interp("More used than received and harvested combined: ${comm}, ${studyear}")),
+          col.names=outputTblCols) %>%
+        kable_styling(full_width = F) %>%
+        add_header_above(hrdAboveCol)
+      
+      print(tblOut)
+  } else
+  {
+    cat(greenMessage(str_interp("All harvest and received at LEAST the same as used")))
+  }
+  
+  # received + harvest < giveaway
+  tempData <- filter(fullTempData, commname == comm & 
+                       received_pct + harvestq_pct < giveaway_pct) %>%
+    select(-commname)  
+  if(nrow(tempData) > 0) {
+    tblOut <- kbl(tempData,
+          caption=formatTableHeader(str_interp("More given away than received and harvested combined: ${comm}, ${studyear}")),
+          col.names=outputTblCols) %>%
+        kable_styling(full_width = F) %>%
+        add_header_above(hrdAboveCol)
+      
+      print(tblOut)
+  } else
+  {
+    cat(greenMessage(str_interp("All harvest and received at LEAST the same as given away")))
+  }
+  
+}
+
+
+```
+
+## Resource total checks
+
+The checks below look at the category levels:
+- Salmon  
+- Non-Salmon fishes  
+- Large land mammals  
+- Small land mammals  
+- Feral animals  
+- Marine mammals  
+- Birds and eggs  
+- Vegetation  
+
+The totals reported in tables are compared against a sum of individual species indicated in the harvest and use file. This check is looking for cases where an aggregate level resource code has been used instead of the appropriate 'unspecified' code.
+
+```{r resource total checks, message=FALSE}
+
+# Get dataset into order we can use.
+tempData <- harvRawData
+tempData$catCode = floor(tempData$resource / 10000000)
+tempData <- filter(tempData, resource != 0)
+
+# Special handling for birds and eggs; these are done at a different level
+#   compared to other species.
+tempData$catCode[between(tempData$catCode, 40, 49)] = 40
+
+categoryData <- filter(tempData, specList == 2)
+speciesData <- filter(tempData, specList == 1)
+
+speciesData$estHarvestLbs_sum = speciesData$estHarvestLbs_sum * -1
+
+categoryList <- distinct(categoryData, catCode, resName)
+speciesData <- select(speciesData, -resName)
+speciesData <- left_join(speciesData, categoryList, by=c("catCode"))
+
+tempData <- dplyr::bind_rows(categoryData, speciesData)
+
+tempData <- group_by(tempData, commname, resName) %>%
+  summarize(estHarvestLbs_sum = sum(estHarvestLbs_sum, na.rm=TRUE))
+
+tempData$estHarvestLbs_sum = round(tempData$estHarvestLbs_sum, 4)
+tempData <- filter(tempData, estHarvestLbs_sum != 0)
+
+if(nrow(tempData) > 0) 
+{
+  for(ii in 1:nrow(tempData))
+  {
+    cat(errorMessage(str_interp("Double-counting or under-counting detected in: ${tempData[ii,]$resName} for community ${tempData$commname[ii]}. The difference is: ${tempData$estHarvestLbs_sum[ii]} Hint: Check for summary resource codes entered into the database that should be coded as 'unspecified.' instead."))) 
+  }
+} else {
+  cat(greenMessage("Individual species add to category levels for the harvest and use table."))
+}
+
+
+```
+
+# Write out CSV files
+
+```{r write csv files}
+
+# ##############################################################################
+# Write out CSV files.
+# #############################################################################
+
+  fName = '../../CSV/05 - Final Analysis Output/harvest_use_raw.csv'
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(harvOutputData), ' records to be written', sep='')))
+
+# For 2023; we are, by default, working exclusively with R code..
+  rio::export(harvOutputData, fName)
+
+# Harvest and use categories
+  fName = '../../CSV/05 - Final Analysis Output/harvest_use_categories_raw.csv'
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(harvUseCatData), ' records to be written', sep='')))
+
+# For 2023; we are, by default, working exclusively with R code..
+  rio::export(harvUseCatData, fName)
+  
+# Harvest and use categories for figure
+  fName = '../../CSV/05 - Final Analysis Output/harvest_use_forCharts_raw.csv'
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(harvUseFigData), ' records to be written', sep='')))
+
+# For 2023; we are, by default, working exclusively with R code..
+  rio::export(harvUseFigData, fName)
+  
+```
+
+<p class="h1footer"> End of harvest and use tables and figures script. </p>

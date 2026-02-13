@@ -1,0 +1,665 @@
+---
+title: "E03_HARVEST_BY_MONTH_SEX - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-15"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">E03_HARVEST_BY_MONTH_SEX - (316) NPS Ambler Comprehensive</div>
+</div>
+# Harvest by month and sex
+
+Create output files to import into the harvest & sex timing final tables.  
+
+## Change log
+
+### Change 1
+- Programmer: D.S.Koster  
+- Date: 05/21/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output. Addressed an issue with depricated dplyr code.  
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates  
+
+### Change 2
+- Programmer: D.S.Koster  
+- Date: 07/22/2024  
+- Change Description: Month of harvest issue for figures; had to organize so that harvest months come out in the correct order for figures.
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates  
+
+### Change 3
+- Programmer: Jesse Coleman
+- Date: 03/18/2025
+- Change Description: Removed source() calls; all functions are included in the library adfgSubs.
+- Template Update [Y|N]: Y
+- One-Off: No-include in all future comprehensive templates 
+
+### Change 4
+
+- Programmer: Jesse Coleman
+- Date: 07/10/2025
+- Change Description: Refactor using tidyverse language and DRY ("don't repeat 
+yourself") principles.
+- Template Update [Y|N]: Y
+- One-Off: No - include in all future comprehensive templates 
+
+## Input data
+  
+- /CSV/03 - Main/harvData_HH_finalPrepped.csv  
+
+## Output data
+  
+- /CSV/05 - Final Analysis Output/harvest_by_month_and_sex_raw.csv  
+
+## Background
+
+
+### How to use this document
+
+Describe how the output of this markdown document is meant to be used. All markdown files should produce, at a minimum, formatted HTML output for evaluation.
+
+This file is designed to work with a 2023 or later analysis project, and will not work as a stand-alone file.
+
+You will evaluate the data present for each record type code to ensure that extracted data seems consistent with expectations. Additional data quality checks will occur in a later step.
+
+## Checklist
+
+- Update 'Author' to your name
+- Update the project information in 'title' to the current project
+- Update the development log with any changes you've made to the template file, including your name  
+- Update template tables with data produced  
+- Compare template tables you created with outputs here  
+
+## Additional information
+
+This file uses a substantial level of automation, please be sure to verify that all columns necessary for harvest by month and sex have been included.  Prior to this version of the analysis code, seasons were combined with month and sex. To provide a more maintainable codeset these have been split up. Now bird and egg harvest timing tables will be produced in:  
+E04_BIRD_HARVEST_BY_SEASON.Rmd  
+
+### Required libraries (adjust as needed)
+  
+- tidyVerse  
+- rio  
+- knitr  
+- kableExtra
+- adfgSubs
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+
+# Additional libraries
+library(knitr)
+library(kableExtra)
+library(adfgSubs)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+```
+
+## Load data
+
+The following species categories ask timing on standard comprehensives:  
+- Large Game (210000000)  
+- Small Game / furbearers (220000000)  
+- Feral Game (230000000)  
+- Marine Mammals (300000000)  
+
+These will be included for this processing file.
+
+```{r load data}
+
+# ##############################################################################
+# Load data from intermediate files.
+# ##############################################################################
+
+# This for each file opened.
+harvData <- read.csv('../../CSV/03 - Main/harvData_HH_finalPrepped.csv',
+                   na = '', 
+                   header = TRUE, 
+                   strip.white = TRUE)
+
+count <- nrow(harvData)
+cat(formatSummaryBlock(paste("Opening file: harvData_HH_finalPrepped.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+# Filter harvest data. We only want large game, small game, feral animals and marine mammals.
+harvData <- harvData %>%
+  mutate(catCode = floor(resource / 10000000)) %>%
+  filter(catCode %in% c(21, 22, 23, 30)) %>%
+  filter(
+    !(between(resource, 210000000, 210000010)) &
+    !(between(resource, 230000000, 230000010)) &
+    (between(resource, 200000010, 299999999) | between(resource, 300000010, 399999999))
+  ) %>%
+  filter(
+    !(specList == 2 & between(resource, 220000000, 229999999))
+  ) %>%
+  mutate(mmSex = resource - floor(resource / 10) * 10) %>%
+  filter(
+    !(between(resource, 300000000, 399999999) & (specList == 2 & mmSex == 0))
+  ) %>%
+  filter(
+    !(resource %in% c(300800001, 300800002, 300800009))
+  ) %>%
+  select(-mmSex) %>%
+  mutate(
+    resName = trimws(resName),
+    resName = if_else(specList == 2, paste0('     ', resName), resName)
+  )
+
+count <- count - nrow(harvData)
+cat(formatSummaryBlock(str_interp("harvData_HH_finalPrepped.csv has been filtered to relevant rows only, ${count} rows removed.")))
+
+
+```
+
+## Lists for Automation
+
+```{r automation lists}
+
+harvCols = standardMammalColumns
+
+commnameList <- select(harvData, commname) %>% 
+  distinct(commname)
+
+month = c("harvJan", "harvFeb", "harvMar", "harvApr", "harvMay", "harvJun", "harvJul",
+         "harvAug", "harvSep", "harvOct", "harvNov", "harvDec", "harvUnkn")
+monthCD = c(1,2,3,4,5,6,7,8,9,10,11,12,13)
+
+monthOrderData <- data.frame(month, monthCD=as.factor(monthCD))
+rm(month, monthCD)
+
+```
+
+## Non-expansion
+
+```{r non expanded resources}
+
+aData <- filter(harvData, !! rlang::parse_expr(noExpansionCriteria))
+bData <- filter(harvData, !! rlang::parse_expr(noExpansionCriteriaNot))
+
+if(nrow(aData) > 0) {
+  aData$strataWt = 1
+  
+  harvData <- dplyr::bind_rows(aData, bData) %>% 
+    arrange(projID, studyear, communty, strata, resource)
+  
+  tempData <- distinct(aData, commname, resName)
+
+  print(knitr::kable(tempData, 
+               caption=formatTableHeader("Resources not expanded.")))
+} else {
+  cat(greenMessage("All included resources are expanded."))
+}
+
+rm(aData, bData)
+
+```
+
+## Summarize
+
+Each harvest column is expanded according to the relevant strata weight, this will get us proper expansions at the resource level, but sub-total details will include expanded harvests for the entirety of the harvest, rather than a mix of expansions and non-expansions as noted above. To account for this, we need to recreate summary rows.
+
+```{r produce summaries, message=FALSE}
+
+# Expand harvest columns according to strata weight, this will get us proper
+#       expansions at the resource level, however, we have to re-create the
+#       overall totals. 
+harvTimingData <- mutate_at(harvData, vars(all_of(harvCols)), ~ . * strataWt) %>% 
+
+# Summarize from HH level to resource level.
+  group_by(projID, studyear, communty, commname, 
+                     NHouseholds, NPopulation, resource, resName, specList) %>%
+  summarize(estHarvestAmt=sum(estHarvestAmt, na.rm=TRUE), 
+            estHarvestLbs=sum(estHarvestLbs, na.rm=TRUE), 
+            across(all_of(harvCols), \(harv) sum(harv, na.rm=TRUE)),
+            .groups = "drop")
+
+# Aggregate for category total rows; Note this assumes timing by month for only
+#   game species, if other species need to be included they must be added explicitly.
+harvTimingCatData <- harvTimingData %>% 
+  filter(specList == 1) %>% 
+  mutate(resource = floor(resource / 10000000) * 10000000,
+         resName = case_when(resource == 210000000 ~ 'Large land mammals',
+                             resource == 220000000 ~ 'Small land mammals',
+                             resource == 230000000 ~ 'Feral animals',
+                             resource == 300000000 ~ 'Marine mammals'),
+         specList = 2) %>%
+  group_by(projID, studyear, communty, commname, 
+                     NHouseholds, NPopulation, resource, resName, specList) %>%
+  summarize(estHarvestAmt=sum(estHarvestAmt, na.rm=TRUE), 
+            estHarvestLbs=sum(estHarvestLbs, na.rm=TRUE), 
+            # across(all_of(harvCols), sum, na.rm=TRUE)) %>%
+            across(all_of(harvCols), \(x) sum(x, na.rm=TRUE)),
+            .groups = "drop")
+  
+harvTimingData <- bind_rows(harvTimingCatData, harvTimingData) %>% 
+  arrange(projID, studyear, communty, resource) %>% 
+
+# Sum timing across as a double-check for later.
+  rowwise() %>%
+  mutate(detTotalFixedAmt = sum(across(all_of(harvCols)), na.rm=TRUE)) %>% 
+  ungroup() %>%
+  
+# 2.10 - Clean up white space; there may be issues
+  mutate(resName = if_else(
+    specList == 1,
+    trimws(resName, which = "both"),
+    resName
+  ))
+
+
+```
+
+## Review output
+
+### Harvest of large game
+
+Harvests of large game include feral animals; NOTE: specList has been retained for evaluation purposes and to help prevent under counting or double counting. Please verify that specList == 1 for individual species and 2 for anything else.
+
+```{r review outputs large game}
+
+# 1. Prep information for review tables.
+tempData <- harvTimingData %>%
+  mutate(checkAmt = detTotalFixedAmt - estHarvestAmt) %>%
+  filter(floor(resource / 10000000) %in% c(21, 23)) %>%
+  select(commname, resName, resource, all_of(harvCols), estHarvestAmt, detTotalFixedAmt, checkAmt, specList) %>%
+  mutate(across(all_of(c(harvCols, "estHarvestAmt", "detTotalFixedAmt")), ~ round(., 1))) %>%
+  mutate(checkAmt = round(checkAmt, 4))
+
+# 2. Per-community processing loop
+for (comm in commnameList$commname) {
+  # Table for main harvest summary
+  tmpTblData <- tempData %>%
+    filter(commname == comm) %>%
+    select(-commname, -checkAmt, -resource, -detTotalFixedAmt)
+  
+  indentList <- which(tmpTblData$specList == 1 |
+                        (tmpTblData$specList == 2 & !(tmpTblData$resName %in% c('Large land mammals', 'Feral animals'))))
+  secondIndentList <- which(tmpTblData$specList == 2 & !(tmpTblData$resName %in% c('Large land mammals', 'Feral animals')))
+  
+  tblOut <- tmpTblData %>%
+    kbl(
+      caption = formatTableHeader(str_interp("Harvests of large game by month: ${comm}, ${studyear}")),
+      col.names = c(
+        "Resource", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Unk", "Total", "specList"
+      )
+    ) %>%
+    add_indent(indentList) %>%
+    add_indent(secondIndentList) %>%
+    kable_styling(full_width = FALSE) %>%
+    add_header_above(c("  " = 1, "Estimated harvest" = 13, "  " = 2))
+  
+  print(tblOut)
+  
+  # Table for validation: rows where the sum of months doesn't match total
+  errTblData <- tempData %>%
+    filter(commname == comm, checkAmt != 0) %>%
+    select(resName, estHarvestAmt, detTotalFixedAmt, checkAmt)
+  
+  if (nrow(errTblData) > 0) {
+    tblOut <- errTblData %>%
+      kbl(
+        caption = formatTableHeader(str_interp("Error in sum of months for large game: ${comm}, ${studyear}")),
+        col.names = c("Resource", "Estimated total", "Sum of months", "Difference")
+      ) %>%
+      kable_styling(full_width = FALSE) %>%
+      add_header_above(c("  " = 1, "Estimated harvest" = 3))
+    print(tblOut)
+  } else {
+    cat(greenMessage("All harvest month columns sum to total column for large game."))
+  }
+  
+  # Plotting: only for resources with harvests, resource code ends in 0, not in the excluded set, and estHarvestAmt > 0
+  plotData <- tempData %>%
+    filter(
+      commname == comm,
+      resource %% 10 == 0,
+      !resource %in% c(210000000, 230000000),
+      estHarvestAmt > 0
+    ) %>%
+    select(resName, all_of(harvCols))
+  
+  if (nrow(plotData) > 0) {
+    colrs <- getColors(nColors = nrow(plotData))
+    
+    plotDataLong <- plotData %>%
+      pivot_longer(cols = all_of(harvCols), names_to = "month") %>%
+      left_join(monthOrderData, by = "month")
+    
+    plotOut <- ggplot(plotDataLong, aes(x = monthCD, y = value, group = resName)) +
+      ggtitle(str_interp("Harvest of large game by month and species, ${comm}, ${studyear}")) +
+      geom_line(aes(color = resName)) +
+      geom_point(aes(shape = resName, color = resName)) +
+      ylab("Harvest") + xlab("Month") +
+      scale_color_manual(values = colrs) +
+      scale_x_discrete(labels = c(
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Unk"
+      )) +
+      theme(text = element_text(family = "serif")) +
+      theme(legend.title = element_blank()) +
+      theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+          panel.background = element_blank(), axis.line = element_line(colour = "black"))
+    
+    print(plotOut)
+  }
+  
+}
+
+```
+
+### Harvest of furbearers
+
+Quick-fix added to accommodate more than 10 colors in this figure, if there are more than 10 species listed. Additional colors (not-colorbind safe) have been added, simply add the option override=TRUE to the getColors function.
+
+```{r review outputs furbearers }
+
+
+# Prep information for review tables.
+harvTimingData$checkAmt = harvTimingData$detTotalFixedAmt - harvTimingData$estHarvestAmt
+
+# Leave resource in for now to provide for validation checks in a later step.
+tempData <- filter(harvTimingData, (floor(resource/10000000)) == 22) %>%
+  select(commname, resName, resource, !!!syms(harvCols), 
+         estHarvestAmt, detTotalFixedAmt, checkAmt, specList)
+
+# Rounding
+tempData <- mutate_at(tempData, vars(all_of(c(harvCols, "estHarvestAmt", "detTotalFixedAmt"))), ~ round(., 1))
+tempData$checkAmt = round(tempData$checkAmt, 4)
+
+for(comm in commnameList$commname)
+{
+  tmpTblData <- filter(tempData, commname == comm) %>%
+    select(-commname, -checkAmt, -resource, -detTotalFixedAmt)
+  
+  indentList = which(tmpTblData$specList == 1)
+  
+  tblOut <- kbl(tmpTblData,
+        caption=formatTableHeader(str_interp("Harvests of small land mammals by month: ${comm}, ${studyear}")),
+        col.names=c("Resource",
+                   "Jan",	"Feb", "Mar",	"Apr",	"May",	"Jun",	
+                   "Jul",	"Aug",	"Sep",	"Oct",	"Nov",	"Dec",	"Unk",
+                   "Total", "specList")) %>%
+      kable_styling(full_width = F) %>%
+      add_indent(indentList) %>%
+      add_header_above(c("  " = 1, "Estimated harvest" = 13, 
+                         "  " = 2))
+  
+  print(tblOut)
+  
+  tmpTblData <- filter(tempData, commname == comm,
+                       checkAmt != 0) %>%
+    select(resName, estHarvestAmt, detTotalFixedAmt, checkAmt)
+  if(nrow(tmpTblData) > 0) {
+    tblOut <- kbl(tmpTblData,
+        caption=formatTableHeader(str_interp("Error in sum of months for small land mammals: ${comm}, ${studyear}")),
+        col.names=c("Resource",
+                   "Estimated total",
+                   "Sum of months",
+                   "Difference")) %>%
+      kable_styling(full_width = F) %>%
+      add_header_above(c("  " = 1, "Estimated harvest" = 3))
+    print(tblOut)
+    
+  } else {
+      cat(greenMessage("All harvest month columns sum to total column for small land mammals."))
+  }
+  
+  # Only plot resources with harvests.
+  plotData <- filter(tempData, commname == comm &
+                       resource - floor(resource/10)*10 == 0 &
+                       !(resource == 220000000) &
+                       estHarvestAmt > 0) %>%
+    select(resName, !!!syms(harvCols))
+
+  if(nrow(plotData) > 0)
+  {
+    # Get the number of resources before we pivot.
+      colrs <- getColors(nColors = nrow(plotData))
+    # THis only works because we don't need the community name at this point.
+    plotData <- pivot_longer(plotData, cols=all_of(harvCols), names_to="month")
+    plotData <- plotData %>% left_join(monthOrderData, by=c("month"))
+      
+    plotOut <- ggplot(plotData, aes(x=monthCD, y=value, group=resName)) +
+    ggtitle(str_interp("Harvest of small land mammals by month and species, ${comm}, ${studyear}")) +
+    geom_line(aes(color=resName)) +
+    geom_point(aes(shape=resName, color=resName)) +
+      ylab("Harvest") + xlab("Month") +
+      scale_color_manual(values = colrs) +
+      scale_x_discrete(labels=c("Jan",	"Feb", "Mar",	"Apr",	"May",	"Jun",	
+                     "Jul",	"Aug",	"Sep",	"Oct",	"Nov",	"Dec",	"Unk")) +
+      theme(text=element_text(family="serif")) +
+      theme(legend.title = element_blank()) +
+      theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+          panel.background = element_blank(), axis.line = element_line(colour = "black"))
+    
+    print(plotOut)
+  } else {
+    cat(warningMessage(str_interp("No small land mammal harvest for ${comm}, ${studyear}")))
+  }
+  
+}
+
+```
+
+### Harvest of marine mammals
+
+```{r review outputs marine mammals }
+
+
+# Prep information for review tables.
+harvTimingData$checkAmt = harvTimingData$detTotalFixedAmt - harvTimingData$estHarvestAmt
+
+# Leave resource in for now to provide for validation checks in a later step.
+tempData <- filter(harvTimingData, (floor(resource/10000000)) == 30) %>%
+  select(commname, resName, resource, !!!syms(harvCols), estHarvestAmt, detTotalFixedAmt, checkAmt, specList)
+
+# Rounding
+tempData <- mutate_at(tempData, vars(all_of(c(harvCols, "estHarvestAmt", "detTotalFixedAmt"))), ~ round(., 1))
+tempData$checkAmt = round(tempData$checkAmt, 4)
+
+for(comm in commnameList$commname)
+{
+  tmpTblData <- filter(tempData, commname == comm) %>%
+    select(-commname, -checkAmt, -resource, -detTotalFixedAmt)
+  indentList <- which(tmpTblData$specList == 1 | 
+                        (tmpTblData$specList == 2 & !(tmpTblData$resName %in% c('Marine mammals'))))
+  secondIndentList <- which(tmpTblData$specList == 2 & !(tmpTblData$resName %in% c('Marine mammals')))
+  
+  tblOut <- kbl(tmpTblData,
+        caption=formatTableHeader(str_interp("Harvests of marine mammals by month: ${comm}, ${studyear}")),
+        col.names=c("Resource",
+                   "Jan",	"Feb", "Mar",	"Apr",	"May",	"Jun",	
+                   "Jul",	"Aug",	"Sep",	"Oct",	"Nov",	"Dec",	"Unk",
+                   "Total", "specList")) %>%
+      kable_styling(full_width = F) %>%
+      add_indent(indentList) %>%
+      add_indent(secondIndentList) %>%    
+      add_header_above(c("  " = 1, "Estimated harvest" = 13, 
+                         "  " = 2))
+  
+  print(tblOut)
+  
+  tmpTblData <- filter(tempData, commname == comm,
+                       checkAmt != 0) %>%
+    select(resName, estHarvestAmt, detTotalFixedAmt, checkAmt)
+  if(nrow(tmpTblData) > 0) {
+    tblOut <- kbl(tmpTblData,
+        caption=formatTableHeader(str_interp("Error in sum of months for marine mammals: ${comm}, ${studyear}")),
+        col.names=c("Resource",
+                   "Estimated total",
+                   "Sum of months",
+                   "Difference")) %>%
+      kable_styling(full_width = F) %>%
+      add_header_above(c("  " = 1, "Estimated harvest" = 3))
+    print(tblOut)
+    
+  } else {
+      cat(greenMessage("All harvest month columns sum to total column for marine mammals."))
+  }
+  
+  # FUTURE ENHANCEMENT: Identify species that have both detail and species rows. Make sure that each row column
+  #   adds properly.
+  
+  # Only plot resources with harvests.
+  plotData <- filter(tempData, commname == comm &
+                       resource - floor(resource/10)*10 == 0 &
+                       !(resource == 300000000) &
+                       estHarvestAmt > 0) %>%
+    select(resName, !!!syms(harvCols))
+
+  if(nrow(plotData) > 0)
+  {
+    # Get the number of resources before we pivot.
+      colrs <- getColors(nColors = nrow(plotData))
+    # THis only works because we don't need the community name at this point.
+    plotData <- pivot_longer(plotData, cols=all_of(harvCols), names_to="month")
+      
+    plotOut <- ggplot(plotData, aes(x=month, y=value, group=resName)) +
+    ggtitle(str_interp("Harvest of marine mammals by month and species, ${comm}, ${studyear}")) +
+    geom_line(aes(color=resName)) +
+    geom_point(aes(shape=resName, color=resName)) +
+      ylab("Harvest") + xlab("Month") +
+      scale_color_manual(values = colrs) +
+      scale_x_discrete(labels=c("Jan",	"Feb", "Mar",	"Apr",	"May",	"Jun",	
+                     "Jul",	"Aug",	"Sep",	"Oct",	"Nov",	"Dec",	"Unk")) +
+      theme(text=element_text(family="serif")) +
+      theme(legend.title = element_blank()) +
+      theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+          panel.background = element_blank(), axis.line = element_line(colour = "black"))
+    
+    print(plotOut)
+  } else {
+    cat(warningMessage(str_interp("No marine mammal harvest for ${comm}, ${studyear}")))
+  }
+  
+}
+
+```
+
+```{r Function: Plot all mammal harvests by month, eval = FALSE}
+
+# Function to prepare data for plotting
+prepare_plot_data <- function(data = harvTimingData, group_type, community, harvCols = harvCols) {
+  filter_conditions <- list(
+    "LLM" = floor(data$resource / 10000000) %in% c(21, 23),
+    "SLM" = floor(data$resource / 10000000) == 22,
+    "MM" = floor(data$resource / 10000000) == 30
+  )
+  
+  data %>%
+    filter(!!filter_conditions[[group_type]]) %>%
+    filter(
+      commname == community,
+      resource %% 10 == 0,
+      !resource %in% c(210000000, 230000000, 220000000, 300000000),
+      estHarvestAmt > 0
+    ) %>%
+    select(resName, !!!syms(harvCols)) %>%
+    pivot_longer(cols = all_of(harvCols), names_to = "month") %>%
+    left_join(monthOrderData, by = "month")
+  
+}
+
+# Function to generate a plot
+generate_plot <- function(plot_data, community, study_year, group_type, colrs) {
+  group_titles <- list(
+    "LLM" = "Harvest of large land mammals by month and species",
+    "SLM" = "Harvest of small land mammals by month and species",
+    "MM" = "Harvest of marine mammals by month and species"
+  )
+  
+  ggplot(plot_data, aes(x = monthCD, y = value, group = resName)) +
+    ggtitle(str_interp("${group_titles[[group_type]]}, ${community}, ${study_year}")) +
+    geom_line(aes(color = resName)) +
+    geom_point(aes(shape = resName, color = resName)) +
+    ylab("Harvest") +
+    xlab("Month") +
+    scale_color_manual(values = colrs) +
+    scale_x_discrete(labels = c(
+      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Unk"
+    )) +
+    theme(text = element_text(family = "serif")) +
+    theme(legend.title = element_blank()) +
+    theme(
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.background = element_blank(),
+      axis.line = element_line(colour = "black")
+    )
+}
+
+# Main function to produce plots for all groups
+produce_plots <- function(data, community_list, study_year, harvCols) {
+  group_types <- c("LLM", "SLM", "MM")
+  
+  walk(group_types, function(group_type) {
+    walk(community_list$commname, function(community) {
+      plot_data <- prepare_plot_data(data, group_type, community, harvCols)
+      
+      if (nrow(plot_data) > 0) {
+        colrs <- getColors(nColors = length(unique(plot_data$resName)))
+        plot <- generate_plot(plot_data, community, study_year, group_type, colrs)
+        print(plot) 
+      } else {
+        cat(warningMessage(str_interp("No harvest data for ${group_type}, ${community}, ${study_year}")))
+      }
+    })
+  })
+}
+
+produce_plots(harvTimingData, commnameList, studyear, harvCols)
+
+```
+
+## Write out CSV files
+
+```{r write csv files}
+
+# ##############################################################################
+# Write out CSV files.
+# ##############################################################################
+
+# Write out month and sex table
+  fName = '../../CSV/05 - Final Analysis Output/harvest_by_month_and_sex_raw.csv'
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(harvTimingData), ' records to be written', sep='')))
+
+  rio::export(harvTimingData, fName)
+
+```
+
+<p class="h1footer"> End of harvest by month and sex script. </p>

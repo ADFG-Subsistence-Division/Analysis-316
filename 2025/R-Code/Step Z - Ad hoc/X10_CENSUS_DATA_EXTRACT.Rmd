@@ -1,0 +1,136 @@
+---
+title: "316 NPS Ambler Comprehensive - Census Data"
+author: "Jesse Coleman"
+date: "2025-09-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+
+library(tidycensus)
+library(dplyr)
+library(purrr)
+library(tidyr)
+library(glue)
+```
+
+
+```{r}
+
+# Set your API key
+# census_api_key("cdbc378c7f7d933f938edc000aedf5cba51310ba", install = TRUE)
+
+
+# Set your API key if not already done
+# census_api_key("YOUR_API_KEY", install=TRUE)
+
+# Define the CDPs and the final year of each ACS 5-year estimate
+cdp_info <- tribble(
+  ~place,           ~year,
+  "Ambler", 2023
+)
+
+# ACS variable codes
+variables <- c(
+  total_pop = "B02001_001",
+  native_combo = "B02010_001",
+  total_households = "B11001_001",
+  median_income = "B19013_001"
+)
+
+# Function to get ACS data for a CDP for a single year
+get_cdp_acs <- function(place, year) {
+  dat <- get_acs(
+    geography = "place",
+    variables = variables,
+    state = "AK",
+    year = year,
+    survey = "acs5"
+  )
+  dat %>%
+    filter(grepl(place, NAME, ignore.case = TRUE)) %>%
+    mutate(year = year, place = place)
+}
+
+# Pull and combine all requested data
+results <- pmap_dfr(
+  list(place = cdp_info$place, year = cdp_info$year),
+  get_cdp_acs
+)
+
+# Pivot so each variable is a column, keeping both estimate and margin of error
+final <- results %>%
+  select(place, year, variable, estimate, moe) %>%
+  pivot_wider(
+    names_from = variable,
+    values_from = c(estimate, moe)
+  )
+
+print(final)
+```
+```{r}
+# Decennial variable codes
+decennial_var_lookup <- tibble::tribble(
+  ~year, ~name,                        ~variable,   ~sumfile,
+  2000,  "total_pop",                  "P001001",   "sf1",
+  2000,  "occupied_hh",                "H003002",   "sf1",
+  2000,  "ai_an_any_race",             "P006005",   "sf1",
+  2010,  "total_pop",                  "P001001",   "sf1",
+  2010,  "occupied_hh",                "H003002",   "sf1",
+  2010,  "ai_an_any_race",             "P006005",   "sf1",
+  2020,  "total_pop",                  "P1_001N",   "pl",
+  2020,  "total_housing_units",        "H1_001N",   "pl",
+  2020,  "ai_an_any_race",             "P2_005N",   "pl"
+)
+
+
+# List of decennial years to extract
+decennial_years <- c(2000, 2010, 2020)
+
+
+# Function to get decennial census data for a CDP, year, and variable
+get_cdp_decennial <- function(place, year) {
+  # Filter lookup table for this year
+  lookup <- decennial_var_lookup %>% filter(year == !!year)
+  dat_list <- map2(lookup$variable, lookup$sumfile, function(var, sumfile) {
+    tryCatch({
+      get_decennial(
+        geography = "place",
+        variables = var,
+        state = "AK",
+        year = year,
+        sumfile = sumfile
+      ) %>%
+        filter(grepl(place, NAME, ignore.case = TRUE)) %>%
+        mutate(variable = var, sumfile = sumfile)
+    }, error = function(e) tibble())
+  })
+  bind_rows(dat_list) %>%
+    mutate(year = year, place = place)
+}
+
+# Create combinations of CDP and year
+cdp_decennial_grid <- expand.grid(
+  place = cdp_info$place,
+  year = decennial_years,
+  stringsAsFactors = FALSE
+)
+
+# Pull the data
+decennial_results <- pmap_dfr(
+  list(place = cdp_decennial_grid$place, year = cdp_decennial_grid$year),
+  get_cdp_decennial
+)
+
+# Tidy up
+decennial_final <- decennial_results %>%
+  left_join(decennial_var_lookup, by = c("year", "variable")) %>%
+  select(place, year, name, value) %>%
+  pivot_wider(names_from = c("year", "name"), values_from = "value")
+
+print(decennial_final)
+
+```
+

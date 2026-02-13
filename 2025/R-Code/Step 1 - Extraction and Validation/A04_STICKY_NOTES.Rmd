@@ -1,0 +1,198 @@
+---
+title: "A04_STICKY_NOTES - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-15"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">A04_STICKY_NOTES - (316) NPS Ambler Comprehensive</div>
+</div>
+
+# Get sticky notes
+
+Extract sticky notes to evaluate coding decisions.
+
+## Changelog
+- Programmer: D.S.Koster  
+- Date: 05/21/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output.  
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates 
+
+## Input data
+
+- /CSV/00 - Lookup Codes/fullCommuntyList.csv  
+- /CSV/00 - Lookup Codes/surveyPageInfo_raw.csv  
+- dfgjnusql-db71p/Sub_SDS.dbo.DAT_STICKY_NOTE  
+
+## Output data
+
+-/CSV/03 - Main/stickyNotes_raw.csv  
+
+## Background
+
+Prior to the development of the SDSv3.0, data entry staff would annotate decisions related to tricky coding situations using paper sticky-notes (usually through post-it notes). In SDSv3.0, this process was automated so that this information was recorded in the database and convened to other entry staff.
+
+Prior to data entry, these sticky notes need to be reviewed and surveys possibly updated in the event inconsistent entry has occurred. Resolved sticky notes should be marked in the data entry screen with the initials of the anlayst ie: (DSK) at the end of the note, with additional information on final decisions or changes, if present.
+
+## Checklist  
+
+- Update 'Author' to your name   
+- Update the project information in 'title' to the current project  
+- Update the development log with any changes you've made to the template file, including your name  
+- Each sticky note evaluated and survey reviewed
+- Correct interpretation of entry is verified
+- Sticky note has initials and additional explanation, if necessary  
+
+## Additional Information
+
+
+## Required libraries 
+
+- tidyVerse  
+- odbc  
+- rio  
+- knitr  
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+library(knitr)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+source('../Functions/f_RMD_HTML_FORMATTING_FUNCTIONS.r')
+
+# For this particular script, we need to include the ODBC Connections.
+source('../Functions/f_subsistenceDatabaseConnections.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+```
+
+```{r initiate server connection}
+
+# ##############################################################################
+# 1.0 - Instantiate server connection.
+# ##############################################################################
+
+# 1.1 Load the ODBC Library & Open a connection.
+loadODBCLibrary()
+conn = connectToSDS()
+
+```
+
+
+## Load data
+
+```{r extract community codes}
+
+commListData <- read.csv('../../CSV/00 - Lookup Codes/fullCommuntyList.csv',
+            na = '', header = TRUE, strip.white = TRUE)
+count <- nrow(commListData)
+cat(formatSummaryBlock(paste("Loading file: fullCommuntyList.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+surveyPageData <- read.csv('../../CSV/00 - Lookup Codes/surveyPageInfo_raw.csv',
+            na = '', header = TRUE, strip.white = TRUE)
+count <- nrow(surveyPageData)
+cat(formatSummaryBlock(paste("Loading file: surveyPageInfo_raw.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+```
+
+## Extract sticky notes from SDS
+
+```{r extract sticky notes}
+
+# Get Sampling
+strSQL = sql(str_interp('SELECT [stickyNoteID]
+      ,[projID]
+      ,[studyear]
+      ,[communty]
+      ,[HHID]
+      ,[pgNum]
+      ,[pageName]
+      ,[stickyNote]
+      ,[addedBy]
+      ,[addedDate]
+  FROM [Sub_SDS].[dbo].[DAT_STICKY_NOTE]  
+  WHERE (projID = ${projID} AND studyear = ${studyear})'))
+
+stickyNotesData <- odbc::dbGetQuery(conn, strSQL)
+count = nrow(stickyNotesData)
+
+cat(formatSummaryBlock(paste("Sticky notes extracted ",
+                              count, 
+                             " rows found", sep="")))
+
+
+# Close server connection.
+dbDisconnect(conn)
+
+```
+
+## Sticky Note report
+
+*NOTE:* Also check the margin notes to ensure proper coding and interpretation of survey data has occurred.
+
+```{r sticky notes table}
+
+stickyNotesData <- left_join(stickyNotesData, commListData, by=c("communty"))
+
+stickyNotesData <- select(stickyNotesData, projID, studyear, commname, HHID, pgNum, stickyNote) %>%
+  dplyr::arrange(stickyNotesData, commname, HHID, pgNum)
+
+knitr::kable(stickyNotesData, 
+             caption=formatTableHeader("Sticky Notes"),
+             align='l')
+
+```
+
+# Write CSV
+
+```{r write csv files}
+
+# ##############################################################################
+# Write out CSV files.
+# ##############################################################################
+
+  cat(formatSummaryBlock(
+    paste('Writing file: ',
+          '../../CSV/03 - Main/stickyNotes_raw.csv', 
+          sep='')))
+
+  rio::export(stickyNotesData, '../../CSV/03 - Main/stickyNotes_raw.csv')
+
+
+```
+
+
+<p class="h1footer"> End of Sticky Notes script. </p>
+

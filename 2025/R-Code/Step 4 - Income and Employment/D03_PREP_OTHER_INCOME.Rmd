@@ -1,0 +1,319 @@
+---
+title: "D03_PREP_OTHER_INCOME - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-15"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">D03_PREP_OTHER_INCOME - (316) NPS Ambler Comprehensive</div>
+</div>
+
+# Prepare other income
+
+Prepare the 'other income' data for analysis - execute mean replacements, enforce logic and ensure the file is clean and ready for analysis.
+
+## Change log
+
+### Change 1
+- Programmer: D.S.Koster  
+- Date: 05/21/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output.  
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates 
+
+### Change 2
+- Programmer: D.S.Koster  
+- Date: 06/07/2024  
+- Change Description: Modified categories to provide categorization for virually all types of other income to avoid the 'Other non-employment' categories. This is likely to be noted as an issue by pubs as much as the problem it's seeking to solve, but it's the only step that doesn't involve defining 'other' in two ways.  
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates 
+
+### Change 3
+- Programmer: Jesse Coleman
+- Date: 03/18/2025
+- Change Description: Removed source() calls; all functions are included in the library adfgSubs.
+- Template Update [Y|N]: Y
+- One-Off: No-include in all future comprehensive templates 
+
+### Change 4
+- Programmer: Jesse Coleman
+- Date: 05/29/2025
+- Change Description: Refactor using tidyverse language and DRY ("don't repeat yourself") principles.
+- Template Update [Y|N]: Y
+- One-Off: No - include in all future comprehensive templates 
+
+
+## Input data
+  
+- {bootSampPath}/bootSamp_OthInc.csv  
+- {bootSampPath}/bootSamp_HH.csv  
+- /CSV/03 - Main/sample.csv  
+
+## Output data
+  
+- {bootSampPath}/REC24_FULL_CLEAN_BOOT.csv  
+- /CSV/06 - HH Database Uploads/REC24_HH_FILE.csv  
+
+## Background
+
+## Checklist
+  
+- Update 'Author' to your name  
+- Update the project information in 'title' to the current project  
+- Update the development log with any changes you've made to the template file, including your name
+
+## Additional information
+
+This code creates a cross-listing of 'other income' codes to category type codes. The original purpose of this mapping was to highlight the role of government transfer payments within the overall income context. However, this led to unintuitive and confusing lumping of income categories such that two categories of 'other' were created. category codes are assigned in the code below.
+
+### Functions used/dependencies
+
+
+### Required libraries (adjust as needed)
+  
+- tidyVerse  
+- rio  
+- data.table  
+- knitr 
+- adfgSubs
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+
+# Additional libraries
+library(knitr)
+library(data.table)
+library(adfgSubs)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+```
+
+## Load data
+
+```{r load data}
+
+# ##############################################################################
+# Load data from intermediate files.
+# ##############################################################################
+
+# Load working data files; use the bootstrapped files.
+REC24Data <- fread(str_interp('${bootSampPath}/bootSamp_OthInc.csv'), 
+                      na = '', 
+                      header = TRUE, 
+                      strip.white = TRUE)
+count <- nrow(REC24Data)
+cat(formatSummaryBlock(paste("Opening file: bootSamp_OthInc.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+REC00Data <- fread(str_interp('${bootSampPath}/bootSamp_HH.csv'), 
+                      na = '', 
+                      header = TRUE, 
+                      strip.white = TRUE)
+count <- nrow(REC00Data)
+cat(formatSummaryBlock(paste("Opening file: bootSamp_HH.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+sampData <- fread('../../CSV/03 - Main/sample.csv', 
+                     na = '', 
+                     header = TRUE, 
+                     strip.white = TRUE)
+count <- nrow(sampData)
+cat(formatSummaryBlock(paste("Opening file: sample.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+incsrce = c(2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
+            18, 19, 20, 21, 31, 32, 33, 34, 35, 36, 37, 38, 39,
+            41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51)
+
+incCategory = c(1, 1, 4, 3, 5, 8, 3, 1, 1, 7, 12, 12, 13, 11,
+                8, 11, 3, 11, 15, 8, 2, 10, 16, 9, 12, 16, 18,
+                3, 14, 17, 17, 11, 12, 18, 17, 1, 17, 15, 16)
+
+incToCatData <- tibble(incsrce, incCategory) 
+
+```
+
+# Set up files for analysis
+
+This chunk recodes according to logic rules and prepare the dataset for missing data replacements.
+
+```{r setp for analysis}
+
+# 2.1 - Create income category.
+
+#REC24Data$incCategory = 10
+REC24Data <- REC24Data %>%
+  left_join(incToCatData, by=c("incsrce")) %>% 
+  mutate(incCategory = coalesce(incCategory, 10), # Default to 10 if NA
+         # If the amount is explicitly missing, i.e., respondent noted some was earned, but none was listed, then
+         #    force incReceived == 1, this way mean-replacement occurs properly.
+         incReceived = case_when(amount < 0 ~ 1,
+                                 is.na(incReceived) ~ 0,
+                                 incReceived < 0 ~ NA_real_,
+                                 TRUE ~ incReceived),
+         # Recode income received and amount from -8 to NA
+         amount = if_else(amount < 0, NA_real_, amount),
+         # Also if the amount was marked as received, there needs to be a non-zero value.
+         incomeAmount_MR = if_else(incReceived == 1 & amount == 0, NA_real_, amount)
+  )
+
+```
+
+## Missing data replacement
+
+Replace missing data by starting with the income source, if no non-0 mean is found for that source, then do this by income category. Again, if there is no mean, then take the mean of any source. Note here that we also evaluate whether or not the income source was present in another strata group before doing the whole community mean. This is rarely going to be applied.
+
+```{r missing data replacement}
+
+# Compute mean values for replacement, with NA removed
+bySrceData <- REC24Data %>%
+  group_by(samp, projID, studyear, communty, strata, incCategory, incsrce) %>%
+  summarize(
+    mByIncsrce = mean(incomeAmount_MR, na.rm = TRUE),
+    mIncRcvedSrc = mean(incReceived, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+byCatData <- REC24Data %>%
+  group_by(samp, projID, studyear, communty, strata, incCategory) %>%
+  summarize(
+    mByIncCat = mean(incomeAmount_MR, na.rm = TRUE),
+    mIncRcvdCat = mean(incReceived, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+byAnyStrataData <- REC24Data %>%
+  group_by(samp, projID, studyear, communty, strata) %>%
+  summarize(
+    mByAnyStrat = mean(incomeAmount_MR, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+byAnyCommData <- REC24Data %>%
+  group_by(samp, projID, studyear, communty) %>%
+  summarize(
+    mByAny = mean(incomeAmount_MR, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# Join mean values back to main data
+REC24Data <- REC24Data %>%
+  left_join(bySrceData, by = c("samp", "projID", "studyear", "communty", "strata", "incCategory", "incsrce")) %>%
+  left_join(byCatData, by = c("samp", "projID", "studyear", "communty", "strata", "incCategory")) %>%
+  left_join(byAnyStrataData, by = c("samp", "projID", "studyear", "communty", "strata")) %>%
+  left_join(byAnyCommData, by = c("samp", "projID", "studyear", "communty"))
+
+# Enforce logic for received income
+REC24Data <- REC24Data %>%
+  mutate(
+    incReceived = if_else(incomeAmount_MR > 0, 1, incReceived),
+    # Set to 0 if not received and no mean value for source
+    incReceived = case_when(
+      is.na(incReceived) & otherIncomeYN < 0 & (is.na(mIncRcvedSrc) | mIncRcvedSrc == 0) ~ 0,
+      TRUE ~ incReceived
+    ),
+    incomeAmount_MR = case_when(
+      is.na(incomeAmount_MR) & otherIncomeYN < 0 & (is.na(mIncRcvedSrc) | mIncRcvedSrc == 0) ~ 0,
+      TRUE ~ incomeAmount_MR
+    ),
+    # Set means of 0 to NA so coalesce skips them
+    mIncRcvedSrc = na_if(mIncRcvedSrc, 0),
+    mIncRcvdCat = na_if(mIncRcvdCat, 0),
+    mByIncsrce = na_if(mByIncsrce, 0),
+    mByIncCat = na_if(mByIncCat, 0),
+    mByAnyStrat = na_if(mByAnyStrat, 0),
+    mByAny = na_if(mByAny, 0)
+  )
+
+# Coalesce incReceived from most to least specific
+REC24Data <- REC24Data %>%
+  mutate(
+    incReceived = coalesce(incReceived, mIncRcvedSrc, mIncRcvdCat),
+    incReceived = replace_na(incReceived, 0)
+  )
+
+# Coalesce incomeAmount_MR from most to least specific mean
+REC24Data <- REC24Data %>%
+  mutate(
+    incomeAmount_MR = coalesce(
+      incomeAmount_MR,
+      mByIncsrce,
+      mByIncCat,
+      mByAnyStrat,
+      mByAny
+    )
+  )
+
+
+```
+
+## Make the HH Database file
+
+```{r hh database file}
+
+# Create HH Database file.
+hhFileData <- filter(REC24Data, samp==0) %>%
+  select(projID, studyear, communty, strata, HHID, uHHID, incsrce, amount, incomeAmount_MR) %>% 
+  mutate(incomeSource = incsrce,
+         reportedIncomeAmount = amount) %>% 
+  select(-incsrce, -amount)
+
+```
+
+# Write CSV files
+
+```{r write csv files}
+
+# ##############################################################################
+# Write out CSV files.
+# ##############################################################################
+
+fName = str_interp('${bootSampPath}/REC24_FULL_CLEAN_BOOT.csv')
+cat(formatSummaryBlock(
+  paste('Writing file: ', fName, 
+        ' ', nrow(REC24Data), ' records to be written', sep='')))
+fwrite(REC24Data,fName)
+
+fName =  '../../CSV/06 - HH Database Uploads/REC24_HH_FILE.csv'
+cat(formatSummaryBlock(
+  paste('Writing file: ', fName, 
+        ' ', nrow(hhFileData), ' records to be written', sep='')))
+rio::export(hhFileData, fName)
+
+
+```
+
+<p class="h1footer"> End of prepare other income script. </p>

@@ -1,0 +1,255 @@
+---
+title: "B03_PREP_CONVERSION_FACTOR - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-19"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">B03_PREP_CONVERSION_FACTOR - (316) NPS Ambler Comprehensive</div>
+</div>
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">B03_PREP_CONVERSION_FACTOR - (313) SWG Kivalina Comprehensive</div>
+</div>
+
+# Prepare conversion factors
+
+Get a complete list of resource codes & associated conversion factors for use in developing the conversion factor table.
+
+## Changelog
+
+### Change 1
+- Programmer: D.S.Koster  
+- Date: 04/17/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output.  
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates
+
+### Change 2
+- Programmer: Jesse Coleman
+- Date: 03/18/2025
+- Change Description: Removed source() calls; all functions are included in the library adfgSubs.
+- Template Update [Y|N]: Y
+- One-Off: No-include in all future comprehensive templates 
+
+
+## Input data
+  
+- /CSV/01 - Database Extract/REC${recType}_raw.csv  
+- /CSV/00 - Lookup Codes/fullResList_raw.csv  
+- /CSV/00 - Lookup Codes/fullCommuntyList.csv
+
+*NOTE:* No database extracts were necessary
+
+## Output data
+  
+- /CSV/01 - Database Extract/convFactPrep.csv
+
+## Background
+
+Before analysis can occur, conversions of units to edible pounds must be established. This file prepares the template to be hand-updated.
+
+*NOTE; Future development* Ultimately, the goal will be to develop a full database of conversion factors, and this file will be re-puprosed to be a database extract. For now, this process must occur by hand.
+
+### How to use this document
+
+Run the r-markdown and evaluate the species and units extracted. This file should not be run until after all analysis has occurred and all data cleaning has occurred. Use this file to identify in appropriate units (if not already caught in the logic checking code). Note that salmon conversion factors will have already been extracted from the ASFDB.
+
+The goal will be to update the convFact.csv file that will be used in the actual analysis. The output file here is meant as a starting point.
+
+This file is designed to work with a 2023 or later analysis project, and will not work as a stand-alone file.
+
+### Checklist
+
+- Update 'Author' to your name  
+- Update the project information in 'title' to the current project  
+- Update the development log with any changes you've made to the template file, including your name  
+- Remove any unnecessary REC type files (keep all if a comprehensive) from the vector created in the initiate environment chunk  
+- Verify units  
+- Ensure that the correct record types have been included  
+- Use the CSIS and conversion factor dashboard <a href="https://adfg-ak-subsistence.shinyapps.io/AK_Wild_Food_Conversion_Factors/">Wild food conversion dashboard</a>
+
+## Additional Information
+
+Loads and merges all resource record types here. This markdown file does not directly feed into later steps where full analysis of all resources take place. Those merges require substantial additional work. Record type codes are loaded into a list and merged using a single dplyr::bind_rows command. 
+
+### Required libraries (adjust as needed)
+
+- tidyVerse  
+- rio  
+- knitr
+- adfgSubs
+
+```{r setup, echo=FALSE}
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE,
+                      include = TRUE,
+                      message = FALSE,
+                      warning = FALSE,
+                      results='asis')
+
+options(knitr.kable.NA = '')
+```
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment, message = FALSE, warning = FALSE}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+library(knitr)
+library(adfgSubs)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+
+# Indicate record types to include in a list
+recTypes = c("03", "04", "06", "08", "10", "12", "14", "15", "17")
+recTypeDataSet = list()
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+```
+
+## Load data
+
+```{r load data, message=FALSE}
+
+# ##############################################################################
+# Load data
+# ##############################################################################
+
+# All harvest records from database extract
+recTypeDataSet <- recTypes %>%
+  set_names() %>%  # Name the list elements with the record types
+  map(function(recType) {
+    # Read and process the data
+    data <- read.csv(str_interp('../../CSV/01 - Database Extract/REC${recType}_raw.csv'),
+                     na = '', header = TRUE, strip.white = TRUE) %>%
+      select(projID, studyear, communty, resource, units) %>%
+      group_by(projID, studyear, communty, resource, units) %>%
+      summarize(nOcc = n())
+    
+    # Print the summary (side effect)
+    count <- nrow(data)
+    cat(formatSummaryBlock(paste0("Opening file: REC", recType, "_raw.csv, ", 
+                                 count, 
+                                 " resource/unit combinations found.")))
+    
+    # Return the data
+    return(data)
+  })
+
+
+## For loop (deprecated) -----
+# for(recType in recTypes)
+# {
+#   recTypeDataSet[[recType]] <- read.csv(str_interp('../../CSV/01 - Database Extract/REC${recType}_raw.csv'),
+#                                         na='', header=TRUE, strip.white=TRUE) %>%
+#     select(projID, studyear, communty, resource, units) %>%
+#     group_by(projID, studyear, communty, resource, units) %>%
+#     summarize(nOcc = n())
+#   
+#   count <- nrow(recTypeDataSet[[recType]])
+#   cat(formatSummaryBlock(paste("Opening file: REC", recType, "_raw.csv, ", 
+#                              count, 
+#                              " resource/unit combinations found.", sep="")))
+# }
+
+
+# Resource code lookups.
+rescodeData <- read.csv('../../CSV/00 - Lookup Codes/fullResList_raw.csv',
+                   na = '', 
+                   header = TRUE, 
+                   strip.white = TRUE)
+
+count <- nrow(rescodeData)
+cat(formatSummaryBlock(paste("Opening file: fullResList_raw.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+commListData <- read.csv('../../CSV/00 - Lookup Codes/fullCommuntyList.csv',
+            na = '', header = TRUE, strip.white = TRUE)
+count <- nrow(commListData)
+cat(formatSummaryBlock(paste("Opening file: fullCommuntyList.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+
+```
+
+## Combine and merge
+
+Combine and merge all of the data into a single data frame.
+
+```{r combine data, message=FALSE}
+
+# Bind rows across all of the datasets.
+allResData <- dplyr::bind_rows(recTypeDataSet)
+
+# Merge in the resource codes & communty codes.
+allResData <- left_join(allResData, rescodeData, by="resource") %>%
+  left_join(commListData) %>%
+  arrange(projID, studyear, communty, resource)
+
+tempData <- select(allResData, projID, studyear, commname, resName, resource,
+                   units, nOcc)
+
+print(knitr::kable(tempData, 
+             caption = formatTableHeader('Resource / units by communty & number of occurrences')))
+
+
+```
+
+## Final prep
+
+Final formatting for output to the convFactPrep.csv file.
+
+```{r final formatting}
+
+# Create empty columns for the convFact data file.
+allResData$convFact = 1
+allResData$lbsToDefault = 1
+allResData$defaultUnits = allResData$units
+allResData$Source = "NONE"
+
+allResData <- select(allResData, projID, studyear, communty, resName, resource, 
+       units, convFact, lbsToDefault, defaultUnits, 
+       Source, nOcc)
+
+count = nrow(allResData)
+
+cat(greenMessage(str_interp("Final file prepped for output: ${count} rows.")))
+
+```
+
+# Write CSV files
+
+```{r write csv files}
+
+# ##############################################################################
+# Write out CSV files.
+# ##############################################################################
+
+# Write out conversion factor prep file.
+  fName = '../../CSV/01 - Database Extract/convFactPrep.csv'
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName,
+          ' ', nrow(allResData), ' records to be written', sep='')))
+
+  rio::export(allResData, fName)
+
+```
+
+<p class="h1footer"> End of prep conversion factor script. </p>

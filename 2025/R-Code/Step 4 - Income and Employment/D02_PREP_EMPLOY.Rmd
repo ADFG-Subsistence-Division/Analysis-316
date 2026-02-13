@@ -1,0 +1,572 @@
+---
+title: "D02_PREP_EMPLOY - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-11"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">D02_PREP_EMPLOY - (316) NPS Ambler Comprehensive</div>
+</div>
+
+# Prepare Employment
+
+Prepare the employment data for analysis. This file executes the step-wise median-replacements of income for each re-sample based on values as well as deals with other missing information such as missing employment info for a household, unknown age class, and other logical considerations.
+
+## Change log
+
+### Change 1
+- Programmer: D.S.Koster  
+- Date: 09/2023  
+- Change Description: Added an ungroup to employData at the end of the script to prevent unecessary grouping columns from being added to the HH Database file.  
+- Template Update [Y|N]: Yes  
+- One-Off: No - all future scripts should incorporate this change  
+
+### Change 2
+- Programmer: D.S.Koster  
+- Date: 04/23/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output.  
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates  
+
+### Change 3
+- Programmer: Jesse Coleman
+- Date: 03/18/2025
+- Change Description: Removed source() calls; all functions are included in the library adfgSubs.
+- Template Update [Y|N]: Y
+- One-Off: No-include in all future comprehensive templates 
+
+### Change 4
+- Programmer: Jesse Coleman
+- Date: 05/21/2025
+- Change Description: Refactor using tidyverse language and DRY ("don't repeat yourself") principles.
+- Template Update [Y|N]: Y
+- One-Off: No - include in all future comprehensive templates
+
+## Input data
+  
+- {bootSampPath}/bootSamp_Employ.csv  
+- {bootSampPath}/bootSamp_Person.csv  
+- {bootSampPath}/bootSamp_HH.csv  
+- /CSV/03 - Main/sample.csv
+
+## Output data
+  
+- {bootSampPath}/REC23_FULL_CLEAN_BOOT.csv  
+- /CSV/06 - HH Database Uploads/REC23_HH_FILE.csv
+
+## Background
+
+## Checklist
+  
+- Update 'Author' to your name  
+- Update the project information in 'title' to the current project  
+- Update the development log with any changes you've made to the template file, including your name 
+
+## Additional information
+
+*Note* for missing Income:  
+- IF SIC/SOC are 0 (ie: No job), then earnings = 0.  
+- IF SIC/SOC are < 0 (ie: Not employed), then schedule = 0.  
+- Missing monthly earned income is replaced with **MEDIAN** as follows: First by SOC/SIC/schedule, then by SIC/SOC, then by SIC, finally, if still no non-zero income has been calculated, use the median of ANY job and use that value.  
+
+### Functions used/dependencies
+
+### Required libraries (adjust as needed)
+  
+- tidyVerse  
+- rio  
+- data.table  
+- knitr
+- adfgSubs
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+
+# Additional libraries
+library(knitr)
+library(data.table)
+library(adfgSubs)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+```
+
+## Load data
+
+```{r load data}
+
+# ##############################################################################
+# Load data from intermediate files.
+# ##############################################################################
+
+# 1.1 - Load working data files; use the bootstrapped files.
+REC23Data <- fread(str_interp('${bootSampPath}/bootSamp_Employ.csv'), 
+                      na = '', 
+                      header = TRUE, 
+                      strip.white = TRUE)
+count <- nrow(REC23Data)
+cat(formatSummaryBlock(paste("Opening file: bootSamp_Employ.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+REC01Data <- fread(str_interp('${bootSampPath}/bootSamp_Person.csv'), 
+                     na = '', 
+                     header = TRUE, 
+                     strip.white = TRUE)
+count <- nrow(REC01Data)
+cat(formatSummaryBlock(paste("Opening file: bootSamp_Person.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+REC00Data <- fread(str_interp('${bootSampPath}/bootSamp_HH.csv'), 
+                      na = '', 
+                      header = TRUE, 
+                      strip.white = TRUE)
+count <- nrow(REC00Data)
+cat(formatSummaryBlock(paste("Opening file: bootSamp_HH.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+sampData <- read.csv('../../CSV/03 - Main/sample.csv', 
+                     na = '', 
+                     header = TRUE, 
+                     strip.white = TRUE)
+count <- nrow(sampData)
+cat(formatSummaryBlock(paste("Opening file: sample.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+```
+
+## Set up files for analysis  
+  
+Problem:  
+
+- Each household has a minimum of 1 employment record  
+- Each person in an employed household should have an employment record  
+
+We need to merge the files such that all households, regardless of employment status have records for at least all reported individuals in the household. We then use logic to create a status for initially missing individuals based on known information (age and the `filterq` flag).
+
+Some notes and enforced logic:  
+- If a household lacks employment information AND person age information, all of this is removed and the HH is treated as unknown for employment completely.  
+- Create an additional imputation step for later that will be used to account for people missing valid employment records altogether. 
+- We assume that if no months worked has been checked that this value is just 'unknown'.
+
+
+```{r set up files for analysis}
+
+# List of all persons who had an employment record, not including those
+#     with an implied person record of 0 - not employed
+employPersonListData <- group_by(REC23Data, projID, samp, studyear, HHID, uHHID, strata, person) %>%
+  summarize(personEmployRecord = n()) %>%
+  filter(!is.na(person))
+
+# Summary of household employment status (using filterq)
+#
+employHHListData <- group_by(REC23Data, projID, samp, studyear, HHID, uHHID, strata) %>%
+  summarize(hhEmployRecord = max(filterq))
+
+# Put a status for each HH so that records for people not listed on
+#     the employment page can be made. Also get total hhSize in this step.
+tmpMakePersonEmployRecData <- left_join(REC01Data, 
+                                        employHHListData, 
+                                        by=c("projID", "samp", "studyear", "HHID", "uHHID", "strata"))
+
+# Get everyone with a valid birth year.
+personBirthYear <- select(REC01Data, projID, samp, communty, studyear, 
+                          HHID, uHHID, strata, person, birthyear) %>%
+  filter(birthyear > 0)
+
+# Bring in information per person from the employment record  
+#   for the purposes of identifying people that were already added in spite
+#   of filterq on the form indicating no records. Filter so only those
+#   individuals having no record remain.
+makePersonEmployRecData <- left_join(tmpMakePersonEmployRecData,
+                                     employPersonListData, 
+                                     by=c("projID", "samp", "studyear", "HHID", "uHHID", "strata", "person")) %>%
+  filter(is.na(personEmployRecord)) %>% 
+  
+  # Enforce coding issues that could cause problems.
+  mutate(birthyear = if_else(is.na(birthyear), -9, birthyear)) %>% 
+
+  # Retain only adults (>16 years old) and unknown age people. This factors 
+  #   into the analysis later.
+  mutate(adult = if_else(birthyear > 0 & (studyear - birthyear) > 16, 1, 0)) %>% 
+  filter(birthyear < 0 | adult == 1) %>% 
+  
+  # Remove all households where, overall, employment status is not known.
+  #  these need to be imputed.
+  mutate(eStatus = if_else(hhEmployRecord < 0, 0, 1)) %>% 
+
+  # Further filter the data.
+  filter(eStatus == 1) %>% 
+
+  # Remove the entire household if birth years are missing. This is because
+  #   we don't really have enough information to assess how many adults are 
+  #   present and so we're forced to estimate.
+  mutate(missingBirthYears = if_else(birthyear < 0, 1, 0)) %>% 
+  group_by(projID, samp, studyear, HHID, uHHID, strata) %>%
+  mutate(hhMissingAges = max(missingBirthYears, na.rm = TRUE),
+         hhMissingAges = if_else(is.infinite(hhMissingAges), NA_real_, hhMissingAges)) %>% 
+
+  # Not employed; don't strictly need this, but it will help ensure we have 
+  #   the correct count of households providing valid information.
+  mutate(SOC = 0,
+         SIC = 0,
+         CSISCatCodes = 0,
+         resource = 910100000) %>%
+  
+  # Remove rows with missing ages, and deselect missing flag columns.
+  filter(hhMissingAges == 0) %>% 
+  select(projID, samp, communty, studyear, HHID, uHHID, strata, person, birthyear, SOC, SIC, resource)
+
+# Bring the birth years into the employment record.
+employData <- left_join(REC23Data, 
+                        personBirthYear, 
+                        by=c("projID", "samp", "communty", "studyear", "HHID", "uHHID", "strata", "person")) %>%
+  filter(!is.na(person)) %>%
+  bind_rows(makePersonEmployRecData) %>% 
+  
+  # Recode NA values to -8
+  mutate(across(all_of(c("SOC", "SIC")),
+         ~if_else(is.na(.x), -8, .x))) %>%
+  # For rows where SOC is between (including) -1 and -5, set SIC equal to SOC.
+  mutate(SIC = if_else(SOC > -6 & SOC < 0, SOC, SIC),
+         # Set flag indicating employed adult, where possible. Assume -8 only applies
+         #   to likely employed adults where job is unknown. Where SOC is between (including) 
+         #  -1 and -7, set employedAdult to 0, otherwise 1.
+         employedAdult = if_else(SOC <= 0 & SOC >= -7, 0, 1),
+         validEmployRecord = 1)
+
+# Get count of HHs providing 'valid' employment information, and also get a count
+#   of adults having been validly designated as 'employed'. This will allow us to
+#   estimate a number of employed adults across the dataset. Since we're going to
+#   just aggregate to the strata level, we can get away with just using uHHID instead
+#   of both.
+validEmployData <- employData %>% 
+  group_by(projID, communty, studyear, strata, uHHID) %>%
+  summarize(validHHs = max(validEmployRecord, na.rm=TRUE),
+            employedAdults = sum(employedAdult, na.rm=TRUE)) %>%
+  summarize(validHHs = sum(validHHs, na.rm=TRUE),
+            employedAdults = sum(employedAdults, na.rm=TRUE)) %>%
+  left_join(sampData, by=c("projID", "communty", "studyear", "strata")) %>%
+  select(projID, communty, studyear, strata, commhh, validHHs, employedAdults) %>% 
+  mutate(estEmplAdults = employedAdults * (commhh / validHHs))
+
+
+# Bring sampling information in; even though we're operating on a boot-sample,
+#    we can treat the sampling information largely the same. We don't use the
+#    sampHH or commHH so this doesn't need to be done per-person.
+
+monthList = c("janWork", "febWork", "marWork", "aprWork",
+              "mayWork", "junWork", "julWork", "augWork",
+              "sepWork", "octWork", "novWork", "decWork")
+
+employData <- left_join(employData, sampData, by=c("projID", "communty", "studyear", "strata")) %>% 
+  
+  # Now we have an estimate of employed adults...recode negative values to NA.
+  mutate(across(all_of(c("earnings","schedule")),
+                ~if_else(.x %in% c(-6:-9), NA_real_, .x)),
+         across(all_of(monthList),
+                ~case_when(.x == -1 ~ 1,
+                           is.na(.x) ~ 0,
+                           TRUE ~ .x)),
+
+         # Compute reported months worked.
+         # We interpret 0 months worked same as missing
+         monthsWorked = case_when(
+           rowSums(across(all_of(monthList)), na.rm = TRUE) == 0 ~ NA_real_,
+           # Force 0 for not employed adults.
+           employedAdult == 0 ~ 0,
+           # If neither condition is met, then add months
+           #   worked.
+           TRUE ~ rowSums(across(all_of(monthList)), na.rm = TRUE)         
+         )
+  )
+         
+
+```
+
+```{r summary of missing data}
+
+missingSummary <- REC23Data %>%
+  filter(samp == 0) %>% 
+  rowwise() %>%
+  mutate(
+    earnFL = case_when(earnings < -6 ~ 1, 
+                       is.na(earnings) ~ 0,
+                       TRUE ~ 0),
+    sicFL = if_else(SIC < -6, 1, 0),
+    socFL = if_else(SOC < -6, 1, 0),
+    schedFL = if_else(schedule %in% c(-7,-8), 1, 0),
+    # monthsFL = if_else(any(c_across(janWork:decWork) < 0), 1, 0),
+    isJob = if_else(!SIC %in% c(-2,0), 0, 1)
+  ) %>%
+  ungroup() %>% 
+  summarize(
+    earnFL_sum = round(sum(earnFL), 0),
+    sicFL_sum = round(sum(sicFL), 0),
+    socFL_sum = round(sum(socFL), 0),
+    schedFL_sum = round(sum(schedFL), 0),
+    # monthsFL_sum = sum(monthsFL),
+    jobsN = round(sum(isJob), 0),
+    recordsN = n()
+  ) %>% 
+  mutate(earnFL_pct = round(earnFL_sum/jobsN, 2),
+         sicFL_pct = round(sicFL_sum/jobsN, 2),
+         socFL_pct = round(socFL_sum/jobsN, 2),
+         schedFL_pct = round(schedFL_sum/jobsN,  2),
+         nonjobN = recordsN-jobsN
+         # monthsFL_pct = monthsFL_sum/jobsN
+  ) %>% 
+  select(recordsN, jobsN, nonjobN, everything()) %>% 
+pivot_longer(everything(), names_to = "variable", values_to = "value")
+
+missingSummary
+```
+
+
+## Missing data replacements
+
+In this block of code, we will use mean replacement for 'employed adults' in the event a household has declined to share employment information. This is also applied to the number of 'months employed'. However, for earnings, the following rules are applied:  
+  
+- IF SIC/SOC are 0 (i.e., No job), then earnings = 0.  
+- IF SIC/SOC are < 0 (i.e., Not employed), then schedule = 0.  
+- Missing monthly earned income is replaced with **MEDIAN** as follows: First by SOC/SIC/schedule, then by SIC/SOC, then by SIC, finally, if still no non-zero income has been calculated, use the median of ANY job and use that value.   
+
+```{r missing data replacements}
+
+# Mean replace for JUST employed adults (standard functions won't work here, just use this).
+#   Thinking about employment characteristics, always use the strata-level means,
+#   we should not have an instance where the strata does not contain enough non-zero 
+#   information to provide a mean.
+
+employData <-
+  employData %>% 
+  
+  # Grouping variables; probably don't need `employedAdult` here because it is 
+  #   handled in each mutate call. 
+  group_by(projID, samp, studyear, communty, resource, strata, employedAdult) %>%
+  
+  # For rows with employed adults, calculate the mean number of months worked 
+  #   per sample; otherwise NA
+  mutate(mMean = if_else(employedAdult == 1, mean(monthsWorked, na.rm=TRUE), NA_real_), 
+         monthsWorked = if_else(is.na(monthsWorked), mMean, monthsWorked),
+         earnPerMonth = case_when(is.na(earnings/monthsWorked) & employedAdult == 0 ~ 0,
+                                  is.na(earnings/monthsWorked) & employedAdult != 0 ~ NA_real_,
+                                  TRUE ~ earnings/monthsWorked),
+         earnings = if_else(employedAdult == 0 & is.na(earnings), 0, earnings),
+         schedule = if_else(employedAdult == 0 & is.na(schedule), 0, schedule)) %>% 
+  
+  # Calculate median earnings per month by variable groupings (fine-scale to 
+  #   coarse-scale)
+  group_by(projID, samp, studyear, communty, strata, employedAdult, SIC, SOC, schedule) %>%
+  mutate(medBySched = median(earnPerMonth, na.rm=TRUE)) %>%
+  group_by(projID, samp, studyear, communty, strata, employedAdult, SIC, SOC) %>%
+  mutate(medBySOC = median(earnPerMonth, na.rm=TRUE)) %>%
+  group_by(projID, samp, studyear, communty, strata, employedAdult, SIC) %>%
+  mutate(medBySIC = median(earnPerMonth, na.rm=TRUE)) %>%
+  group_by(projID, samp, studyear, communty, employedAdult, strata) %>%
+  mutate(medByAny = median(earnPerMonth, na.rm=TRUE),
+        
+         # Replace NAs in median columns with zeros
+         across(c("medBySched","medBySOC","medBySIC", 
+                  "medByAny"), ~if_else(is.na(.x), 0, .x)),
+         
+         # If earnPerMonth is not missing, keep it.
+         #  Else, if medBySched > 0, use that.
+         #  Else, if medBySOC > 0, use that.
+         #  Else, if medBySIC > 0, use that.
+         #  Else, if medByAny > 0, use that.
+         #  Else, set to NA.
+         earnPerMonth = case_when(
+           !is.na(earnPerMonth) ~ earnPerMonth,
+           medBySched > 0 ~ medBySched,
+           medBySOC > 0 ~ medBySOC,
+           medBySIC > 0 ~ medBySIC,
+           medByAny > 0 ~ medByAny,
+           TRUE ~ NA_real_
+         )
+  )
+
+```
+
+## Impute missing-replaced data
+
+This step calculates imputed information for income, number of jobs, number of employed adults for summarization in a later step. The means or 50th percentile of these summary results across 'samp' for a community represent the estimates for the community. This information is left at the re-sample level now so that confidence intervals can be calculated.
+
+```{r impute MR data}
+
+# Get to number of jobs marked per-person | Employed and valid Record.
+# Go to number of employed adults per-household | Employed and valid HHs
+# Summarize to total employed adults per-household
+
+# This computes the sum of people who reported 1 or more jobs combined with 
+#    the number of households providing valid responses to 'jobs' question 
+#    overall. Need to get a count of reported jobs.
+# expInfoData <- employData %>% 
+#   group_by(projID, samp, studyear, communty, commhh, uHHID, person) %>%
+#   summarize(validHH = max(1),
+#             employedAdultCount = max(employedAdult, na.rm=TRUE),
+#             jobCount = sum(employedAdult, na.rm=TRUE)) %>%
+#   summarize(validHH = max(validHH),
+#             employedAdultCount = sum(employedAdultCount, na.rm=TRUE),
+#             jobCount = sum(jobCount, na.rm=TRUE)) %>%
+#   summarize(validHH = sum(validHH),
+#             employedAdultCount = sum(employedAdultCount, na.rm=TRUE),
+#             jobCount = sum(jobCount, na.rm=TRUE))
+# 
+# expInfoData$employStrataWt = expInfoData$commhh / expInfoData$validHH
+# 
+# # Merge back in the total values here so we can use them in expansions and summaries.
+# 
+# employData <- left_join(employData, expInfoData, by=c("projID", "samp", "studyear", "communty", "commhh"))
+# 
+# employData$earnings_MR = employData$earnPerMonth * employData$monthsWorked
+# 
+# # Now we need to calculate the TOTAL income amounts by multiplying the median by
+# #   the estimated number of jobs minus 
+# #   the number of reported jobs, then 
+# employData$estJobs = employData$jobCount * employData$employStrataWt
+# employData <- group_by(employData, projID, samp, studyear, communty, strata, employedAdult) %>%
+#               mutate(reptMRIncomeTotal = sum(earnings_MR, na.rm=TRUE),
+#                      medianIncomeMonthOverall = median(earnPerMonth, na.rm=TRUE)) %>%
+#               ungroup()
+# 
+# employData$estimatedTotal = ((employData$medianIncomeMonthOverall * employData$mMean) * (employData$estJobs - employData$jobCount)) + employData$reptMRIncomeTotal
+# employData$imputedEarnings = employData$earnings_MR * (employData$estimatedTotal / employData$reptMRIncomeTotal)
+# 
+# # anywhere we've got reported earnings of 0, the imputed version is also 0.
+# employData$imputedEarnings[is.nan(employData$imputedEarnings)] = 0
+
+expInfoData <- employData %>%
+  group_by(projID, samp, studyear, communty, commhh, uHHID, person) %>%
+  summarize(
+    validHH = max(1),
+    employedAdultCount = max(employedAdult, na.rm = TRUE),
+    jobCount = sum(employedAdult, na.rm = TRUE),
+    #.groups = "drop"
+  ) %>%
+  #group_by(projID, samp, studyear, communty, commhh) %>%
+  summarize(
+    validHH = max(validHH, na.rm = TRUE),
+    employedAdultCount = sum(employedAdultCount, na.rm = TRUE),
+    jobCount = sum(jobCount, na.rm = TRUE),
+    #.groups = "drop"
+  ) %>%
+  #group_by(projID, samp, studyear, communty, commhh) %>%
+  summarize(
+    validHH = sum(validHH, na.rm = TRUE),
+    employedAdultCount = sum(employedAdultCount, na.rm = TRUE),
+    jobCount = sum(jobCount, na.rm = TRUE),
+    #.groups = "drop"
+  ) %>%
+  mutate(employStrataWt = commhh / validHH)
+
+
+employData <- employData %>% 
+  left_join(expInfoData, by = c("projID", "samp", "studyear", "communty", "commhh")) %>%
+  mutate(
+    earnings_MR = earnPerMonth * monthsWorked,
+    estJobs = jobCount * employStrataWt
+  ) %>%
+  group_by(projID, samp, studyear, communty, strata, employedAdult) %>%
+  mutate(
+    reptMRIncomeTotal = sum(earnings_MR, na.rm = TRUE),
+    medianIncomeMonthOverall = median(earnPerMonth, na.rm = TRUE)
+  ) %>%
+  ungroup() %>%
+  mutate(
+    estimatedTotal = ((medianIncomeMonthOverall * mMean) * (estJobs - jobCount)) + reptMRIncomeTotal,
+    imputedEarnings = if_else(!is.na(earnings_MR * (estimatedTotal / reptMRIncomeTotal)), 
+                              earnings_MR * (estimatedTotal / reptMRIncomeTotal), 
+                              0)
+  )
+
+```
+
+## Econ file for HH database
+
+This chunk prepares the person-level information necessary for the household database. Note that this uses reported information rather than the bootstrapped items. However, the imputed components of employment are also included so that analysis can be reliably reconstructed from this point, though confidence intervals would need to be resampled again as part of a bootstrapping process in order to re-create results. Those results may also differ (modestly) depending on the implementation of the uniform random function used.
+
+```{r prep HH Database items}
+
+imputedEconData <- employData %>%
+  filter(samp == 0) %>%
+  select(
+    projID, studyear, communty, strata, HHID, person, jobnum, SOC, SIC, schedule, earnings,
+    janWork, febWork, marWork, aprWork, mayWork, junWork, julWork, augWork, sepWork, octWork, novWork,
+    decWork, earnings, imputedEarnings, monthsWorked, jtitle, employr
+  ) %>%
+  ungroup() %>%
+  mutate(
+    personID         = person,
+    jobNum           = jobnum,
+    reptEarnings     = earnings,
+    imputedIncome    = imputedEarnings,
+    jobName          = jtitle,
+    Employer         = employr,
+    numMonthsWorked  = monthsWorked
+  ) %>%
+  select(
+    -person, -jobnum, -earnings, -imputedEarnings, -jtitle, -employr
+  )
+
+employData <- employData %>% 
+  filter(employedAdult == 1)
+
+```
+
+# Write CSV files
+
+```{r write csv files}
+
+# ##############################################################################
+# Write out CSV files.
+# ##############################################################################
+
+fName = str_interp('${bootSampPath}/REC23_FULL_CLEAN_BOOT.csv')
+cat(formatSummaryBlock(
+  paste('Writing file: ', fName, 
+        ' ', nrow(employData), ' records to be written', sep='')))
+
+fwrite(employData,fName)
+
+fName =  '../../CSV/06 - HH Database Uploads/REC23_HH_FILE.csv'
+cat(formatSummaryBlock(
+  paste('Writing file: ', fName, 
+        ' ', nrow(imputedEconData), ' records to be written', sep='')))
+rio::export(imputedEconData, fName)
+
+```
+
+<p class="h1footer"> End of Prepare Employment data script. </p>

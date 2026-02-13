@@ -1,0 +1,343 @@
+---
+title: "A01_DOUBLE_DATA_ENTRY_CHECKS - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-15"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">A01_DOUBLE_DATA_ENTRY_CHECKS - (316) NPS Ambler Comprehensive</div>
+</div>
+
+# Double data entry checking
+
+Execute double data entry checking routines on defined record types.
+
+## Changelog
+- Programmer: D.S.Koster  
+- Date: 05/21/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output.  
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates  
+
+## Input data
+
+- dfgjnusql-db71p/Sub_SDS.dbo.xref_community_master  
+- dfgjnusql-db71p/Sub_SDS.dbo.vw_resAndMarketRes  
+- dfgjnusql-db71p/Sub_SDS.dbo.META_RECTYPE_SPEC  
+- dfgjnusql-db71p/Sub_SDS.dbo.META_DEF_DISPLAY_GROUPS  
+- dfgjnusql-db71p/Sub_SDS.dbo.META_DATA_DEFINITION
+- dfgjnusql-db71p/Sub_SDS.dbo.vw_definedRecordTypes  
+- dfgjnusql-db71p/Sub_SDS.dbo.vw_sample  
+- dfgjnusql-db71p/Sub_SDS.dbo.SP_GET_DATA_BY_RECTYPE_FULL  
+- dfgjnusql-db71p/Sub_SDS.dbo.vw_definedColumns
+
+*NOTE:* No files from file-system are read in.
+
+## Output data
+
+Output files are written dynamically according to the defiend record types in the SDS. You will get one file for each defined record type having errors. The form of that will be: REC00_DDErrs
+
+- 02 - Error Checking/${dataSetName}.csv
+
+## Background
+
+A core part of the quality assurance process with subsistence household surveys is the entry of each survey twice by two different people. This is a common practice employed when complex data entry is required, it ensures the most accurate possible entry and helps to avoid issues with handwriting interpretation as well. 
+
+After data entry version 1 and 2 have been completed, this file can be run to identify records where data entry errors are present.
+
+## Checklist
+
+- Update 'Author' to your name  
+- Update the project information in 'title' to the current project  
+- Update the development log with any changes you've made to the template file, including your name  
+- Evaluate each file produced (by record type) and verify that both versions match and are correct  
+- All corrections have been updated directly in the SDS  
+- All errors have been addressed  
+- A final run of this file has occurred with no errors present.  
+
+## Additional Information
+
+This file uses some tricks. The first is that, we create a 'vector' of elements to iterate over. This is done both with recordTypeCD and communty. However, the main trick is the shortened version. Note that in [1] below, we use the $ operator to reference just the desired column before concatenating it c() into a list.
+
+Second, we dynamically create a summarize function by first creating a list of column names line [1] below then, in line [2] we use the !!! operator in front of the list in our 'group by' This way, we don't have to know ahead of time what those columns are and instead bring them straight out of the database. Note that the syms() function is essential here otherwise, the !!! will not work as advertised.
+
+```{r addnl info code, echo=TRUE, eval=FALSE}
+
+ [1]   colNameList <- syms(c(dbGetQuery(conn, checkColSQL)$colName))
+       tAggDataSet <- tDataSet %>%  
+ [2]      group_by(., projID, studyear, communty, strata, HHID, !!!colNameList) %>%
+          summarize(., version=sum(version, na.rm=TRUE))  
+```
+       
+## Required libraries
+
+- tidyVerse  
+- odbc  
+- rio  
+- knitr    
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+library(knitr)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+source('../Functions/f_RMD_HTML_FORMATTING_FUNCTIONS.r')
+
+# For this particular project, we need to include the ODBC Connections.
+source('../Functions/f_subsistenceDatabaseConnections.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+```
+
+
+```{r initiate server connection}
+
+# ##############################################################################
+# 1.0 - Instantiate server connection.
+# ##############################################################################
+
+# 1.1 Load the ODBC Library & Open a connection.
+loadODBCLibrary()
+conn = connectToSDS()
+
+# Create lists to export results at the end of the file rather than during
+#   execution.
+dataSets = list()
+
+```
+
+## Extract Codesets & Sampling information
+
+Extracts sampling information and codesets for use with this analysis. Codesets may be fundamentally identical to those used in other projects, however these are replicated per-project to ensure full-documentation of the system state when analysis was run.
+
+*NOTE:* Codesets are extracted directly from the database because this step of analysis is often run BEFORE the GET_SDS_DATA has been run.
+
+### Extract lookup codes
+
+```{r extract codes for merging}
+
+# Get master community code list 
+strSQL = sql('SELECT communty, commname  FROM dbo.xref_community_master')
+commCodeList <- tibble(odbc::dbGetQuery(conn, strSQL))
+
+count <- nrow(commCodeList)
+cat(formatSummaryBlock(paste("SQL Extract:", strSQL ,", ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+# Get resource codes
+strSQL = sql('SELECT resource, resName FROM dbo.vw_resAndMarketRes')
+resCodeList <- odbc::dbGetQuery(conn, strSQL)
+
+count <- nrow(resCodeList)
+cat(formatSummaryBlock(paste("SQL Extract:", strSQL ,", ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+# Get full resource code list (directly from the database for this one)
+strSQL = sql('SELECT recordTypeCD, recordType  FROM dbo.META_RECTYPE_SPEC')
+recTypeSpecList <- tibble(odbc::dbGetQuery(conn, strSQL))
+
+count <- nrow(recTypeSpecList)
+cat(formatSummaryBlock(paste("SQL Extract:", strSQL ,", ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+strSQL = sql(str_interp('SELECT
+             D.projID,
+             D.studyear,
+             D.communty,
+             G.displayGroup,
+             G.displayGroupDesc,
+             G.pageName FROM dbo.META_DEF_DISPLAY_GROUPS G
+             LEFT JOIN dbo.META_DATA_DEFINITION D
+             ON G.dataDefinitionID = D.dataDefinitionID
+             WHERE D.projID = ${projID} AND 
+             D.studyear = ${studyear}'))
+displayGroupData <- tibble(odbc::dbGetQuery(conn, strSQL))
+
+count <- nrow(displayGroupData)
+cat(formatSummaryBlock(paste("SQL Extract:", strSQL ,", ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+#Get the list of communities and record type codes so we don't have to 
+#   repeatedly re-query the database.
+strSQL = sql(str_interp('SELECT DISTINCT [communty], [recordTypeCD] FROM [vw_definedRecordTypes] 
+          WHERE [projID] = ${projID} AND [studyear] = ${studyear} AND definedRecordTypeCD is not null'))  
+
+# Create a tibble for defined record types.
+defRecTypeCDSet <- tibble(odbc::dbGetQuery(conn, strSQL))
+recTypeCDList <- distinct(defRecTypeCDSet, recordTypeCD)$recordTypeCD
+
+count <- nrow(defRecTypeCDSet)
+cat(formatSummaryBlock(paste("SQL Extract:", strSQL ,", ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+
+strSQL = sql(str_interp('SELECT proj_id AS projID, 
+                      studyear, 
+                      communty, 
+                      strata, 
+                      strataName
+                      FROM dbo.vw_sample  
+                      WHERE (proj_id = ${projID} AND studyear = ${studyear})')) 
+strataList <- tibble(odbc::dbGetQuery(conn, strSQL))
+
+count <- nrow(strataList)
+cat(formatSummaryBlock(paste("SQL Extract:", strSQL ,", ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+```
+
+## Execute double data entry checks
+
+```{r dde checks, warning=FALSE, message=FALSE}
+
+for(recTypeCD in recTypeCDList) {
+  # Instantiate temporary dataSet variables.
+  tAggDataSet <- data.frame()
+  tDataSet <- data.frame()
+
+  # Get the list of communities that actually used 'recTypeCD'
+  communtyList <- c(filter(defRecTypeCDSet, recordTypeCD == recTypeCD)$communty)
+  
+  for(communty in communtyList) {
+    #Gets the actual data from the database, but gets both versions
+    dataSQL = sql(str_interp("exec [dbo].[SP_GET_DATA_BY_RECTYPE_FULL] ${projID}, ${studyear}, N'${recTypeCD}', ${communty}"))
+    
+    #Gets the valid columns marked as needing double data entry checking.
+    checkColSQL = sql(str_interp("SELECT DISTINCT colName FROM [dbo].[vw_definedColumns] WHERE
+                                   projID = ${projID} AND studyear = ${studyear} AND
+                                   recordTypeCD = '${recTypeCD}' AND communty = ${communty}
+                                   AND dblDatCheck = 1 AND defColID is not null"))
+    
+    # Run the query to get the data that we want to double check and put that into a temporary dataset.
+    tDataSet <- odbc::dbGetQuery(conn, dataSQL)
+    # Since we happen to know that tDataSet WILL contain both communty and recordTypeCD, we can add
+    #   the following detail:
+    tDataSet <- left_join(tDataSet, commCodeList, by=c("communty")) %>%
+                left_join(recTypeSpecList, by=c("recordTypeCD")) %>%
+                left_join(strataList, by=c("projID", "studyear", "communty", "strata"))
+    
+    #Create a list of the column names we want to check to add codes to. For now
+    #   this can be limited to just display group.
+    colNameListRaw <- odbc::dbGetQuery(conn, checkColSQL)$colName
+    if('displayGroup' %in% colNameListRaw)
+    {
+      tDataSet <- left_join(tDataSet, displayGroupData,
+                            by=c("projID", "studyear", "communty", "displayGroup" ))
+      # Order the column name list.
+      colNameListRaw <- c("displayGroup", 
+                          "displayGroupDesc", 
+                          "pageName", 
+                          colNameListRaw[colNameListRaw != "displayGroup"])
+    }  
+    if('resource' %in% colNameListRaw)
+    {
+      tDataSet <- left_join(tDataSet, resCodeList,
+                      by=c("resource"))
+      # Reorder columns.
+      left <- colNameListRaw[1:which(colNameListRaw == 'resource')]
+      right <- colNameListRaw[(which(colNameListRaw == 'resource')+1):
+                                length(colNameListRaw)]
+      colNameListRaw <- c(left, "resName", right)
+    }
+    
+    colNameList <- syms(colNameListRaw)
+    
+    # Run the double check. What we are doing is getting tDataSet and then grouping it
+    #  and finally adding version 1 and version 2.
+    #  Note that we use a nifty trick here with the three exclamation points before
+    #  our list of columns - this inserts the grouping columns from above.
+    tAggDataSet <- tDataSet %>%
+                  group_by(projID, studyear, communty, commname, strata, strataName,
+                           HHID, recordType, !!!colNameList) %>%
+                  summarize(version = sum(version, na.rm=TRUE)) %>%
+                  filter(version != 3 & HHID != 0) %>%
+          dplyr::bind_rows(tAggDataSet)
+  }
+  
+  #Save all of the datasets into a list, we'll write them out
+  #   later.
+  dataSetName = paste('REC', recTypeCD, '_DDErrs', sep='')
+  
+  # Table header for HHID 0 contents table.
+  cap = paste("DDE Check - Record Type: ", 
+        recTypeCD, 
+        "-", 
+        recTypeSpecList$recordType[recTypeSpecList$recordTypeCD == recTypeCD])
+    
+  if(nrow(tAggDataSet) > 0) {
+     dataSets[[dataSetName]] <- filter(tAggDataSet, version != 3 & HHID != 0)
+  
+    # Display full contents of HHID 0 using knitr tables.
+    print(knitr::kable(dataSets[[dataSetName]],
+                 caption = formatTableHeader(cap)))
+ 
+  } else
+  {
+    cat(formatSummaryBlock(paste(cap, " returned no results (V1==V2).", sep="")))
+  }
+  
+  
+  rm(tAggDataSet)
+  
+}
+
+
+```
+
+### Write CSV
+
+Write out each dataset containing errors.
+
+```{r write out data, warning=FALSE }
+
+for (dataSetName in names(dataSets)) {
+
+  fName = str_interp("../../CSV/02 - Error Checking/${dataSetName}.csv")
+  
+  file.remove(fName)
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, sep='')
+  ))
+
+  # CSV is the stanard output.
+  rio::export(dataSets[[dataSetName]], fName)
+}
+
+```
+
+<p class="h1footer"> End of Double Data Entry Checking script. </p>
+

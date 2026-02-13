@@ -1,0 +1,309 @@
+---
+title: "F03_SAMPLING - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-15"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">F03_SAMPLING - (316) NPS Ambler Comprehensive</div>
+</div>
+
+# Sample summary
+Produce an output table for sampling and survey length. 
+
+## Change log
+
+### Change 1
+- Programmer: D.S.Koster  
+- Date: 05/21/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output. Added tables and figures to accompany the .csv output and reorganized the .csv to match the template table better.
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates 
+
+### Change 2
+- Programmer: Jesse Coleman
+- Date: 03/18/2025
+- Change Description: Removed source() calls; all functions are included in the library adfgSubs.
+- Template Update [Y|N]: Y
+- One-Off: No-include in all future comprehensive templates 
+
+## Input data
+
+- CSV/01 - Database Extract/REC00_raw.csv  
+- CSV/03 - Main/sample.csv  
+
+## Output data
+
+- CSV/05 - Final Analysis Output/interviewLength_raw.csv  
+- CSV/05 - Final Analysis Output/interviewLengthFig_raw.csv  
+- CSV/05 - Final Analysis Output/sample_raw.csv  
+
+## Background
+
+## Checklist
+
+- Update 'Author' to your name, 
+- Update the project information in 'title' to the current project.
+- Update the development log with any changes you've made to the template file, including your name.
+- Review data and ensure it matches the information submitted to IM from the SRS  
+- *MAKE ALL ADJUSTMENTS / CORRECTIONS TO SAMPLING BEFORE PRODUCING TABLES & FIGURES!!!*  
+
+## Additional information
+
+### Required libraries 
+- tidyverse  
+- rio  
+- knitr  
+- kableExtra
+- adfgSubs
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+
+# Additional libraries
+library(knitr)
+library(kableExtra)
+library(adfgSubs)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+# source('../Functions/f_RMD_HTML_FORMATTING_FUNCTIONS.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+
+```
+
+## Load data
+
+```{r load data}
+
+# ##############################################################################
+# Load data.
+# ##############################################################################
+
+hhData <- read.csv(str_interp("../../CSV/01 - Database Extract/REC00_raw.csv"),
+                   na = "", 
+                   header = TRUE, 
+                   strip.white = TRUE) 
+count <- nrow(hhData)
+cat(formatSummaryBlock(paste("Opening file: /REC00_raw.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+sampleData <- read.csv(str_interp("../../CSV/03 - Main/sample.csv"),
+                       na = "", 
+                       header = TRUE, 
+                       strip.white = TRUE)
+
+count <- nrow(sampleData)
+cat(formatSummaryBlock(paste("Opening file: sample.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+
+```
+## Sample table
+
+```{r sample table}
+
+sampleOutData <- sampleData
+
+sampleOutData$attemptSurvey = sampleOutData$samphh + sampleOutData$refuse + sampleOutData$noContact
+
+sampleOutData$pctSurvey = sampleOutData$samphh / sampleOutData$commhh
+sampleOutData$refuseRate = sampleOutData$refuse / (sampleOutData$samphh + sampleOutData$refuse)
+
+sampleOutData$newHouseholds = NA
+
+sampleOutData <- sampleOutData %>%
+  select(projID, studyear, communty, commname, strata, strataName,
+                     initialEstimatedHHs, interviewGoal, samphh, noContact,
+                     refuse, movedInelegible, newHouseholds, attemptSurvey, commhh, pctSurvey,
+                     refuseRate, strataWt, sampPop, NPopulation)
+
+tblTmpData <- sampleOutData %>%
+                select(commname, strata,
+                     initialEstimatedHHs, interviewGoal, 
+                     interviewGoal, samphh, noContact,
+                     refuse, movedInelegible, newHouseholds, attemptSurvey, commhh, pctSurvey,
+                     refuseRate, strataWt, sampPop, NPopulation)
+
+tblTmpData$pctSurvey = round(tblTmpData$pctSurvey*100,1)
+tblTmpData$refuseRate = round(tblTmpData$refuseRate*100,1)
+tblTmpData$strataWt = round(tblTmpData$strataWt,2)
+tblTmpData$NPopulation = round(tblTmpData$NPopulation, 1)
+
+tblTmpData <- tblTmpData %>%
+  pivot_longer(cols=all_of(names(select(tblTmpData, -commname))),
+                             names_to = "column", values_to="value") %>%
+  pivot_wider(id_cols="column", names_from=commname, values_from=value)
+
+# Re-label columns.
+tblTmpData$column = c("Strata CD",
+"Number of dwelling units",
+"Survey goal",
+"Households surveyed",
+"Households failed to be contacted",
+"Households declined to be surveyed",
+"Households moved or occupied by non resident",
+"New households",
+"Total households attempted to be surveyed",
+"Final estimate of permanent households",
+"Percentage of total households surveyed",
+"Refusal rate",
+"Survey weighting factor",
+"Sampled population",
+"Estimated population")
+
+#tblTmpData$column =
+
+tblOut <- kbl(tblTmpData,
+    caption=formatTableHeader(str_interp("Sample Summary"))) %>%
+    kable_styling(full_width = F)
+
+print(tblOut)
+  
+```
+
+## Survey length
+
+
+```{r display summary}
+
+REC00Data <- left_join(hhData, sampleData, by=c("projID", "studyear", "communty", "strata"))
+
+REC00Data$strtime[REC00Data$strtime < 0] = NA
+REC00Data$endtime[REC00Data$endtime < 0] = NA
+
+REC00Data$startHrs = floor(REC00Data$strtime / 100)
+REC00Data$endHrs = floor(REC00Data$endtime / 100)
+
+REC00Data$startMin = REC00Data$strtime - (REC00Data$startHrs * 100)
+REC00Data$endMin = REC00Data$endtime - (REC00Data$endHrs * 100)
+
+REC00Data$totalMinutesElapsed = ((REC00Data$endHrs*60) + REC00Data$endMin) - 
+  ((REC00Data$startHrs * 60) + REC00Data$startMin)
+
+REC00Data$totalMinutesElapsed[REC00Data$totalMinutesElapsed <= 0] = NA
+
+# select down to HHID information requried to develop a box/whisker plot.
+interviewLengthFigData <- select(REC00Data, projID, studyear, commname, HHID, totalMinutesElapsed) %>% 
+                          pivot_wider(id_cols=c(studyear, HHID), 
+                                      names_from=commname, 
+                                      values_from=totalMinutesElapsed)
+
+interviewLengthData <- group_by(REC00Data, projID, studyear, communty, commname) %>%
+                       summarize(numberInterviews = n(),
+                               totalMinutesElapsed_mean=mean(totalMinutesElapsed, na.rm=TRUE), 
+                               totalMinutesElapsed_min=min(totalMinutesElapsed, na.rm=TRUE), 
+                               totalMinutesElapsed_max=max(totalMinutesElapsed, na.rm=TRUE)) %>%
+  ungroup()
+
+tblTmpData <- interviewLengthData %>%
+  select(commname, totalMinutesElapsed_mean, totalMinutesElapsed_min, totalMinutesElapsed_max) %>%
+  pivot_longer(cols=c("totalMinutesElapsed_mean", "totalMinutesElapsed_min", "totalMinutesElapsed_max"),
+                             names_to = "column", values_to="value") %>%
+  pivot_wider(id_cols="column", names_from="commname", values_from="value")
+
+tblTmpData$column = c("Mean", "Min", "Max")
+tblTmpData <- tblTmpData %>% rename("Survey Length"="column")
+
+tblOut <- kbl(tblTmpData,
+    caption=formatTableHeader(str_interp("Survey Length"))) %>%
+    kable_styling(full_width = F)
+
+print(tblOut)
+
+# Box plot.
+plotTempData <- select(REC00Data, commname, totalMinutesElapsed)
+
+  plotOut <- ggplot(plotTempData,        # Create ggplot2 boxplot
+        aes(x = commname,
+            y = totalMinutesElapsed)) +
+    geom_boxplot() +
+    xlab("Community") +
+    ylab("Survey length") +
+    ggtitle(str_interp("Length of surveys")) +
+        stat_summary(fun = mean,
+                 geom = "point",
+                 aes(group = 1, 
+                     shape="Mean"),
+                 col = "#3288bd") +
+     stat_summary(fun = mean,
+                 geom = "text",
+                 aes(label=round(after_stat(y),1), 
+                 vjust = -0.5),
+                 col = "#3288bd")+
+    scale_shape_manual(name = "Mean", values = c(4)) +
+    theme(text=element_text(family="serif")) +
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+          panel.background = element_blank(), axis.line = element_line(colour = "black"))
+
+  print(plotOut)
+
+
+```
+
+# Write CSV files
+
+```{r write csv files}
+
+# ##############################################################################
+# Write out CSV files.
+# ##############################################################################
+
+# Sample code for writing out a file.
+  fName = str_interp('../../CSV/05 - Final Analysis Output/interviewLength_raw.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(interviewLengthData), ' records to be written', sep='')))
+
+# For 2023; we are, by default, working exclusively with R code..
+  rio::export(interviewLengthData, fName)
+
+    fName = str_interp('../../CSV/05 - Final Analysis Output/interviewLengthFig_raw.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(interviewLengthFigData), ' records to be written', sep='')))
+
+# For 2023; we are, by default, working exclusively with R code..
+  rio::export(interviewLengthFigData, fName) 
+  
+  fName = str_interp('../../CSV/05 - Final Analysis Output/sample_raw.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(sampleData), ' records to be written', sep='')))
+
+# For 2023; we are, by default, working exclusively with R code..
+  rio::export(sampleData, fName) 
+  
+```
+
+<p class="h1footer"> End of Sampling data script. </p>

@@ -1,0 +1,817 @@
+---
+title: "A06 Logic Checking - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-05"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include: 
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">A06_LOGIC_VALIDATION - (316) NPS Ambler Comprehensive 2024</div>
+</div>
+
+# Logic checking
+
+Response logic checking file for ensuring consistent responses and adjustments for appropriate logic. 
+
+## Changelog
+- Programmer: D.S.Koster  
+- Date: 04/21/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output. Added substantially more automation to allow for regular comp projects to be run without modification   
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates 
+
+
+## Input data
+  
+- /CSV/01 - Database Extract/sample_raw.csv  
+- /CSV/01 - Database Extract/REC00_raw.csv  
+- /CSV/01 - Database Extract/REC03_raw.csv  
+- /CSV/01 - Database Extract/REC04_raw.csv  
+- /CSV/01 - Database Extract/REC06_raw.csv  
+- /CSV/01 - Database Extract/REC10_raw.csv  
+- /CSV/01 - Database Extract/REC12_raw.csv  
+- /CSV/01 - Database Extract/REC14_raw.csv  
+- /CSV/01 - Database Extract/REC15_raw.csv  
+- /CSV/01 - Database Extract/REC17_raw.csv  
+- /CSV/04 - Employment Processing/REC23_adjusted_raw.csv  
+- /CSV/01 - Database Extract/REC24_raw.csv  
+
+## Output data
+
+*NOTE:* This file Only outputs .html output for evaluation.
+
+## Background information
+
+Since the first surveys, the nature and complexity of questions and their relationships have increase. Further some situations are complex. Standard rules have been put into place regarding these logical connections in order to provide a consistent picture of subsistence over time and have a clearly bounded definition. For example, to have 'used' any resource in the study year, the household would have to either received it or harvested it in the same year. Consuming it more than 12 months later is not particularly relevant because we would have to apply the same standard to WHEN any food or resource was actually used. We do know that these resources are not used strictly between the dates of the calendar. 
+
+There are other complexities that work into this - for example:
+
+- Received a resource, but did not eat it and instead gave it away. This is still a use
+- Hunted with a successful group of hunters attempt is yes, harvestq is no
+
+## Checklist
+
+- Update 'Author' to your name   
+- Update the project information in 'title' to the current project  
+- Update the development log with any changes you've made to the template file, including your name  
+- Remove read.csv statements and chunks for record types not used.  
+- Step through each section (by record type) and remove or add record types and also make sure columns to check exist.  
+- Commercial fishing needs frequencies on each 'amount' column.
+- Salmon and non-salmon need to execute frequencies and basic descriptive statistics for each gear type; update these  
+- Large game, small game, and marine mammals should have frequencies for months  
+- Migratory birds should have frequencies on months of harvest  
+- All record types with used, attempt, harvest etc... need to have standard logic rules applied.  
+- Add frequency checks for all columns of data in different record types  
+
+## Additional information
+
+Do NOT change the template in GitHub unless directed by the RAIV
+
+### Required libraries
+
+- tidyVerse  
+- knitr
+- kableExtra  
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+
+options(knitr.kable.NA = '')
+
+```
+
+# Prep environment
+
+## Initialize environment
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+
+# Additional libraries
+library(knitr)
+library(kableExtra)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+source('../Functions/f_RMD_HTML_FORMATTING_FUNCTIONS.r')
+
+# For this particular script, we need to include the some standardized variable management code.
+source('../Functions/f_manageVariables.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+```
+
+## Load Data
+
+```{r automation lists, echo = TRUE}
+
+# NOTE: Add column names that are not included with the standard harvest and use columns.
+#       the commercial fishing columns and 'amtHarvest' have been added to this template with because they are
+#       translated later on and generally not included in standard processing lists. If these are not present
+#       in your dataset, they will be ignored.
+addHarvCheckColumns = c("commFishYN", "keepResourceYN", "incidentalYN", "amtHarvest", "amtFoodFur")
+
+```
+
+```{r load data}
+
+sampleData <- read.csv('../../CSV/01 - Database Extract/sample_raw.csv', 
+                       na = '', header = TRUE, strip.white = TRUE)
+count <- nrow(sampleData)
+cat(formatSummaryBlock(paste("Opening file: sample_raw.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+rec00Data <- read.csv('../../CSV/01 - Database Extract/REC00_raw.csv', 
+                      na = '', header = TRUE, strip.white = TRUE)
+count <- nrow(rec00Data)
+cat(formatSummaryBlock(paste("Opening file: REC00_raw.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+rec01Data <- read.csv('../../CSV/01 - Database Extract/REC01_raw.csv', 
+                      na = '', header = TRUE, strip.white = TRUE)
+count <- nrow(rec01Data)
+cat(formatSummaryBlock(paste("Opening file: REC01_raw.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+# Open harvest records - this should be adjusted per project.
+allHarvRecTypes <- c('03','04','06','08','10','12','14','15','17')
+harvRecTypes <- allHarvRecTypes
+harvDataSets <- list()
+
+for(recType in allHarvRecTypes)
+{
+  loadFile = str_interp('../../CSV/01 - Database Extract/REC${recType}_raw.csv')
+  if(file.exists(loadFile)) {
+    
+    harvDataSets[[recType]] = read.csv(loadFile, 
+                      na = '', header = TRUE, strip.white = TRUE)
+    count <- nrow(harvDataSets[[recType]])  
+    cat(formatSummaryBlock(str_interp("Opening file: REC${recType}_raw.csv, ${count} records loaded.")))
+    
+  } else {
+    harvRecTypes = harvRecTypes[!harvRecTypes %in% c(recType)]
+  }
+}
+
+rec23Data <- read.csv('../../CSV/04 - Employment Processing/REC23_adjusted_raw.csv',
+                      na = '', header = TRUE, strip.white = TRUE)
+count <- nrow(rec23Data)
+cat(formatSummaryBlock(paste("Opening file: REC23_adjusted_raw.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+rec24Data <- read.csv('../../CSV/01 - Database Extract/REC24_raw.csv', 
+                      na = '', header = TRUE, strip.white = TRUE)
+count <- nrow(rec24Data)
+cat(formatSummaryBlock(paste("Opening file: REC24_raw.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+# automation for checking frequencies and producing checking descriptives.
+frequencyHarvColList <- c(fullHarvColList, addHarvCheckColumns)
+
+
+```
+
+# Check Rec 00 - Household
+
+## Household counts
+
+These tables look different thatn the other tables because the pivot requires a combination of numerical and character data. This is solveable, however, will need to wait for the next processing code update cycle - D.S. Koster.
+
+```{r}
+
+tempData <- group_by(rec00Data, projID, studyear, communty, strata) %>%
+  summarize(nHHID = n()) %>%
+  left_join(sampleData, by=c("projID", "studyear", "communty", "strata")) %>%
+  rownames_to_column() %>% 
+  gather(communty, value, -rowname) %>%
+  spread(rowname, value)
+
+knitr::kable(tempData, col.names = c("Column Name","Value"))
+
+```
+
+# Check Rec 01 - person
+
+## Person descriptives
+If the count of any variable is < the recCount, then the value is improperly coded. Please ensure that a 0 or a negative code (-9,-8,-7) has been entered into the SDS.
+
+```{r echo=FALSE}
+
+tempData <- group_by(rec01Data, projID, studyear, communty) %>%
+  summarize(recCount = n(),
+            sex_min = min(sex, na.rm=TRUE),
+            sex_max = max(sex, na.rm=TRUE),
+            sex_n = sum(!is.na(sex)), 
+            ethnic_min = min(ethnic, na.rm=TRUE),
+            ethnic_max = max(ethnic, na.rm=TRUE),
+            ethnic_n = sum(!is.na(ethnic)),
+            birthyear_min = min(birthyear, na.rm=TRUE), 
+            birthyear_max = max(birthyear, na.rm=TRUE), 
+            birthyear_n = sum(!is.na(birthyear)), 
+            relation_min = min(relation, na.rm=TRUE),
+            relation_max = max(relation, na.rm=TRUE),
+            relation_n = sum(!is.na(relation)),
+            person_min = min(person, na.rm=TRUE),
+            person_max = max(person, na.rm=TRUE),
+            person_n = sum(!is.na(person)),
+            yrcomcat_min = min(yrcomcat, na.rm=TRUE),
+            yrcomcat_max = max(yrcomcat, na.rm=TRUE),
+            yrcomcat_n = sum(!is.na(yrcomcat)),
+            residpar_min = min(residpar, na.rm=TRUE),
+            residpar_max = max(residpar, na.rm=TRUE),
+            residpar_n = sum(!is.na(residpar))) %>%
+  ungroup() %>%
+              pivot_longer(., cols=all_of(names(select(., -communty))),
+                           names_to = "Columns", 
+                           values_to="Values") %>%
+              pivot_wider(id_cols="Columns", 
+                          names_from=communty, 
+                          values_from=Values)
+
+knitr::kable(tempData,
+             col.names = c("Column Name", "Value"))
+
+```
+
+## HH Head check.
+HH Head 1 and HH Head 2 must be relation 1 and 2.
+
+```{r}
+
+tempData <- filter(rec01Data, person == 1 & !(relation == 1 | relation == 2))
+
+tempData <- filter(rec01Data, person == 2 & !(relation == 1 | relation == 2)) %>%
+  dplyr::bind_rows((tempData)) %>% arrange(projID, studyear, communty, strata, HHID, person)
+
+if(nrow(tempData) == 0) {
+  cat(greenMessage(str_interp("No household head issues are present.")))
+} else {
+  
+   tblOut <- kbl(tempData,
+                caption=formatTableHeader(str_interp("Household head error records}"))) %>%
+      kable_styling(full_width = F)
+
+  print(tblOut)
+}
+
+
+```
+
+
+# Harvest record descriptives
+If the count of any variable is < the recCount, then the value is improperly coded. Please ensure that a 0 or a negative code (-9,-8,-7) has been entered into the SDS. Each harvest record and relevant data is printed below. Please take care to evaluate whether or not all columns are present; you may need to adjust the columns evaluated, depending on your project. This can be done by adding columns to the *addHarvCheckColumns* vector at the beginning of this file.
+
+*NOTE* all -10 codes indicate that 'NA' is present. This is not desirable and consided an error. Please evaluate the data by hand to locate address these in the database.
+
+```{r harvest data frequencies}
+
+#tHarvRecTypes = c('03')
+#harvRecTypes
+
+for (recType in harvRecTypes)
+{
+  # Header label
+  cat(str_interp("<H2>Frequencies and descriptives for Record ${recType}</H2>"))
+  
+  cat("<br>Columns have been identified automatically, but some may have been missed. Please check that the descriptives and frequencies you are checking are ALL included <br><br>")
+  cat(paste(names(harvDataSets[[recType]]), collapse=', '))
+  
+  cat(str_interp("<BR><H3>Descriptives</H3>"))
+  
+  # Use the names we brought in from the SDS to identify columns that we would 
+  #   want to get frequencies on, remove 'key' columns that may be present at 
+  #   this point, but should not have frequencies included.
+  colList <- intersect(frequencyHarvColList, names(harvDataSets[[recType]]))
+  colList <- colList[!colList %in% keyHarvColList]
+
+  # Copy of harvDataSets[[recType]]
+  tempData <- harvDataSets[[recType]]
+  
+  # Recode NA to -10 for logic validation
+  tempData <- recode_variables(tempData, colList, NA, -10)
+    
+  # Set up a 'flag' with value 0/1 to get a count of valid columns. Note that
+  #  at no point should we have NA in this data, missing is depicted with a (-) 
+  #  code.
+  colList2 <- paste(colList, "_valid", sep='')
+  
+  tempData <- rowwise(tempData) %>%
+    mutate(across(all_of(colList),
+                   ~ 1 * !is.na(.),
+                   .names='{.col}_valid'))
+  
+  # Carry out frequencies and pivot.
+  tempData <- group_by(tempData, projID, studyear, communty) %>%
+    summarize(recCount = n(),
+              across(all_of(colList2), sum),
+              across(all_of(colList), min, .names='{.col}_min'),
+              across(all_of(colList), max, .names='{.col}_max')) %>%
+              ungroup() %>%
+              pivot_longer(., cols=all_of(names(select(., -communty))),
+                           names_to = "Columns", 
+                           values_to="Values") %>%
+              pivot_wider(id_cols="Columns", 
+                          names_from=communty, 
+                          values_from=Values)
+  
+  # Arrange (order) columns so they are easier to evaluate.
+  tempData$sOrder = 2
+  tempData$sOrder[tempData$Columns %in% c('projID', 'studyear')] = 1
+  tempData <- tempData %>% arrange(sOrder, Columns) %>%
+    select(-sOrder)
+  
+  tblOut <- kbl(tempData,
+                caption=formatTableHeader(str_interp("Descriptives for record ${recType}"))) %>%
+      kable_styling(full_width = F)
+
+  print(tblOut)
+  
+  cat(str_interp("<BR><H3>Frequencies by variable</H3>"))
+
+  for(col in colList)
+  {
+    cat(str_interp("<BR><H4>${col}</H4>"))
+    tempData <- group_by(harvDataSets[[recType]], 
+                         projID, studyear, communty, 
+                         !!!syms(c(col))) %>%
+    summarize(nOccur = n())
+    
+    tblOut <- kbl(tempData,
+                  caption=formatTableHeader(str_interp("Value frequencies for: ${col}"))) %>%
+      kable_styling(full_width = F)
+    
+    print(tblOut)
+    
+  }
+  
+  # Duplicate records.
+  cat(str_interp("<BR><H3>Duplicate resource records.</H3><BR>"))
+  cat("Note that some species SHOULD be duplicated if SEX is specified or if 1 row is specified for each gear type. In these cases, ensure that 'duplicate' rows are where you expect them and in the correct frequencies")
+    
+  tempData <- group_by(harvDataSets[[recType]], projID, studyear, communty, strata, HHID, resource) %>%
+  summarize(nOccur = n()) %>%
+  filter(nOccur > 1)
+
+  if(nrow(tempData) == 0){
+    cat(greenMessage(str_interp("NO duplicate records found for rectype: ${recType}")))
+  } else {
+    
+    tblOut <- kbl(tempData,
+                  caption=formatTableHeader(str_interp("Duplicate records for: ${recType}."))) %>%
+      kable_styling(full_width = F)
+    
+    print(tblOut)
+  }
+
+}
+  
+```
+
+# Evaluate harvest survey logic
+
+Please review each record to verify the logic. You may need to adjust the code to accommodate for columns that are not a part of the template.
+
+## Record type 03
+
+Commercial fishing doesn't have the same organization as the other record types so it must be processed separately.
+
+```{r}
+
+if('03' %in% harvRecTypes)
+{
+  requiredCols <- c('incidentalYN', 'keepResourceYN', 'commFishYN', 
+                    'removeOwnUse', 'amtGavetoCrew', 'amtGaveOthers')
+  foundCols = intersect(frequencyHarvColList, names(harvDataSets[[recType]]))
+  
+  if(all(requiredCols %in% foundCols))
+  {
+  
+    temp1Data <- filter(harvDataSets[[recType]],
+                       incidentalYN == 0 & keepResourceYN == 0 & commFishYN == 0 &
+                       (removeOwnUse > 0 | removeOwnUse < 0 | amtGavetoCrew > 0 | amtGavetoCrew < 0 |
+                          amtGaveOthers > 0 | amtGaveOthers < 0))
+    temp2Data <- filter(harvDataSets[[recType]],
+                        (keepResourceYN != 0) &
+                          removeOwnUse == 0 & amtGavetoCrew == 0 & amtGaveOthers == 0)
+    
+    tempData <- bind_rows(temp1Data, temp2Data) %>% 
+      arrange(projID, studyear, communty, strata, HHID, resource)
+    
+    if(nrow(tempData) == 0){
+      print("NO logic issues found.")
+    } else {
+      tblOut <- kbl(tempData,
+                    caption=formatTableHeader(str_interp("Logic issues for record type 03."))) %>%
+        kable_styling(full_width = F)
+      print(tblOut)
+    }
+    
+    rm(temp1Data, temp2Data)
+  } else {
+    cat(str_interp("<br> Columns expected: ${paste(requiredCols, collapse=', ')} <br> Columns found: ${paste(foundCols, collapse=', ')} <br> Adjust the code for this list. <br>"))
+  }
+  
+} else {
+  cat(warningMessage("Rec 03 not specified for this project -- is this correct?"))
+}
+
+```
+
+```{r logic validation non-comm harvest}
+
+activityCols <- c("used", "attempt", "harvestq", "received", "giveaway")
+
+#tHarvRecTypes = c('03')
+#harvRecTypes
+
+# Loop through all of the harvest record types, except for commercial fishing.
+for (recType in harvRecTypes[!harvRecTypes %in% c('03')])
+{
+  # Header label
+  cat(str_interp("<H2>Logic validation: ${recType}</H2>"))
+  
+  cat("<br>Columns have been identified automatically, but some may have been missed. Please check that the descriptives and frequencies you are checking are ALL included<br><br>")
+  cat(paste(names(harvDataSets[[recType]]), collapse=', '))
+
+  # Use the names we brought in from the SDS to identify columns that we would 
+  #   want to get frequencies on, remove 'key' columns that may be present at 
+  #   this point. Also remove the 'activity' columns as they are used 
+  #   separately.
+  colList <- intersect(frequencyHarvColList, names(harvDataSets[[recType]]))
+  colList <- colList[!colList %in% keyHarvColList]
+  colList <- colList[!colList %in% activityCols]
+  
+  # Remove units by default; this can be updated to remove other columns if necessary.
+  colList <- colList[!colList %in% c("units")]
+  
+  foundActivityCols = intersect(activityCols, names(harvDataSets[[recType]]))
+    
+  if(all(!activityCols %in% foundActivityCols)){
+        cat(str_interp("<br> Columns expected: ${paste(activityCols, collapse=', ')} <br> Columns found: ${paste(foundActivityCols, collapse=', ')} <br> Adjust the code for this list. <br>"))
+  } else {
+    
+    tempData <- harvDataSets[[recType]]
+    #tempData$harvAmt = 0
+    
+    # Recode NA to 0 and (-) codes to 1 for logic validation
+    tempData <- recode_variables(tempData, colList, NA, 0)
+    tempData <- recode_variables(tempData, colList, -9, 1)
+    tempData <- recode_variables(tempData, colList, -8, 1)
+    tempData <- recode_variables(tempData, colList, -7, 1)
+    tempData <- recode_variables(tempData, colList, -6, 0)
+    
+    # Get harvAmt column, this can double count for non-eaten resources
+    #   or resources that would otherwise already be included (amtDogFood)
+    tempData <- rowwise(tempData) %>% 
+        mutate(harvAmt = sum(across(all_of(colList)), na.rm=TRUE))
+    
+    errData <- tempData
+
+    errData <- filter(tempData, attempt == 0 & harvestq == 1)
+    
+    errData <- filter(tempData, harvAmt > 0 & attempt == 0) %>%
+      dplyr::bind_rows(errData)
+    
+    errData <- filter(tempData, giveaway == 1 & harvestq == 0 & received == 0) %>%
+      dplyr::bind_rows(errData)
+    
+    errData <- filter(tempData, harvAmt > 0 & harvestq == 0) %>%
+      dplyr::bind_rows(errData)
+    
+    errData <- filter(tempData, used == 1 & harvAmt == 0 & received == 0) %>%
+      dplyr::bind_rows(errData)
+    
+    errData <- filter(tempData, used == 0 & (giveaway == 1)) %>%
+      dplyr::bind_rows(errData)
+    
+    errData <- filter(tempData, used == 0 & (harvAmt > 0 | received != 0)) %>%
+      dplyr::bind_rows(errData)    
+    
+    errData <- arrange(errData, projID, studyear, communty, strata, HHID, resource)
+
+    if(nrow(tempData) == 0){
+      cat(greenMessage(str_interp("NO logic issues found ${recType}. <br>")))
+    } else {
+      
+      tblOut <- kbl(errData,
+                    caption=formatTableHeader(str_interp("Logic issues for record type ${recType}."))) %>%
+        kable_styling(full_width = F)
+            
+      print(tblOut)
+      
+    }
+        
+  }
+  
+}
+
+```
+
+
+# Record Type 23 - Employment
+
+## Descriptives
+```{r}
+
+tempData <- group_by(rec23Data, projID, studyear, communty) %>%
+  summarize(recCount = n(),
+            person_min = min(person, na.rm=TRUE),
+            person_max = max(person, na.rm=TRUE),
+            person_n = sum(!is.na(person)),
+            jobnum_min = min(jobnum, na.rm=TRUE),
+            jobnum_max = max(jobnum, na.rm=TRUE),
+            jobnum_n = sum(!is.na(jobnum)),
+            earnings_min = min(earnings, na.rm=TRUE),
+            earnings_max = max(earnings, na.rm=TRUE),
+            earnings_n = sum(!is.na(earnings))) %>%
+          pivot_longer(., cols=all_of(names(select(., -communty))),
+                       names_to = "Columns", 
+                       values_to="Values") %>%
+          pivot_wider(id_cols="Columns", 
+                      names_from=communty, 
+                      values_from=Values)
+  
+  # Arrange (order) columns so they are easier to evaluate.
+  tempData$sOrder = 2
+  tempData$sOrder[tempData$Columns %in% c('projID', 'studyear')] = 1
+  tempData <- tempData %>% arrange(sOrder, Columns) %>%
+    select(-sOrder)
+
+  tblOut <- kbl(tempData,
+                col.names = c("Column Names","Values"),
+                caption=formatTableHeader(str_interp("Descriptives for REC23 - Income."))) %>%
+    kable_styling(full_width = F)
+        
+  print(tblOut)
+
+```
+
+## Frequencies
+
+### SIC
+```{r}
+
+tempData <- group_by(rec23Data, projID, studyear, communty, SIC) %>%
+  summarize(nOccur = n())
+
+  tblOut <- kbl(tempData,
+                caption=formatTableHeader(str_interp("SIC Frequency."))) %>%
+    kable_styling(full_width = F)
+        
+  print(tblOut)
+
+```
+
+### SOC
+```{r}
+
+tempData <- group_by(rec23Data, projID, studyear, communty, SOC) %>%
+  summarize(nOccur = n())
+
+  tblOut <- kbl(tempData,
+                caption=formatTableHeader(str_interp("SOC Frequency."))) %>%
+    kable_styling(full_width = F)
+        
+  print(tblOut)
+
+```
+
+### schedule
+```{r}
+
+tempData <- group_by(rec23Data, projID, studyear, communty, schedule) %>%
+  summarize(nOccur = n())
+
+  tblOut <- kbl(tempData,
+                caption=formatTableHeader(str_interp("Schedule frequency."))) %>%
+    kable_styling(full_width = F)
+        
+  print(tblOut)
+
+```
+
+### earnings
+```{r}
+
+tempData <- group_by(rec23Data, projID, studyear, communty, earnings) %>%
+  summarize(nOccur = n())
+
+  tblOut <- kbl(tempData,
+                caption=formatTableHeader(str_interp("Earnings amount frequency"))) %>%
+    kable_styling(full_width = F)
+        
+  print(tblOut)
+
+```
+
+## 'Duplicate' records
+
+Each job number needs to be unique for an individual. For example, if person 2 has 2 job number 1's then the analysis code will not work properly, and this needs to be corrected.
+```{r}
+
+tempData <- group_by(rec23Data, projID, studyear, communty, strata, HHID, person, jobnum) %>%
+  summarize(jobRecordCount = n()) %>%
+  filter(jobRecordCount > 1)
+
+  tblOut <- kbl(tempData,
+                caption=formatTableHeader(str_interp("Duplicate records record 23."))) %>%
+    kable_styling(full_width = F)
+        
+  print(tblOut)
+
+```
+
+## Logic validation
+
+### People over 16 - no employment record.
+For this chunk, you need to make sure that birthyear and personAge are properly noted. 
+
+```{r}
+
+tempData <- group_by(rec23Data, projID, studyear, communty, strata, HHID, person) %>%
+  summarize(jobRecordCount = n())
+
+tempData <- left_join(rec01Data, tempData, by=c("projID", "studyear", "communty", "strata", "HHID", "person")) %>% 
+  filter(studyear - birthyear > 16 & is.na(jobRecordCount)) %>%
+   arrange(projID, studyear, communty, strata, HHID, person)
+
+if(nrow(tempData) == 0){
+  
+  cat(greenMessage("No logic issues found for REC 23."))
+  
+} else {
+    tblOut <- kbl(tempData,
+                caption=formatTableHeader(str_interp("Logic issues found for REC23."))) %>%
+    kable_styling(full_width = F)
+        
+  print(tblOut)
+}
+
+```
+
+
+# Record Type 24 - Other income.
+
+## Descriptives
+
+*Note* -10 indicates 'empty value' - if this is present, you need to evaluate data by hand and correct in the data entry screen.
+
+```{r}
+
+# Missing 'amount' is undefined, recode to -10
+tempData <- recode_variables(rec24Data, c("amount"), NA, -10)
+
+tempData <- group_by(rec24Data, projID, studyear, communty) %>%
+  summarize(recCount = n(),
+            amount_min = min(amount, na.rm=TRUE),
+            amount_max = max(amount, na.rm=TRUE),
+            amount_n = sum(!is.na(amount)) ) %>%
+  ungroup() %>%
+  pivot_longer(., cols=all_of(names(select(., -communty))),
+               names_to = "Columns", 
+               values_to="Values") %>%
+  pivot_wider(id_cols="Columns", 
+              names_from=communty, 
+              values_from=Values)
+  
+  # Arrange (order) columns so they are easier to evaluate.
+  tempData$sOrder = 2
+  tempData$sOrder[tempData$Columns %in% c('projID', 'studyear')] = 1
+  tempData <- tempData %>% arrange(sOrder, Columns) %>%
+    select(-sOrder)
+
+  tblOut <- kbl(tempData,
+              caption=formatTableHeader(str_interp("Descriptives for Rec 24 - Other income."))) %>%
+  kable_styling(full_width = F)
+        
+  print(tblOut)
+
+```
+
+## Frequencies
+
+### amount
+```{r}
+
+tempData <- group_by(rec24Data, projID, studyear, communty, amount) %>%
+  summarize(nOccur = n())
+
+  tblOut <- kbl(tempData,
+              caption=formatTableHeader(str_interp("Frequency of amount"))) %>%
+  kable_styling(full_width = F)
+        
+  print(tblOut)
+
+```
+
+## Logic validation 
+
+### filter questions by income source
+
+```{r}
+
+tempData <- filter(rec24Data, incReceived == 1 & amount == 0)
+
+tempData <- filter(rec24Data, incReceived == 0 & amount != 0) %>%
+  dplyr::bind_rows(tempData)
+
+if(nrow(tempData) == 0){
+  cat(greenMessage("No logic issues found for REC 24 (general)."))
+} else {
+  tblOut <- kbl(tempData,
+              caption=formatTableHeader(str_interp("Logic issues"))) %>%
+  kable_styling(full_width = F)
+        
+  print(tblOut)
+}
+
+```
+
+### Filter questions for PFD / Native Corp
+
+The table below describes responses inconsistent with the filter question of pfdOrNatCorpYN
+
+```{r}
+#13 / 32 are Pfd or native corporation.
+
+divData <- filter(rec24Data, incsrce == 13 | incsrce == 32)
+divData <- recode_variables(divData, c("amount"), NA, -10)
+
+divData <- group_by(divData, projID, studyear, communty, HHID, pfdOrNatCorpYN) %>%
+  summarize(minAmt = min(amount, na.rm=TRUE),
+            maxAmt = max(amount, na.rm=TRUE))
+
+tempData <- filter(divData, pfdOrNatCorpYN == 1 & minAmt == 0 & maxAmt == 0)
+
+tempData <- filter(divData, pfdOrNatCorpYN == 0 & (minAmt < 0 | maxAmt > 0)) %>%
+  dplyr::bind_rows(tempData) %>%
+  arrange(projID, studyear, communty, HHID)
+
+if(nrow(tempData) == 0){
+    cat(greenMessage("No logic issues found for REC 24 'PFD or Native corp'."))
+} else {
+  
+  tblOut <- kbl(tempData,
+              caption=formatTableHeader(str_interp("Logic issues PFD/Native Corp"))) %>%
+  kable_styling(full_width = F)
+        
+  print(tblOut)
+
+}
+
+```
+
+### Filter questions for other income sources
+
+The table below describes responses inconsistent with the filter question of otherIncomeYN
+
+```{r}
+#13 / 32 are Pfd or native corporation.
+
+othIncData <- filter(rec24Data, incsrce != 13 & incsrce != 32)
+othIncData <- recode_variables(othIncData, c("amount"), NA, -10)
+
+othIncData <- group_by(othIncData, projID, studyear, communty, HHID, otherIncomeYN) %>%
+  summarize(minAmt = min(amount, na.rm=TRUE),
+            maxAmt = max(amount, na.rm=TRUE))
+
+tempData <- filter(othIncData, otherIncomeYN == 1 & minAmt == 0 & maxAmt == 0)
+
+tempData <- filter(othIncData, otherIncomeYN == 0 & (minAmt < 0 | maxAmt > 0)) %>%
+  dplyr::bind_rows(tempData) %>%
+  arrange(projID, studyear, communty, HHID)
+
+if(nrow(tempData) == 0){
+  cat(greenMessage("No logic issues found for REC 24 'other sources of income'."))
+} else {
+  tblOut <- kbl(tempData,
+              caption=formatTableHeader(str_interp("Logic issues other data sources"))) %>%
+  kable_styling(full_width = F)
+        
+  print(tblOut)
+}
+
+```
+
+<p class="h1footer"> End of get A06 Logic Checks. </p>

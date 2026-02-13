@@ -1,0 +1,232 @@
+---
+title: "C03_BIRTHPLACES - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-15"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">C03_BIRTHPLACES - (316) NPS Ambler Comprehensive</div>
+</div>
+
+# Birthplaces
+
+Produce a tables that show birthplaces of the population by total population and household heads only.
+
+## Change log
+
+### Change 1
+- Programmer: D.S.Koster  
+- Date: 05/21/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output.  
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates  
+
+### Change 2
+- Programmer: Jesse Coleman
+- Date: 03/18/2025
+- Change Description: Removed source() calls; all functions are included in the library adfgSubs.
+- Template Update [Y|N]: Y
+- One-Off: No-include in all future comprehensive templates 
+
+### Change 3
+- Programmer: Jesse Coleman
+- Date: 05/21/2025
+- Change Description: Refactor using tidyverse language and DRY ("don't repeat yourself") principles.
+- Template Update [Y|N]: Y
+- One-Off: No - include in all future comprehensive templates 
+
+## Input data
+  
+- /CSV/03 - Main/REC01_clean.csv  
+- /CSV/03 - Main/sample.csv
+
+## Output data
+  
+- /CSV/05 - Final Analysis Output/birthPlaceOfPopulation_raw.csv  
+- /CSV/05 - Final Analysis Output/birthPlaceOfHHHeads_raw.csv  
+
+## Background
+
+## Checklist
+  
+- Update 'Author' to your name  
+- Update the project information in 'title' to the current project  
+- Update the development log with any changes you've made to the template file, including your name  
+- Update the template table with this data and check the .html against the production table.
+
+## Additional information
+
+## Required libraries (adjust as needed)
+
+- tidyVerse  
+- rio  
+- knitr
+- adfgSubs
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+
+# Additional libraries
+library(knitr)
+library(kableExtra)
+library(adfgSubs)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+```
+
+## Load data
+
+```{r load data}
+
+# ##############################################################################
+# Load data from intermediate files.
+# ##############################################################################
+
+personData <- read.csv(str_interp('../../CSV/03 - Main/REC01_clean.csv'), 
+                       na = '', 
+                       header = TRUE, 
+                       strip.white = TRUE)
+
+count <- nrow(personData)
+cat(formatSummaryBlock(paste("Opening file: REC01std.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+sampleData <- read.csv(str_interp('../../CSV/03 - Main/sample.csv'), 
+                       na = '', 
+                       header = TRUE, 
+                       strip.white = TRUE)
+
+count <- nrow(sampleData)
+cat(formatSummaryBlock(paste("Opening file: sample.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+personData <- left_join(personData, sampleData, by=c('projID', 'studyear', 'communty', 'strata'))
+
+
+
+```
+
+## Birthplaces of population
+
+```{r birthplaces population}
+
+personData$birthPlace[personData$birthPlace < 0 | is.na(personData$birthPlace)] = 999
+personData$birthPlaceName[personData$birthPlace == 999] = "Missing"
+
+bpPopData <- group_by(personData, projID, studyear, communty, commname, NHouseholds,
+                      NPopulation, birthPlace, birthPlaceName) %>%
+  summarize(pctBirthPlace = sum(strataWt / NPopulation, na.rm=TRUE)) %>%
+  ungroup()
+
+tmpTableData <- select(bpPopData, commname, birthPlaceName, pctBirthPlace)
+tmpTableData$pctBirthPlace = paste(as.character(round(tmpTableData$pctBirthPlace * 100, 1)),'%',sep='')
+
+
+# Create table with birthplaces data; iterate over each community
+
+walk(sampleData$commname, function(comm) {
+  tmpOutData <- filter(tmpTableData, commname == comm) %>%
+    select(-commname)
+  kbl(tmpOutData,
+      caption = formatTableHeader(glue::glue("Birthplaces of population, {comm}, {studyear}")),
+      col.names = c("Birth Place", "Percent of Population")) %>%
+    kable_styling(full_width = FALSE) %>% 
+    print()
+})
+
+
+```
+
+## Birthplaces of household heads
+
+```{r household heads}
+
+nHHHeadData <- filter(personData, person == 1 | person == 2) %>%
+  group_by(projID, studyear, communty) %>%
+  summarize(nHHHead = sum(strataWt, na.rm=TRUE))
+
+bpHeadData <- left_join(personData, nHHHeadData, by=c("projID", "studyear", "communty"))
+
+bpHeadData <- filter(bpHeadData, person == 1 | person == 2) %>%
+              group_by( projID, studyear, communty, commname, NHouseholds,
+                        NPopulation, nHHHead, birthPlace, birthPlaceName) %>%
+  summarize(pctBirthPlace = sum(strataWt / nHHHead)) %>%
+  ungroup()
+
+tmpTableData <- select(bpHeadData, commname, birthPlaceName, pctBirthPlace)
+tmpTableData$pctBirthPlace = paste(as.character(round(tmpTableData$pctBirthPlace * 100, 1)),'%',sep='')
+
+for(comm in sampleData$commname)
+{
+  tmpOutData <- filter(tmpTableData, commname == comm) %>%
+    select(-commname)
+  tblOut <- kbl(tmpOutData,
+                caption=formatTableHeader(str_interp("Birthplaces of Household heads, ${comm}, ${studyear}")),
+                col.names = c("Birth Place", "Percent of Population")) %>%
+    kable_styling(full_width = F)
+  
+  print(tblOut)
+}
+
+```
+
+
+# Write CSV files
+
+```{r write csv files}
+
+# ##############################################################################
+# Write out CSV files.
+# ##############################################################################
+
+# ###########################################################################
+  fName = '../../CSV/05 - Final Analysis Output/birthPlaceOfPopulation_raw.csv'
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(bpPopData), ' records to be written', sep='')))
+
+  rio::export(bpPopData, fName)
+  
+# ###########################################################################
+  fName = '../../CSV/05 - Final Analysis Output/birthPlaceOfHHHeads_raw.csv'
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(bpHeadData), ' records to be written', sep='')))
+
+  rio::export(bpHeadData, fName)  
+
+```
+
+<p class="h1footer"> End of birthplaces script. </p>

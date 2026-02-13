@@ -1,0 +1,167 @@
+---
+title: "F09_COMMENTS_AND_SUMMARY - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-15"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">F09_COMMENTS_AND_SUMMARY - (316) NPS Ambler Comprehensive</div>
+</div>
+
+# Comments and summary
+Produce an output of comment and summary data for SRS review.
+
+## Change log
+
+### Change 1
+- Programmer: Jesse Coleman
+- Date: 03/18/2025
+- Change Description: Removed source() calls; all functions are included in the library adfgSubs.
+- Template Update [Y|N]: Y
+- One-Off: No-include in all future comprehensive templates 
+
+## Input data
+
+- /CSV/00 - Lookup Codes/fullCommuntyList.csv  
+- /CSV/01 - Database Extract/REC300_raw.csv  
+
+*NOTE:* No database extracts are executed.
+ 
+## Output data
+
+- CSV/05 - Final Analysis Output/Comments and Summary.csv'
+
+## Background
+
+## Checklist
+- Update header information  
+- Verify contents  
+- upload to sharePoint  
+
+## Additional information
+
+### Required libraries 
+- tidyVerse  
+- knitr
+- adfgSubs
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+# Data processing
+
+## Initialize environment
+
+Loading libraries, standard functions and set environment parameters.
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+
+# Load libraries
+library(knitr)
+library(adfgSubs)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+# source('../Functions/f_RMD_HTML_FORMATTING_FUNCTIONS.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+```
+
+## Load data
+
+```{r load data}
+
+# ##############################################################################
+# Load data from intermediate files.
+# ##############################################################################
+
+# Raw comments data
+commentData <- read.csv('../../CSV/01 - Database Extract/REC300_raw.csv',
+                   na = '', 
+                   header = TRUE, 
+                   strip.white = TRUE)
+
+count <- nrow(commentData)
+cat(formatSummaryBlock(paste("Opening file: REC300_raw.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+# Community lookup data.
+communtyLkpData <- read.csv('../../CSV/00 - Lookup Codes/fullCommuntyList.csv',
+                   na = '', 
+                   header = TRUE, 
+                   strip.white = TRUE)
+
+count <- nrow(communtyLkpData)
+cat(formatSummaryBlock(paste("Opening file: fullCommuntyList.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+```
+
+
+## Clean and organize
+
+Write notes about items that must be organized or cleaned and why. Also note any automation that was used.
+
+```{r clean and organize}
+
+commentData <- left_join(commentData, communtyLkpData, by=c("communty")) %>%
+  select(projID, studyear, communty, commname, comments, summary)
+
+
+```
+
+
+## Reports
+
+```{r write tables and figures}
+# This is an example of a table, you can remove the col.names option here
+#  and use only the data frame column headers, depending..
+knitr::kable(commentData,
+             caption=formatTableHeader("Comments and summary"))
+
+```
+
+
+## Write CSV
+
+```{r write csv files}
+
+# ##############################################################################
+# Write out CSV files.
+# ##############################################################################
+
+# Sample code for writing out a file.
+  fName = str_interp('../../CSV/05 - Final Analysis Output/Comments and Summary.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(commentData), ' records to be written', sep='')))
+
+# Standard is to use CSV files for portability.
+  rio::export(commentData, fName)
+
+```
+
+<p class="h1footer"> End of F09 COMMENTS and SUMMARY script. </p>

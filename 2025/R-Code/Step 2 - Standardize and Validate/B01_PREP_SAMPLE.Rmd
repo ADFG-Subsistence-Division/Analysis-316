@@ -1,0 +1,557 @@
+---
+title: "B01_PREP_SAMPLE - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-19"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">B01_PREP_SAMPLE - (316) NPS Ambler Comprehensive</div>
+</div>
+
+
+# Prep Sample
+
+Create a prepared file for sample information to be used with other template processing files.
+
+## Changelog 
+
+Changes over time are listed below.
+
+### Change 1
+- Programmer: D. Koster  
+- Date: 07/2023  
+- Change Description: Revised and prepped for final template use  
+- Template Update [Y|N]: YES 
+- One-Off:  
+
+### Change 2
+- Programmer: D. Koster  
+- Date: 08/2023  
+- Change Description: Revised and prepped for final template use  
+- Template Update [Y|N]: YES  
+- One-Off:  
+
+### Change 3
+- Programmer: D.S.Koster  
+- Date: 05/21/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output.  
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates  
+
+### Change 4
+- Programmer: D.S.Koster  
+- Date: 02/07/2025  
+- Change Description: Removed the custom defined 'transpose' function with tidy syntax and split up chunks into smaller pieces in order to better identify places where errors are generated  
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates 
+
+### Change 5
+- Programmer: Jesse Coleman
+- Date: 03/18/2025
+- Change Description: Removed source() calls; all functions are included in the library adfgSubs.
+- Template Update [Y|N]: Y
+- One-Off: No-include in all future comprehensive templates 
+
+### Change 6
+- Programmer: Jesse Coleman
+- Date: 07/15/2025
+- Change Description: Refactor using tidyverse language and DRY ("don't repeat 
+yourself") principles.
+- Template Update [Y|N]: Y
+- One-Off: No - include in all future comprehensive templates 
+
+## Input data
+  
+- /CSV/01 - Database Extract/sample_raw.csv  
+- /CSV/01 - Database Extract/REC01_raw.csv  
+- /CSV/01 - Database Extract/REC00_raw.csv  
+- /CSV/00 - Lookup Codes/fullCommuntyList.csv  
+
+*NOTE:* No database extracts are necessary for this script.
+
+## Output data
+  
+- /CSV/03 - main/sample.csv
+
+## Checklist
+
+- Update 'Author' to your name   
+- Update the project information in 'title' to the current project  
+- Update the development log with any changes you've made to the template file, including your name  
+- Verify sample with sample sheet    
+- Verify total households (sampHH) against paper surveys      
+- Ensure accounting adds up (refusals, NC, etc.)   
+- Ensure that you are using the correct color palette.
+
+## Background
+
+Because the Division of Subsistence relies on population samples to derive population estimates using the sample mean as an estimator for the population, sampling is the first most important element of the data to examine prior to analysis. This file produces a sampling summary that depicts the disposition of all households attempted. Each survey is a little different in terms of the number of households identified to be sampled. For small communities (80-100), all households will likely have been identified as needing to be contacted. This is a rule of thumb that may apply differently for different kinds of surveys. This should be described in the investigation plan. In cases where a census was prescribed, all households should have a disposition. For larger communities, a typical sample size won't exceed around 200, again with exceptions for certain projects and goals. In this case, ONLY those households attempted will have a disposition.
+
+Ensure that the number of categories on each of the figures corresponds to the number of colors selected from the color palette. IM Standard is to use a modified version of "Spectral" from RColorBrewer palettes as a color-blind friendly palette. Rather than using RColorBrewer directly, a hand-curated set of colors can be pulled from the Z00_PROJECT_PARAMETERS file using the code noted below:
+
+```{r eval=FALSE, echo=TRUE}
+
+getColors(nColors=6)
+
+```
+
+In the SAMPLE code chunk above, the color brewer is selecting 6 colors from the BrBG palette. This will provide up to 11 colors to choose from. To change the number of colors modify the number indicated in the sample code.
+
+## Additional Information
+
+## Required libraries (adjust as needed)
+
+- tidyVerse  
+- rio  
+- knitr 
+- adfgSubs
+
+```{r setup, echo=FALSE}
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE,
+                      include = TRUE,
+                      message = FALSE,
+                      warning = FALSE,
+                      results='asis')
+
+options(knitr.kable.NA = '')
+```
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment, echo = FALSE, message = FALSE, warning = FALSE}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+library(knitr)
+library(ggrepel)
+
+
+# Include the project parameters file - this needs to be updated for all
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+```
+
+## Load data
+
+```{r load data, message = FALSE}  
+
+# ##############################################################################
+# Load data from intermediate files.
+# ##############################################################################
+
+# This for each file opened
+
+sampData <- read.csv('../../CSV/01 - Database Extract/sample_raw.csv',
+            na = '', header = TRUE, strip.white = TRUE)
+count <- nrow(sampData)
+cat(formatSummaryBlock(paste("Opening file: sample_raw.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+
+REC01Data <- read.csv('../../CSV/01 - Database Extract/REC01_raw.csv',
+            na = '', header = TRUE, strip.white = TRUE)
+count <- nrow(REC01Data)
+cat(formatSummaryBlock(paste("Opening file: REC01_raw.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+
+REC00Data <- read.csv('../../CSV/01 - Database Extract/REC00_raw.csv',
+            na = '', header = TRUE, strip.white = TRUE)
+count <- nrow(REC00Data)
+cat(formatSummaryBlock(paste("Opening file: REC00_raw.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+commListData <- read.csv('../../CSV/00 - Lookup Codes/fullCommuntyList.csv',
+            na = '', header = TRUE, strip.white = TRUE)
+count <- nrow(commListData)
+cat(formatSummaryBlock(paste("Opening file: fullCommuntyList.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+
+```
+
+## Summarize 
+
+Summarize the population & sample info for tables and figures.
+
+```{r Summarize population, message = FALSE}
+
+# 2.1 - summarize to HH level, will merge with REC00 to identify any possible 
+#       missing data .
+
+# Summarize to the person level, then to the HH Level.
+popByHHData <- group_by(REC01Data, projID, studyear, communty, strata, HHID) %>%
+               summarize(sampPop = n())
+
+popByHHData <- left_join(popByHHData,
+                         REC00Data,
+                         by=c("projID",
+                              "studyear",
+                              "communty",
+                              "strata",
+                              "HHID"))
+
+# 2.2 - summarize to comm/strata level.
+popByStrataData <- group_by(popByHHData, projID, studyear, communty, strata) %>%
+                   summarize(sampPop=sum(sampPop)) %>%
+  ungroup()
+
+sampData <- left_join(sampData,
+                      popByStrataData,
+                      by=c("projID", "studyear", "communty", "strata"))
+
+# 2.3 Estimated population.
+sampData$strataWt = sampData$commhh / sampData$samphh
+sampData$commPop = sampData$sampPop * sampData$strataWt
+
+# 2.4 Create community totals for population and households & merge.
+commPopData <- group_by(sampData, projID, studyear, communty) %>%
+               summarize(NHouseholds = sum(commhh)
+                       , NPopulation = sum(commPop)) %>%
+  ungroup()
+
+sampData <- left_join(sampData,
+                      commPopData,
+                      by = c("projID", "studyear", "communty"))
+
+# 2.5 Bring in commname now.
+sampData <- left_join(sampData, commListData, by = c("communty"))
+
+# 2.6 Round to 4 digits just in case our total population is something wacky 
+#   like .3333 repeating, it'll help reduce possibility of errors and 
+#   inconsistencies in summarize later on.
+sampData$NPopulation = round(sampData$NPopulation, digits = 4)
+
+```
+
+## Sample table
+
+Prepare and print sample tables.
+
+```{r develop sample table}
+
+
+# 2.7 Pivot a temp table for printing in the markdown.
+tempData <- data.frame(sampData)
+tempData$commname = paste(tempData$commname, ' (',
+                          tempData$strataName, ')',
+                          sep='')
+
+```
+
+```{r filter table data}
+
+# Re-organize the dataset for display
+tempData <- select(tempData, 
+                   -strata, -communty, -strataName) %>%
+            select(commname, 
+                   projID, 
+                   studyear,
+                   initialEstimatedHHs,
+                   movedInelegible,
+                   interviewGoal,
+                   surveysReceived,
+                   samphh,
+                   commhh,
+                   refuse,
+                   noContact,
+                   strataWt,
+                   sampPop,
+                   commPop,
+                   NHouseholds,
+                   NPopulation)
+```
+
+```{r simple transpose}
+
+# 02/07/2025; replace original manual transpose with tidy version.
+colNames = names(tempData)
+colNames = colNames[-which(colNames == "commname")]
+
+tempData <- tempData %>% pivot_longer(cols = colNames, 
+                         names_to = "Characteristic",
+                         values_to = "Value") %>% 
+  pivot_wider(names_from = "commname", 
+              values_from = "Value",
+              names_sort = TRUE)
+
+print(knitr::kable(tempData, 
+             caption = formatTableHeader('Sample Summary Data'),
+             digits=2))
+
+```
+
+```{r error checking tables}
+# Do some error checking between household sample information provided by SRS staff and the database extract.
+
+sampErr = FALSE
+sampErrMsg = ""
+
+figPrepData <- filter(tempData, 
+                  Characteristic %in% c("initialEstimatedHHs",
+                             "movedInelegible",
+                             "samphh",
+                             "refuse",
+                             "noContact"))
+figPrepCheckData <- figPrepData
+
+prettyColNames <- c("Initial estimate",
+                    "Moved/inelegible",
+                    "Sampled",
+                    "Refused",
+                    "No Contact")
+
+figPrepCheckData$Characteristic <- prettyColNames
+
+
+# Empty row for households.
+newHHsData <- figPrepCheckData[1,]
+newHHsData$Characteristic = "Added"
+finalHHsData <- figPrepCheckData[1,]
+finalHHsData$Characteristic = "Final estimate"
+noStatusHHData <- figPrepCheckData[1,]
+noStatusHHData$Characteristic <- "No disposition"
+
+# Get column indices (starting from column 2)
+col_indices <- 2:length(names(figPrepCheckData))
+
+# Use map on column indices
+walk(col_indices, function(ii) {
+  
+  # New households == 0
+  newHHsData[1, ii] <- 0
+  noStatusHHData[1, ii] <- 0
+  
+  # Set the initial households to a negative number to easily check the
+  # accounting of households.
+  figPrepCheckData[1, ii] <- figPrepCheckData[1, ii] * -1 
+  newHHsData[1, ii] <- sum(figPrepCheckData[(1:nrow(figPrepCheckData)), ii])
+  figPrepCheckData[1, ii] <- figPrepCheckData[1, ii] * -1 
+  
+  if(newHHsData[1, ii] > 0) {
+    finalHHsData[1, ii] <- newHHsData[1, ii] + figPrepCheckData[1, ii]
+    
+    sampErrMsg <- paste0("There are, ", 
+                        newHHsData[1, ii],
+                        " more inelegible households or refused, were not contacted, or sampled in ", 
+                        names(figPrepCheckData)[ii], 
+                        " than initially estimated - Verify.")
+    cat(warningMessage(sampErrMsg))
+  } else {
+    
+    # If there are 0 differences, skip, so verify with nested if.
+    if (newHHsData[1, ii] < 0) {
+      newHHsData[1, ii] <- newHHsData[1, ii] * -1
+      sampErrMsg <- paste0("There are, ", 
+                         newHHsData[1, ii],
+                         " fewer households refused, not contacted, or sampled in ", 
+                         names(figPrepCheckData)[ii], 
+                         " than initially estimated - Verify.")
+      cat(warningMessage(sampErrMsg))
+      noStatusHHData[1, ii] <- newHHsData[1, ii]
+      newHHsData[1, ii] <- 0
+      finalHHsData[1, ii] <- figPrepCheckData[1, ii] 
+    } else {
+      cat(greenMessage(paste0("Household counts agree for ", 
+                             names(figPrepCheckData)[ii])))
+    }
+  }
+})
+
+## For loop (deprecated) --------------------------
+# for(ii in 2:length(names(figPrepCheckData)))
+# {
+#   # New households == 0
+#   newHHsData[1,ii] = 0
+#   noStatusHHData[1,ii] = 0
+#   
+#   # Set the initial households to a negative number to easily check the
+#   #   accounting of households.
+#   figPrepCheckData[1,ii] = figPrepCheckData[1,ii] * -1 
+#   newHHsData[1,ii] = sum(figPrepCheckData[(1:nrow(figPrepCheckData)),ii])
+#   figPrepCheckData[1,ii] = figPrepCheckData[1,ii] * -1 
+#   
+#   if(newHHsData[1,ii] > 0) {
+# 
+#     finalHHsData[1,ii] = newHHsData[1,ii] + figPrepCheckData[1,ii]
+#     
+#     sampErrMsg = paste("There are, ", 
+#                        newHHsData[1,ii],
+#                        " more inelegible households or refused, were not contacted, or sampled in ", 
+#                        names(figPrepCheckData)[ii], 
+#                        " than initially estimated - Verify.", sep="")
+#     cat(warningMessage(sampErrMsg))
+#   } else {
+#     # IF there are 0 difference, skip, so verify with nested if.
+#     if (newHHsData[1,ii] < 0) {
+#       newHHsData[1,ii] = newHHsData[1,ii] * -1
+#       sampErrMsg = paste("There are, ", 
+#                        newHHsData[1,ii],
+#                        " fewer households refused, not contacted, or sampled in ", 
+#                        names(figPrepCheckData)[ii], 
+#                        " than initially estimated - Verify.", sep="")
+#       cat(warningMessage(sampErrMsg))
+#       noStatusHHData[1,ii] = newHHsData[1,ii]
+#       newHHsData[1,ii] = 0
+#       finalHHsData[1,ii] = figPrepCheckData[1,ii] 
+#     } else {
+#       cat(greenMessage(paste("Household counts agree for ", 
+#                              names(figPrepCheckData)[ii],
+#                              sep="")))
+#     }
+#   }
+# 
+# }
+
+# Combine data frames for review.
+figData <- dplyr::bind_rows(figPrepCheckData, newHHsData) %>%
+  dplyr::bind_rows(noStatusHHData) %>%
+  dplyr::bind_rows(finalHHsData)
+
+# Keep it all clean
+rm(noStatusHHData, finalHHsData, newHHsData)
+
+```
+
+## Sampling summary figures
+
+```{r figures for evaluation}
+# Now make some pie
+
+figBarData <- figData
+maxCols = length(names(figData))
+
+# Pivot back a bit for better plotting.
+
+# Combine into a single long data-frame with community as a 
+#   column name, and the values as values. Note we're strategically removing
+#   a few of the attributes that result in double counting.
+figBarData <- figData[(2:7),] %>%
+  pivot_longer(cols = names(figData[2:maxCols]),
+               names_to = "commname",
+               values_to = "value")
+
+colrs = getColors(nColors=6)
+ggplot(figBarData, aes(fill=Characteristic, y=value, x=commname)) + 
+    geom_bar(position="stack", stat="identity", width = .35) +
+    ggtitle("Community sample tracking summary") +
+    xlab("Community") +
+    ylab("Households") +
+    scale_fill_manual(values = colrs) +
+    theme(text=element_text(family="serif"),
+          legend.position = "bottom",
+          legend.text = element_text(size=10),
+          legend.title = element_blank(),
+          title =element_text(size=16, face='bold'),
+          panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(),
+          panel.background = element_blank(), 
+          axis.line = element_line(colour = "black"), 
+          axis.text.x = element_text(size=12),
+          axis.text.y = element_text(size=12))
+
+
+# Remove new households to make plotting easier.
+figPctData <- figData[-6,]
+figPctData$label = ""
+
+maxCols = length(names(figData))
+
+colrs <- getColors(nColors=4)
+
+# Reduce the dataset to just those columns we want to depict with a pie chart.
+figPctData <- figData[c(3, 4, 5, 7),] %>%
+  pivot_longer(cols = names(figData[2:maxCols]),
+               names_to = "commname",
+               values_to = "value")
+
+# Loop through each community.
+for(comm in unique(figPctData$commname))
+{
+  tmpFigData <- figPctData %>%
+    filter(commname == comm)
+  
+  tmpFigData <- tmpFigData %>%
+    group_by(commname) %>%
+    mutate(sumCount = sum(value, na.rm=TRUE),
+           value = round((value / sumCount) * 100, 1),
+           label = paste(Characteristic, ' \n ', value, '%', sep='')) %>%
+    ungroup()
+  
+   # Now, produce positions for labels.
+  tmpFigData <- arrange(tmpFigData, value)
+  tmpFigData$pos = (cumsum(c(0, tmpFigData$value)) + c(tmpFigData$value / 2, .01))[1:nrow(tmpFigData)]
+  
+  sampPlot <- ggplot(tmpFigData, aes(1, value, fill = label)) +
+      ggtitle(paste("Household sampling summary for: ", comm)) +
+      geom_col(color = 'black', 
+               position = position_stack(reverse = TRUE), 
+               show.legend = FALSE) +
+      geom_text_repel(aes(x = 1.4, y = pos, label = label), 
+                      nudge_x = .4, 
+                      segment.size = .5, 
+                      show.legend = FALSE) +
+        scale_fill_manual(values = colrs) + 
+      coord_polar('y') +
+      theme_void() +
+      theme(text=element_text(family="serif"))
+
+  print(sampPlot)
+  
+}
+
+tmpFigData <- arrange(tmpFigData, value)
+tmpFigData$pos = (cumsum(c(0, tmpFigData$value)) + c(tmpFigData$value / 2, .01))[1:nrow(tmpFigData)]
+ggplot(tmpFigData, aes(1, value, fill = label)) +
+    ggtitle(paste("Household sampling summary for: ", comm)) +
+    geom_col(color = 'black', 
+             position = position_stack(reverse = TRUE), 
+             show.legend = FALSE) +
+    geom_text_repel(aes(x = 1.4, y = pos, label = label), 
+                    nudge_x = .4, 
+                    segment.size = .5, 
+                    show.legend = FALSE) +
+      scale_fill_manual(values = colrs) + 
+    coord_polar('y') +
+    theme_void() +
+    theme(text=element_text(family="serif"))
+
+
+```
+
+# Write CSV files
+
+```{r write csv files}
+
+# ##############################################################################
+# Write out CSV files.
+# ##############################################################################
+
+# Write file
+  fName = str_interp('../../CSV/03 - main/sample.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, sep='')))
+
+  rio::export(sampData, fName)
+
+```
+
+<p class="h1footer"> End of B01 prepare sample script. </p>

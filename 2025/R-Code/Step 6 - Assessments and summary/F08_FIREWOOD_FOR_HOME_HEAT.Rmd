@@ -1,0 +1,214 @@
+---
+title: "F08_FIREWOOD_FOR_HOME_HEAT - (316) NPS Ambler Comprehensive"
+author: "Jesse Coleman"
+date: "2025-08-15"
+output:
+  html_document:
+    theme: null
+    css: ../HTML/adfg-style.css
+    include:
+      before_body: ../HTML/header.html
+      after_body: ../HTML/footer.html
+---
+<div class="title-container">
+  <img class="title-logo" src="../HTML/adfg_logo.png" alt="ADFG Logo"/>
+  <div class="title">F08_FIREWOOD_FOR_HOME_HEAT - (316) NPS Ambler Comprehensive</div>
+</div>
+
+# Firewood for home heating
+
+Produce the table describing home heating patterns reported by households.
+
+## Change log
+
+### Change 1
+- Programmer: D.S.Koster  
+- Date: 05/21/2024  
+- Change Description: Updated organization and formatting to be more consistent and provide better feedback/output.  
+- Template Update [Y|N]: Y  
+- One-Off: No-include in all future comprehensive templates 
+
+### Change 2
+- Programmer: Jesse Coleman
+- Date: 03/18/2025
+- Change Description: Removed source() calls; all functions are included in the library adfgSubs.
+- Template Update [Y|N]: Y
+- One-Off: No-include in all future comprehensive templates 
+
+## Input data  
+- /CSV/01 - Database Extract/REC17_raw.csv  
+- /CSV/03 - Main/sample.csv  
+- /CSV/00 - Lookup Codes/fullCodesetList.csv  
+
+## Output data
+- /CSV/05 - Final Analysis Output/firewoodUse_raw.csv  
+
+## Background
+
+## Checklist
+
+- Update 'Author' to your name, 
+- Update the project information in 'title' to the current project.
+- Update the development log with any changes you've made to the template file, including your name.
+- Update table template and verify the data  
+
+## Additional information
+
+This is meant to be used with the standard comp format/analysis. The NPS surveys have a slightly different organization which can be found in a different processing template.
+
+### Required libraries
+
+- tidyVerse  
+- rio  
+- knitr
+- adfgSubs
+
+```{r setup, echo=FALSE}
+
+# Set some knit options and functions for formatting data.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(results='asis')
+
+options(knitr.kable.NA = '')
+
+```
+
+# Data processing
+
+## Initialize environment
+
+```{r initalize environment}
+
+# Clear out all existing variables & datasets.
+rm(list=ls(all=TRUE))
+
+# Additional libraries
+library(knitr)
+library(kableExtra)
+library(adfgSubs)
+
+# Include the project parameters file - this needs to be updated for all 
+#   projects.
+source('../Z00_PROJECT_PARAMETERS.r')
+# source('../Functions/f_RMD_HTML_FORMATTING_FUNCTIONS.r')
+
+# Note project information
+cat(str_interp('<p class="rbn">Working on project ${projID} ${projectName} - ${studyear}</p>'))
+
+```
+
+## Load data
+
+```{r load data}
+
+# ##############################################################################
+# Load data from intermediate files.
+# ##############################################################################
+
+# This for each file opened.
+rec17Data <- read.csv('../../CSV/01 - Database Extract/REC17_raw.csv',
+                   na = '', 
+                   header = TRUE, 
+                   strip.white = TRUE)
+
+count <- nrow(rec17Data)
+cat(formatSummaryBlock(paste("Opening file: REC17.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+sampleData <- read.csv('../../CSV/03 - Main/sample.csv')
+count <- nrow(sampleData)
+cat(formatSummaryBlock(paste("Opening file: sampleData.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+codesetData <- read.csv('../../CSV/00 - Lookup Codes/fullCodesetList.csv')
+count <- nrow(codesetData)
+cat(formatSummaryBlock(paste("Opening file: fullCodesetList.csv, ", 
+                             count, 
+                             " records loaded.", sep="")))
+
+
+```
+
+## Merge and filter data
+
+Filter record 17 data to just firewood and merge in the sampling information.
+
+```{r merge and filter}
+
+codesetData <- filter(codesetData, codeSetID == 22)
+codesetData$firewoodUseLevel = codesetData$code
+codesetData$firewoodUse = codesetData$codeDescription
+codesetData <- select(codesetData, firewoodUseLevel, firewoodUse)
+
+firewoodData <- filter(rec17Data, resource == 604000000)
+firewoodData <- left_join(firewoodData, sampleData, by=c("projID", "studyear", "communty", "strata"))
+firewoodData <- left_join(firewoodData, codesetData, by=c("firewoodUseLevel"))
+
+```
+
+## Summarize data
+
+Filter record 17 data to just firewood and merge in the sampling information.
+
+```{r summarize}
+
+firewoodData <- group_by(firewoodData, projID, studyear, communty, commname, 
+                         commhh, samphh, firewoodUse) %>%
+  summarize(nHouseholds = n())
+
+
+# Clean up the table a little for readability.
+for(community in unique(firewoodData$commname))
+{
+  tableOutData <- ungroup(firewoodData) %>% 
+    select(commname, samphh, firewoodUse, nHouseholds) %>%
+    filter(commname == community)
+  tableOutData$pctFirewoodUse = paste(round(tableOutData$nHouseholds / tableOutData$samphh, 3) * 100, "%", sep="")
+  
+  tableOut <- knitr::kable(tableOutData,
+                            caption=formatTableHeader(str_interp("Firewood use, ${community}.")),
+                           col.names = c("Community", "Samp HH", "firewood use", "Households (rept)", "Percentage" )) %>%
+  kable_styling(full_width = F)
+    
+  print(tableOut)
+
+  tmpPlot <- ggplot(tableOutData, aes(x=firewoodUse, y=nHouseholds)) +
+    geom_bar(stat = "identity") +
+     ggtitle(str_interp("Use of firewood ${community}, ${studyear}")) +
+    ylab("Households reporting") +
+    xlab(" ") +
+    theme(text=element_text(family="serif")) +
+    theme(legend.title = element_blank()) +
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+    panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+    theme(legend.position="bottom") +
+    theme(plot.margin = margin(t=1,r=0,b=1,l=1, "cm"))
+  print(tmpPlot)
+  
+}
+
+```
+
+## Write CSV files
+
+```{r write csv files}
+
+# ##############################################################################
+# Write out CSV files.
+# ##############################################################################
+
+# Sample code for writing out a file.
+  fName = str_interp('../../CSV/05 - Final Analysis Output/firewoodUse_raw.csv')
+  cat(formatSummaryBlock(
+    paste('Writing file: ', fName, 
+          ' ', nrow(firewoodData), ' records to be written', sep='')))
+
+# For 2023; we are, by default, working exclusively with R code..
+  rio::export(firewoodData, fName)
+
+```
+
+<p class="h1footer"> End of Firewood for home use script. </p>
