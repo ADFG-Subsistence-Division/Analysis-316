@@ -381,17 +381,20 @@ parList <- unique(parList)
 
 # Simple calculation of percent per age category. Note that this uses automation to 
 #   figure out age groups by category based on specified categories.
+
 ageCatData <- group_by(ageCatData, projID, studyear, communty, commname,
                        NHouseholds, NPopulation, ageCatDesc) %>%
   summarize(nAgeCat = sum(ageCatFL, na.rm=TRUE),
+            
+            # This step sums the number of valid responses to harv/proc columns AND age category
             across(all_of(c(participationQuestions, "harvAnyResource", "procAnyResource", npsQuestionList)),
                    ~ sum(.x * ageCatFL, na.rm=TRUE), 
                    .names="rept_{.col}"),
+            # This step takes the mean of valid responses to harv/proc columns AND age category, which is equivalent to the sum of valid responses divided by the total number of valid responses for each age category.
             across(all_of(c(participationQuestions, "harvAnyResource", "procAnyResource", npsQuestionList)),
                    ~ mean(.x * ageCatFL, na.rm=TRUE), 
                    .names="pct_{.col}")) %>%
   ungroup()
-
 
 # For participation category in the participation list - make a table and figure.
 
