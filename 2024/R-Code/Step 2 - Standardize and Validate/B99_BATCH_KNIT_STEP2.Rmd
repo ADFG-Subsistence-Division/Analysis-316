@@ -1,0 +1,20 @@
+---
+title: "Step 2: Standardize and Validate"
+output: html_notebook
+---
+
+
+```{r batch knit}
+
+# Remove all objects from the environment to ensure a clean slate for knitting
+rm(list=ls(all=TRUE))
+
+# Batch knit all Rmd files in the current directory, excluding this one
+files <- list.files(pattern = "\\.Rmd$")
+filtered_files <- files[!grepl("B99_BATCH_KNIT_STEP2.Rmd", files)]
+for (f in filtered_files) {
+  rmarkdown::render(f,
+                    quiet = TRUE)
+}
+
+```

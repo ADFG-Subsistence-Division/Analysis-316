@@ -681,12 +681,11 @@ kindFoodData <- fsData %>%
   
   group_by(projID, studyear, NHouseholds, communty, commname, strata) %>%
   
+  mutate(across(all_of(respCols), ~ . * strataWt)) %>% 
+
   summarize(totalValidResp = sum(validResp, na.rm=TRUE),
-            across(all_of(respCols), ~ . * strataWt)) %>%
-  
-  summarize(totalValidResp = sum(totalValidResp, na.rm=TRUE),
             across(all_of(respCols), sum, na.rm = TRUE),
-            .groups = "drop") %>% 
+            .groups = "drop") %>%
   
   mutate(across(all_of(respCols), ~ . / NHouseholds))
 
@@ -852,7 +851,7 @@ rio::export(kindFoodData, str_interp('../../CSV/05 - Final Analysis Output/AltFo
           ' ', nrow(kindFoodData), ' records to be written', sep='')))
 
   rio::export(kindFoodData, fName)      
-    
+
 ```
 
 <p class="h1footer"> End of Food Security analysis script. </p>

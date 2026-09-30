@@ -32,6 +32,8 @@
 library(tidyverse)
 library(rio)
 library(adfgSubs)
+library(fs)
+library(DBI)
 
 # ##############################################################################
 # 0.0 - SETUP - Establish user and project specific paths, variables and file names.
@@ -40,7 +42,6 @@ library(adfgSubs)
 # Change this if you're attempting to run code using a drive letter other than S.
 sharedResPath = '//dfg.alaska.local/SUB/Anchorage'
 preliminaryResultsFolder = 'GitHub/Preliminary Analysis Results/'
-
 server = '//dfg.alaska.local/SUB/Anchorage/'
 #server = '//dfg.alaska.local/SUB/Fairbanks/'
 #server = 'C:/R-Subist-Data-Local/'
@@ -62,7 +63,7 @@ localSQLiteDB = str_interp('./SQLite/analysisCSVFiles_${projID}_${studyear}.db')
 # Use below as default; replace with correct project file as needed
 #	remoteArchivePath = paste(ancShareDrive, '/IM/CSV Archives/', sep='')
 
-remoteArchivePath = paste(server, '/PROJECTS/316 NPS Upper Kobuk Comprehensive/316-Analysis-2024/SQLite/', sep='')
+remoteArchivePath = paste(server, 'PROJECTS/316 NPS Upper Kobuk Comprehensive/Analysis-316-2024/SQLite/', sep='')
 remoteSQLiteDB = str_interp('${remoteArchivePath}analysisCSVFiles_${projID}_${studyear}.db')
 
 # Resources that shouldn't be expanded in the form of a logic statement.

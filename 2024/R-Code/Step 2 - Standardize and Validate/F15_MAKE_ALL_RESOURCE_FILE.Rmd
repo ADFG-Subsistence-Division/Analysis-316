@@ -172,8 +172,8 @@ convFactData_final <- tryCatch(
 # Reduce the final conversion factor file to just the essentials for data 
 #   processing. Need to retain rows with no conversion factor for later processing.
 convFactData <- convFactData_final %>% 
-        select(projID, studyear, communty, resource, resName, units, convFact, defaultUnits) %>%
-        filter(!is.na(convFact) & !str_detect(resName, "Unspecified"))
+        select(projID, studyear, communty, resource, resName, units, convFact, defaultUnits) #%>%
+        #filter(!is.na(convFact) & !str_detect(resName, "Unspecified"))
 
 cat(formatSummaryBlock(paste("Opening file: convFact.csv, ", 
                              nrow(convFactData), 
@@ -399,7 +399,7 @@ tempData = left_join(tempData, select(resData, -specList), by=c("resource"))
 # 5.2 Re-introduce conversion factors.
 tempData <- left_join(tempData, 
                       convFactData, 
-                      by=c("projID","studyear", "communty", "resource","units"))
+                      by=c("projID","studyear", "communty", "resource","resName","units"))
 
 ```
 
